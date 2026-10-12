@@ -1,0 +1,41 @@
+name: Shelf sync
+
+on:
+  schedule:
+    - cron: "17 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Fast-forward fork main from upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh api -X POST repos/goon-13/codeg/merge-upstream -f branch=main; then
+            gh repo sync goon-13/codeg --source spacering-net/codeg
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/shelf-view
+          fetch-depth: 0
+
+      - name: Rebase feat/shelf-view onto main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          old_head="$(git rev-parse HEAD)"
+          if ! git rebase origin/main; then
+            git rebase --abort
+            exit 1
+          fi
+          new_head="$(git rev-parse HEAD)"
+          if [ "$old_head" != "$new_head" ]; then
+            git push --force-with-lease origin feat/shelf-view
+          fi
