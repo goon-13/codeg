@@ -1,0 +1,50 @@
+name: Shelf build
+
+on:
+  push:
+    branches:
+      - feat/shelf-view
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    name: Frontend (lint + vitest + build)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm eslint .
+
+      - name: Browser agent bundle matches its source
+        run: pnpm browser:agent:check
+
+      - name: Browser agent typecheck
+        run: pnpm browser:agent:types
+
+      - name: Unit tests (vitest)
+        run: pnpm test
+
+      - name: Static export build
+        run: pnpm build
+
+      - name: Upload shelf web export
+        uses: actions/upload-artifact@v4
+        with:
+          name: shelf-web-out
+          path: out/
+          retention-days: 7
