@@ -2012,7 +2012,7 @@
       "tasks": "Tareas pendientes",
       "loadingSubsessions": "Cargando subconversaciones…",
       "forge": "Panel del repositorio",
-      "canvas": "Lienzo infinito",
+      "canvas": "Vista de conversaciones",
       "folderGroup": {
         "newGroup": "Nuevo grupo",
         "newGroupTitle": "Nuevo grupo de carpetas",
@@ -6588,7 +6588,7 @@
     "save": "Guardar"
   },
   "Canvas": {
-    "title": "Lienzo infinito",
+    "title": "Vista de conversaciones",
     "untitled": "Conversación sin título",
     "unresolvedConversation": "Conversación eliminada",
     "removeCard": "Quitar tarjeta",
@@ -6598,10 +6598,13 @@
     "runningCount": "{count} en curso",
     "waitingCount": "{count} en espera",
     "shelfView": "Estantería",
-    "boardView": "Lienzo",
+    "boardView": "Lienzo infinito",
     "collapseProject": "Contraer proyecto",
     "expandProject": "Expandir proyecto",
     "closeExpanded": "Cerrar",
+    "showAllProjects": "Todos los proyectos",
+    "showWorkingProjects": "En curso",
+    "hideFromShelf": "Quitar del estante",
     "childCount": "{count} subagentes",
     "regionMenu": "Opciones de la región",
     "rename": "Renombrar",
@@ -6711,7 +6714,13 @@
     "deleteBoardDescription": "«{name}» y todo su contenido se eliminarán definitivamente. Las conversaciones, carpetas y archivos que muestra no se verán afectados.",
     "deleteBoardItems": "Contiene {count, plural, one {# elemento} other {# elementos}}.",
     "deleteBoardTerminals": "{count, plural, one {Se cerrará # terminal y se detendrá su proceso.} other {Se cerrarán # terminales y se detendrán sus procesos.}}",
-    "deleteBoardConfirm": "Eliminar lienzo"
+    "deleteBoardConfirm": "Eliminar lienzo",
+    "fixedView": "Vista fija",
+    "newInProject": "Nueva conversación",
+    "showActiveSessions": "Activas",
+    "showAllSessions": "Todas las conversaciones",
+    "moveToProject": "Mover a proyecto",
+    "moveRunningBlocked": "Detén el agente antes de mover"
   },
   "Browser": {
     "toolbar": {

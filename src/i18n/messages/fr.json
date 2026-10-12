@@ -2012,7 +2012,7 @@
       "tasks": "Tâches à faire",
       "loadingSubsessions": "Chargement des sous-conversations…",
       "forge": "Panneau du dépôt",
-      "canvas": "Canevas infini",
+      "canvas": "Vue des conversations",
       "folderGroup": {
         "newGroup": "Nouveau groupe",
         "newGroupTitle": "Nouveau groupe de dossiers",
@@ -6588,7 +6588,7 @@
     "save": "Enregistrer"
   },
   "Canvas": {
-    "title": "Canevas infini",
+    "title": "Vue des conversations",
     "untitled": "Conversation sans titre",
     "unresolvedConversation": "Conversation supprimée",
     "removeCard": "Retirer la carte",
@@ -6597,10 +6597,13 @@
     "customRegion": "Collection",
     "runningCount": "{count} en cours",
     "shelfView": "Étagère",
-    "boardView": "Canevas",
+    "boardView": "Canevas infini",
     "collapseProject": "Réduire le projet",
     "expandProject": "Développer le projet",
     "closeExpanded": "Fermer",
+    "showAllProjects": "Tous les projets",
+    "showWorkingProjects": "En cours",
+    "hideFromShelf": "Retirer de l’étagère",
     "waitingCount": "{count} en attente",
     "childCount": "{count} sous-agents",
     "regionMenu": "Options de la région",
@@ -6711,7 +6714,13 @@
     "deleteBoardDescription": "« {name} » et tout son contenu seront définitivement supprimés. Les conversations, dossiers et fichiers qu'il affiche ne sont pas affectés.",
     "deleteBoardItems": "Il contient {count, plural, one {# élément} other {# éléments}}.",
     "deleteBoardTerminals": "{count, plural, one {# terminal sera fermé et son processus arrêté.} other {# terminaux seront fermés et leurs processus arrêtés.}}",
-    "deleteBoardConfirm": "Supprimer le canevas"
+    "deleteBoardConfirm": "Supprimer le canevas",
+    "fixedView": "Vue fixe",
+    "newInProject": "Nouvelle conversation",
+    "showActiveSessions": "Actives",
+    "showAllSessions": "Toutes les conversations",
+    "moveToProject": "Déplacer vers un projet",
+    "moveRunningBlocked": "Arrêtez l'agent avant de déplacer"
   },
   "Browser": {
     "toolbar": {

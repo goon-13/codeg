@@ -2012,7 +2012,7 @@
       "tasks": "المهام قيد الانتظار",
       "loadingSubsessions": "جارٍ تحميل المحادثات الفرعية…",
       "forge": "لوحة المستودع",
-      "canvas": "لوحة لا نهائية",
+      "canvas": "عرض الجلسات",
       "folderGroup": {
         "newGroup": "مجموعة جديدة",
         "newGroupTitle": "مجموعة مجلدات جديدة",
@@ -6588,7 +6588,7 @@
     "save": "حفظ"
   },
   "Canvas": {
-    "title": "لوحة لا نهائية",
+    "title": "عرض الجلسات",
     "untitled": "محادثة بلا عنوان",
     "unresolvedConversation": "تم حذف المحادثة",
     "removeCard": "إزالة البطاقة",
@@ -6598,10 +6598,13 @@
     "runningCount": "{count} قيد التشغيل",
     "waitingCount": "{count} في الانتظار",
     "shelfView": "الرف",
-    "boardView": "اللوحة",
+    "boardView": "لوحة لا نهائية",
     "collapseProject": "طي المشروع",
     "expandProject": "توسيع المشروع",
     "closeExpanded": "إغلاق",
+    "showAllProjects": "عرض كل المشاريع",
+    "showWorkingProjects": "قيد العمل",
+    "hideFromShelf": "إزالة من الرف",
     "childCount": "{count} وكلاء فرعيون",
     "regionMenu": "خيارات المنطقة",
     "rename": "إعادة تسمية",
@@ -6711,7 +6714,13 @@
     "deleteBoardDescription": "سيتم حذف «{name}» وكل ما عليها نهائيًا. لن تتأثر المحادثات والمجلدات والملفات التي تعرضها.",
     "deleteBoardItems": "تحتوي على {count, plural, one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}.",
     "deleteBoardTerminals": "سيتم إغلاق {count, plural, one {طرفية واحدة} two {طرفيتين} few {# طرفيات} many {# طرفية} other {# طرفية}} عليها وإنهاء عملياتها.",
-    "deleteBoardConfirm": "حذف اللوحة"
+    "deleteBoardConfirm": "حذف اللوحة",
+    "fixedView": "عرض ثابت",
+    "newInProject": "محادثة جديدة",
+    "showActiveSessions": "نشطة",
+    "showAllSessions": "كل المحادثات",
+    "moveToProject": "نقل إلى مشروع",
+    "moveRunningBlocked": "أوقف الوكيل قبل النقل"
   },
   "Browser": {
     "toolbar": {
