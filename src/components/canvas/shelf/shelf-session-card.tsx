@@ -103,6 +103,14 @@ export function ShelfSessionCard({
         conversationId={conversation.id}
         agentType={conversation.agent_type}
         isActive={expanded}
+        // Bound conversation: show its own folder and do not move the
+        // workspace tab. The chip is display-only (`editable: false`).
+        folderPickerOverride={{
+          folderId: conversation.folder_id,
+          editable: false,
+          onSelectFolder: () => {},
+          onSelectChatMode: () => {},
+        }}
         className="min-h-0 flex-1"
       />
     </div>
