@@ -2012,7 +2012,7 @@
       "tasks": "To-dos",
       "loadingSubsessions": "Unterkonversationen werden geladen…",
       "forge": "Repository-Panel",
-      "canvas": "Unendlicher Canvas",
+      "canvas": "Sitzungsansicht",
       "folderGroup": {
         "newGroup": "Neue Gruppe",
         "newGroupTitle": "Neue Ordnergruppe",
@@ -6582,7 +6582,7 @@
     "save": "Speichern"
   },
   "Canvas": {
-    "title": "Unendlicher Canvas",
+    "title": "Sitzungsansicht",
     "untitled": "Unbenannte Unterhaltung",
     "unresolvedConversation": "Unterhaltung gelöscht",
     "removeCard": "Karte entfernen",
@@ -6592,10 +6592,13 @@
     "runningCount": "{count} laufend",
     "waitingCount": "{count} wartend",
     "shelfView": "Regal",
-    "boardView": "Canvas",
+    "boardView": "Unendliche Leinwand",
     "collapseProject": "Projekt einklappen",
     "expandProject": "Projekt ausklappen",
     "closeExpanded": "Schließen",
+    "showAllProjects": "Alle Projekte",
+    "showWorkingProjects": "In Arbeit",
+    "hideFromShelf": "Vom Regal nehmen",
     "childCount": "{count} Subagenten",
     "regionMenu": "Regionsoptionen",
     "rename": "Umbenennen",
@@ -6705,7 +6708,13 @@
     "deleteBoardDescription": "„{name}“ und alles darauf werden endgültig gelöscht. Die angezeigten Unterhaltungen, Ordner und Dateien selbst bleiben unberührt.",
     "deleteBoardItems": "Er enthält {count, plural, one {# Element} other {# Elemente}}.",
     "deleteBoardTerminals": "{count, plural, one {# Terminal darauf wird geschlossen und sein Prozess beendet.} other {# Terminals darauf werden geschlossen und ihre Prozesse beendet.}}",
-    "deleteBoardConfirm": "Canvas löschen"
+    "deleteBoardConfirm": "Canvas löschen",
+    "fixedView": "Fest",
+    "newInProject": "Neues Gespräch",
+    "showActiveSessions": "Aktiv",
+    "showAllSessions": "Alle Gespräche",
+    "moveToProject": "In Projekt verschieben",
+    "moveRunningBlocked": "Agent zuerst anhalten"
   },
   "Browser": {
     "toolbar": {

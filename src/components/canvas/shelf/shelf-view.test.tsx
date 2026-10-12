@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import enMessages from "@/i18n/messages/en.json"
@@ -54,6 +54,8 @@ const h = vi.hoisted(() => {
 
   return {
     surfaceRendered: vi.fn(),
+    createConversation: vi.fn().mockResolvedValue(42),
+    moveConversation: vi.fn().mockResolvedValue(undefined),
     folders: [folder(10, "Alpha"), folder(20, "Beta")],
     conversations: [
       conv(7, 10, "Fix the flaky test", "in_progress", "2026-10-02T00:00:00Z"),
@@ -68,6 +70,15 @@ vi.mock("../canvas-conversation-surface", () => ({
     h.surfaceRendered(props)
     return <div data-testid="conversation-surface" />
   },
+}))
+
+vi.mock("@/lib/api", () => ({
+  createConversation: h.createConversation,
+  moveConversation: h.moveConversation,
+}))
+
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() },
 }))
 
 vi.mock("@/stores/app-workspace-store", () => ({
@@ -90,6 +101,8 @@ function renderShelf() {
 beforeEach(() => {
   localStorage.clear()
   h.surfaceRendered.mockClear()
+  h.createConversation.mockClear()
+  h.moveConversation.mockClear()
 })
 
 afterEach(() => {
@@ -97,21 +110,60 @@ afterEach(() => {
 })
 
 describe("ShelfView", () => {
-  it("shows project names, running and waiting counts, and no ReactFlow", () => {
+  it("shows working projects only, running and waiting counts, and no ReactFlow", () => {
     renderShelf()
 
     expect(screen.getByText("Alpha")).toBeTruthy()
-    expect(screen.getByText("Beta")).toBeTruthy()
+    expect(screen.queryByText("Beta")).toBeNull()
     expect(screen.getByText("1 running")).toBeTruthy()
     expect(screen.getByText("1 waiting")).toBeTruthy()
-    expect(screen.getByText("0 running")).toBeTruthy()
-    expect(screen.getByText("0 waiting")).toBeTruthy()
-    expect(screen.getByText("No conversations here yet")).toBeTruthy()
     expect(screen.getByText("Fix the flaky test")).toBeTruthy()
     expect(screen.getByText("Review the patch")).toBeTruthy()
-    expect(screen.getByText("Ship the shelf")).toBeTruthy()
+    expect(screen.queryByText("Ship the shelf")).toBeNull()
     expect(document.querySelector(".react-flow")).toBeNull()
     expect(screen.getByTestId("shelf-view")).toBeTruthy()
+    expect(screen.getByTestId("shelf-row").className).toMatch(/shrink-0/)
+  })
+
+  it("shows completed sessions after All sessions", () => {
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "All sessions" }))
+    expect(screen.getByText("Ship the shelf")).toBeTruthy()
+  })
+
+  it("creates a conversation in the project row", async () => {
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }))
+    await waitFor(() =>
+      expect(h.createConversation).toHaveBeenCalledWith(10, "claude_code")
+    )
+  })
+
+  it("shows every project after Show all projects", () => {
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "Show all projects" }))
+    expect(screen.getByText("Beta")).toBeTruthy()
+    expect(screen.getByText("No conversations here yet")).toBeTruthy()
+  })
+
+  it("hides a project from the working set and persists it", () => {
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "Remove from shelf" }))
+    expect(screen.queryByText("Alpha")).toBeNull()
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-folders") ?? "null"
+      )
+    ).toEqual([])
+  })
+
+  it("grows the row when a card expands", () => {
+    renderShelf()
+    const row = screen.getByTestId("shelf-row")
+    expect(row.className).toMatch(/min-h-\[148px\]/)
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    expect(row.className).toMatch(/min-h-\[560px\]/)
+    expect(row.className).not.toMatch(/overflow-y-hidden/)
   })
 
   it("expands two cards and hands each surface its shelf key", () => {
@@ -168,7 +220,6 @@ describe("ShelfView", () => {
     expect(
       screen.queryByRole("button", { name: /Fix the flaky test/ })
     ).toBeNull()
-    expect(screen.getByText("No conversations here yet")).toBeTruthy()
   })
 
   it("hydrates expanded cards and persists a new one", () => {
@@ -201,9 +252,10 @@ describe("ShelfView", () => {
     renderShelf()
     const alpha = screen.getByRole("button", { name: "Alpha" })
     expect(alpha).toHaveAttribute("aria-expanded", "false")
-    const film = alpha.parentElement?.parentElement?.querySelector("[hidden]")
+    const film = screen.getByTestId("shelf-row").querySelector("[hidden]")
     expect(film?.textContent).toContain("Fix the flaky test")
 
+    fireEvent.click(screen.getByRole("button", { name: "Show all projects" }))
     fireEvent.click(screen.getByRole("button", { name: "Beta" }))
     expect(
       JSON.parse(
