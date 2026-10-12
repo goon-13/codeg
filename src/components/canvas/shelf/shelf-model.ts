@@ -8,8 +8,6 @@ export type ShelfProjectRow = {
   counts: ShelfCounts
 }
 
-export type ShelfSessionFilter = "active" | "all"
-
 export function isShelfConversation(c: DbConversationSummary): boolean {
   return c.kind === "regular"
 }
@@ -18,12 +16,23 @@ export function isActiveShelfConversation(c: DbConversationSummary): boolean {
   return c.status === "in_progress" || c.status === "pending_review"
 }
 
-export function filterShelfConversations(
+/** First-visit default: in-progress and pending-review ids in this row. */
+export function defaultVisibleConversationIds(
+  conversations: DbConversationSummary[]
+): number[] {
+  return conversations.filter(isActiveShelfConversation).map((c) => c.id)
+}
+
+export function visibleShelfConversations(
   conversations: DbConversationSummary[],
-  filter: ShelfSessionFilter
+  visibleIds: number[] | null,
+  showAll: boolean
 ): DbConversationSummary[] {
-  if (filter === "all") return conversations
-  return conversations.filter(isActiveShelfConversation)
+  if (showAll) return conversations
+  const allowed = new Set(
+    visibleIds ?? defaultVisibleConversationIds(conversations)
+  )
+  return conversations.filter((c) => allowed.has(c.id))
 }
 
 export function countShelf(
