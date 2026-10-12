@@ -1098,6 +1098,16 @@ export async function createConversation(
   })
 }
 
+export async function moveConversation(
+  conversationId: number,
+  toFolderId: number
+): Promise<void> {
+  return invoke("move_conversation", {
+    conversationId,
+    toFolderId,
+  })
+}
+
 export async function updateConversationStatus(
   conversationId: number,
   status: string

@@ -2141,7 +2141,7 @@
       "tasks": "ToDo タスク",
       "loadingSubsessions": "サブ会話を読み込み中…",
       "forge": "リポジトリパネル",
-      "canvas": "無限キャンバス",
+      "canvas": "セッションビュー",
       "folderGroup": {
         "newGroup": "新しいグループ",
         "newGroupTitle": "新しいフォルダグループ",
@@ -6852,7 +6852,7 @@
     "save": "保存"
   },
   "Canvas": {
-    "title": "無限キャンバス",
+    "title": "セッションビュー",
     "untitled": "無題の会話",
     "unresolvedConversation": "会話は削除されました",
     "removeCard": "カードを削除",
@@ -6862,10 +6862,13 @@
     "runningCount": "{count} 件実行中",
     "waitingCount": "{count} 件待機中",
     "shelfView": "棚",
-    "boardView": "キャンバス",
+    "boardView": "無限キャンバス",
     "collapseProject": "プロジェクトを折りたたむ",
     "expandProject": "プロジェクトを展開",
     "closeExpanded": "閉じる",
+    "showAllProjects": "すべてのプロジェクト",
+    "showWorkingProjects": "作業中",
+    "hideFromShelf": "棚から外す",
     "childCount": "サブエージェント {count} 件",
     "regionMenu": "リージョンのオプション",
     "rename": "名前を変更",
@@ -6975,7 +6978,13 @@
     "deleteBoardDescription": "「{name}」とその上のすべての内容が完全に削除されます。表示されている会話、フォルダー、ファイル自体には影響しません。",
     "deleteBoardItems": "このキャンバスには {count} 個の要素があります。",
     "deleteBoardTerminals": "そのうちターミナル {count} 個が閉じられ、プロセスも終了します。",
-    "deleteBoardConfirm": "キャンバスを削除"
+    "deleteBoardConfirm": "キャンバスを削除",
+    "fixedView": "固定ビュー",
+    "newInProject": "新しい会話",
+    "showActiveSessions": "稼働中",
+    "showAllSessions": "すべての会話",
+    "moveToProject": "プロジェクトへ移動",
+    "moveRunningBlocked": "移動する前にエージェントを停止"
   },
   "Browser": {
     "toolbar": {

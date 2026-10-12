@@ -306,6 +306,29 @@ pub async fn create_conversation(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MoveConversationParams {
+    pub conversation_id: i32,
+    pub to_folder_id: i32,
+}
+
+pub async fn move_conversation(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(params): Json<MoveConversationParams>,
+) -> Result<Json<()>, AppCommandError> {
+    let ids = conv_commands::move_conversation_core(
+        &state.db.conn,
+        params.conversation_id,
+        params.to_folder_id,
+    )
+    .await?;
+    for id in ids {
+        conv_commands::emit_conversation_upsert(&state.emitter, &state.db.conn, id).await;
+    }
+    Ok(Json(()))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateChatConversationParams {
     pub agent_type: AgentType,
     pub title: Option<String>,
