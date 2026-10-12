@@ -126,7 +126,10 @@ describe("ShelfView", () => {
     })
     expect(
       h.surfaceRendered.mock.lastCall![0].folderPickerOverride
-    ).toBeUndefined()
+    ).toMatchObject({
+      folderId: 10,
+      editable: false,
+    })
     expect(
       h.surfaceRendered.mock.lastCall![0].onSaveSelectionAsNote
     ).toBeUndefined()

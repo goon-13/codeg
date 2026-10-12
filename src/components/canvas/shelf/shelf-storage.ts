@@ -40,6 +40,15 @@ export function saveCanvasLayoutMode(mode: CanvasLayoutMode): void {
   writeJson(LAYOUT_KEY, mode)
 }
 
+export const CANVAS_LAYOUT_EVENT = "codeg:canvas-layout"
+
+export function setCanvasLayoutMode(mode: CanvasLayoutMode): void {
+  saveCanvasLayoutMode(mode)
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CANVAS_LAYOUT_EVENT, { detail: mode }))
+  }
+}
+
 export function loadShelfCollapsedFolderIds(): number[] {
   return loadIds(COLLAPSED_FOLDERS_KEY)
 }

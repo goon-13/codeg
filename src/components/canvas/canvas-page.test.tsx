@@ -71,6 +71,10 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  localStorage.clear()
+  // These cases cover the official board shell. The route now defaults to
+  // the shelf, so pin the saved layout before mount.
+  localStorage.setItem("workspace:canvas-layout", JSON.stringify("board"))
   useCanvasBoardsStore.getState().reset()
   useCanvasStore.getState().reset()
   mockList.mockReset()

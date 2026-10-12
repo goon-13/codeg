@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest"
 import {
+  CANVAS_LAYOUT_EVENT,
   loadCanvasLayoutMode,
   loadShelfCollapsedFolderIds,
   loadShelfExpandedConversationIds,
   saveCanvasLayoutMode,
   saveShelfCollapsedFolderIds,
   saveShelfExpandedConversationIds,
+  setCanvasLayoutMode,
 } from "./shelf-storage"
 
 afterEach(() => localStorage.clear())
@@ -13,6 +15,19 @@ afterEach(() => localStorage.clear())
 describe("shelf storage", () => {
   it("defaults layout to shelf", () => {
     expect(loadCanvasLayoutMode()).toBe("shelf")
+  })
+
+  it("persists a layout change and tells listeners", () => {
+    const seen: string[] = []
+    const on = (event: Event) => {
+      seen.push((event as CustomEvent<string>).detail)
+    }
+    window.addEventListener("codeg:canvas-layout", on)
+    setCanvasLayoutMode("board")
+    expect(loadCanvasLayoutMode()).toBe("board")
+    expect(seen).toEqual(["board"])
+    expect(CANVAS_LAYOUT_EVENT).toBe("codeg:canvas-layout")
+    window.removeEventListener("codeg:canvas-layout", on)
   })
 
   it("round-trips board then shelf", () => {

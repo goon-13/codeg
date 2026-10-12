@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,12 @@ import {
 } from "./canvas-board-dialogs"
 import { CanvasBoardList } from "./canvas-board-list"
 import { ColorDot } from "./canvas-swatches"
+import {
+  CANVAS_LAYOUT_EVENT,
+  loadCanvasLayoutMode,
+  setCanvasLayoutMode,
+  type CanvasLayoutMode,
+} from "./shelf/shelf-storage"
 
 /**
  * ReactFlow (and the canvas machinery) stays out of the first-paint chunk:
@@ -40,14 +47,62 @@ import { ColorDot } from "./canvas-swatches"
  * first visit. `ssr: false` is moot under static export but explicit — the
  * view reads `window` for viewport math.
  */
-const CanvasView = dynamic(() => import("./canvas-view"), {
-  ssr: false,
-  loading: () => (
+function CanvasChunkSpinner() {
+  return (
     <div className="flex h-full items-center justify-center">
       <Loader2 className="size-5 animate-spin text-muted-foreground/60" />
     </div>
-  ),
+  )
+}
+
+const CanvasView = dynamic(() => import("./canvas-view"), {
+  ssr: false,
+  loading: CanvasChunkSpinner,
 })
+
+const ShelfView = dynamic(
+  () => import("./shelf/shelf-view").then((m) => m.ShelfView),
+  { ssr: false, loading: CanvasChunkSpinner }
+)
+
+function useCanvasLayoutMode(): CanvasLayoutMode {
+  const [mode, setMode] = useState<CanvasLayoutMode>(loadCanvasLayoutMode)
+  useEffect(() => {
+    const on = (e: Event) => {
+      const detail = (e as CustomEvent<CanvasLayoutMode>).detail
+      if (detail === "shelf" || detail === "board") setMode(detail)
+    }
+    window.addEventListener(CANVAS_LAYOUT_EVENT, on)
+    return () => window.removeEventListener(CANVAS_LAYOUT_EVENT, on)
+  }, [])
+  return mode
+}
+
+function CanvasLayoutToggle({ mode }: { mode: CanvasLayoutMode }) {
+  const t = useTranslations("Canvas")
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        aria-pressed={mode === "shelf"}
+        onClick={() => setCanvasLayoutMode("shelf")}
+      >
+        {t("shelfView")}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        aria-pressed={mode === "board"}
+        onClick={() => setCanvasLayoutMode("board")}
+      >
+        {t("boardView")}
+      </Button>
+    </>
+  )
+}
 
 /** Characters no file system accepts in a name, for the PNG export. */
 const UNSAFE_FILE_CHARS = /[\\/:*?"<>|\u0000-\u001f]+/g
@@ -59,6 +114,7 @@ const UNSAFE_FILE_CHARS = /[\\/:*?"<>|\u0000-\u001f]+/g
  * know it too.
  */
 export function CanvasPage() {
+  const mode = useCanvasLayoutMode()
   useCanvasBoardsData()
   const t = useTranslations("Canvas")
   const activeBoardId = useCanvasBoardsStore((s) => s.activeBoardId)
@@ -92,6 +148,14 @@ export function CanvasPage() {
     acknowledgeClosedNotice()
   }, [closedNotice, acknowledgeClosedNotice, t])
 
+  if (mode === "shelf") {
+    return (
+      <div className="h-full min-h-0 w-full">
+        <ShelfView />
+      </div>
+    )
+  }
+
   if (activeBoardId == null) return <CanvasBoardList />
 
   const exportName =
@@ -112,6 +176,7 @@ export function CanvasPage() {
 
 export function CanvasPageTitle() {
   const t = useTranslations("Canvas")
+  const mode = useCanvasLayoutMode()
   const activeBoardId = useCanvasBoardsStore((s) => s.activeBoardId)
   const closeBoard = useCanvasBoardsStore((s) => s.closeBoard)
   const summary = useCanvasBoardsStore((s) =>
@@ -119,8 +184,11 @@ export function CanvasPageTitle() {
       ? null
       : (s.boards.find((b) => b.board.id === s.activeBoardId) ?? null)
   )
+  const layoutToggle = <CanvasLayoutToggle mode={mode} />
 
-  if (activeBoardId == null) return <WorkbenchPageTitle title={t("title")} />
+  if (mode === "shelf" || activeBoardId == null) {
+    return <WorkbenchPageTitle title={t("title")} trail={layoutToggle} />
+  }
   return (
     <WorkbenchPageTitle
       title={t("title")}
@@ -133,6 +201,7 @@ export function CanvasPageTitle() {
             aria-hidden="true"
           />
           <BoardTitleMenu summary={summary} />
+          {layoutToggle}
         </>
       }
     />
