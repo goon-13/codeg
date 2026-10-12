@@ -115,8 +115,8 @@ describe("ShelfView", () => {
 
     expect(screen.getByText("Alpha")).toBeTruthy()
     expect(screen.queryByText("Beta")).toBeNull()
-    expect(screen.getByText("1 running")).toBeTruthy()
-    expect(screen.getByText("1 waiting")).toBeTruthy()
+    expect(screen.getByText("1 in progress")).toBeTruthy()
+    expect(screen.getByText("1 pending review")).toBeTruthy()
     expect(screen.getByText("Fix the flaky test")).toBeTruthy()
     expect(screen.getByText("Review the patch")).toBeTruthy()
     expect(screen.queryByText("Ship the shelf")).toBeNull()
@@ -125,9 +125,41 @@ describe("ShelfView", () => {
     expect(screen.getByTestId("shelf-row").className).toMatch(/shrink-0/)
   })
 
-  it("shows completed sessions after All sessions", () => {
+  it("shows conversations off the shelf after Show all conversations", () => {
     renderShelf()
-    fireEvent.click(screen.getByRole("button", { name: "All sessions" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show all conversations" })
+    )
+    expect(screen.getByText("Ship the shelf")).toBeTruthy()
+  })
+
+  it("removes a conversation from the shelf working set", () => {
+    renderShelf()
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "Remove this conversation from the shelf",
+      })[0]
+    )
+    expect(screen.queryByText("Fix the flaky test")).toBeNull()
+    expect(screen.getByText("Review the patch")).toBeTruthy()
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
+      )
+    ).toEqual([8])
+  })
+
+  it("adds a conversation to the shelf from the full list", () => {
+    renderShelf()
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show all conversations" })
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add this conversation to the shelf" })
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: "Shelf conversations" })
+    )
     expect(screen.getByText("Ship the shelf")).toBeTruthy()
   })
 
@@ -143,12 +175,14 @@ describe("ShelfView", () => {
     renderShelf()
     fireEvent.click(screen.getByRole("button", { name: "Show all projects" }))
     expect(screen.getByText("Beta")).toBeTruthy()
-    expect(screen.getByText("No conversations here yet")).toBeTruthy()
+    expect(screen.getByText("This project has no conversations")).toBeTruthy()
   })
 
   it("hides a project from the working set and persists it", () => {
     renderShelf()
-    fireEvent.click(screen.getByRole("button", { name: "Remove from shelf" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove this project from the shelf" })
+    )
     expect(screen.queryByText("Alpha")).toBeNull()
     expect(
       JSON.parse(
