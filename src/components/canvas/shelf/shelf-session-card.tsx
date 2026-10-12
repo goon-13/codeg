@@ -6,6 +6,15 @@ import { useTranslations } from "next-intl"
 import { AgentIcon } from "@/components/agent-icon"
 import { ConversationStatusDot } from "@/components/conversations/conversation-status-dot"
 import { Button } from "@/components/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { formatConversationTitle } from "@/lib/conversation-title"
 import type { ConversationStatus, DbConversationSummary } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -18,16 +27,25 @@ import { shelfContextKey } from "./shelf-model"
 const SHELF_EXPANDED_WIDTH = 520
 const SHELF_EXPANDED_HEIGHT = 560
 
+interface MoveTarget {
+  id: number
+  name: string
+}
+
 interface ShelfSessionCardProps {
   conversation: DbConversationSummary
   expanded: boolean
+  moveTargets: MoveTarget[]
   onToggleExpand: () => void
+  onMove: (toFolderId: number) => void
 }
 
 export function ShelfSessionCard({
   conversation,
   expanded,
+  moveTargets,
   onToggleExpand,
+  onMove,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
   const status = conversation.status as ConversationStatus
@@ -36,32 +54,73 @@ export function ShelfSessionCard({
     ? formatConversationTitle(conversation.title)
     : t("untitled")
 
+  const moveMenu = (
+    <ContextMenuContent>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger disabled={running}>
+          {t("moveToProject")}
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          {moveTargets.map((target) => (
+            <ContextMenuItem
+              key={target.id}
+              disabled={running}
+              onSelect={() => onMove(target.id)}
+            >
+              {target.name}
+            </ContextMenuItem>
+          ))}
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+      {running ? (
+        <ContextMenuItem disabled>{t("moveRunningBlocked")}</ContextMenuItem>
+      ) : null}
+    </ContextMenuContent>
+  )
+
   if (!expanded) {
     return (
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        className={cn(
-          "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
-          "border-foreground/15 hover:border-foreground/30",
-          running && "ring-1 ring-primary/30"
-        )}
-      >
-        <span className="flex items-center gap-1.5">
-          <AgentIcon
-            agentType={conversation.agent_type}
-            className="size-3.5 shrink-0"
-          />
-          <ConversationStatusDot
-            status={status}
-            size="sm"
-            className={cn(running && "motion-safe:animate-pulse")}
-          />
-        </span>
-        <span className="mt-1 line-clamp-3 text-[13px] font-medium leading-snug">
-          {title}
-        </span>
-      </button>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <button
+            type="button"
+            draggable={!running}
+            onDragStart={(event) => {
+              if (running) {
+                event.preventDefault()
+                return
+              }
+              event.dataTransfer.setData(
+                "application/x-codeg-conversation",
+                String(conversation.id)
+              )
+              event.dataTransfer.effectAllowed = "move"
+            }}
+            onClick={onToggleExpand}
+            className={cn(
+              "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
+              "border-foreground/15 hover:border-foreground/30",
+              running && "ring-1 ring-primary/30"
+            )}
+          >
+            <span className="flex items-center gap-1.5">
+              <AgentIcon
+                agentType={conversation.agent_type}
+                className="size-3.5 shrink-0"
+              />
+              <ConversationStatusDot
+                status={status}
+                size="sm"
+                className={cn(running && "motion-safe:animate-pulse")}
+              />
+            </span>
+            <span className="mt-1 line-clamp-3 text-[13px] font-medium leading-snug">
+              {title}
+            </span>
+          </button>
+        </ContextMenuTrigger>
+        {moveMenu}
+      </ContextMenu>
     )
   }
 

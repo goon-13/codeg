@@ -4,9 +4,15 @@ import {
   loadCanvasLayoutMode,
   loadShelfCollapsedFolderIds,
   loadShelfExpandedConversationIds,
+  loadShelfSessionFilters,
+  loadShelfShowAll,
+  loadShelfVisibleFolderIds,
   saveCanvasLayoutMode,
   saveShelfCollapsedFolderIds,
   saveShelfExpandedConversationIds,
+  saveShelfSessionFilters,
+  saveShelfShowAll,
+  saveShelfVisibleFolderIds,
   setCanvasLayoutMode,
 } from "./shelf-storage"
 
@@ -73,5 +79,25 @@ describe("shelf storage", () => {
       JSON.stringify([3, "9", 9.2, null, 4])
     )
     expect(loadShelfExpandedConversationIds()).toEqual([3, 4])
+  })
+
+  it("treats missing visible-folder list as unedited", () => {
+    expect(loadShelfVisibleFolderIds()).toBeNull()
+    saveShelfVisibleFolderIds([2, 5])
+    expect(loadShelfVisibleFolderIds()).toEqual([2, 5])
+    saveShelfVisibleFolderIds(null)
+    expect(loadShelfVisibleFolderIds()).toBeNull()
+  })
+
+  it("round-trips show-all", () => {
+    expect(loadShelfShowAll()).toBe(false)
+    saveShelfShowAll(true)
+    expect(loadShelfShowAll()).toBe(true)
+  })
+
+  it("defaults session filters to empty and round-trips per folder", () => {
+    expect(loadShelfSessionFilters()).toEqual({})
+    saveShelfSessionFilters({ 10: "all", 20: "active" })
+    expect(loadShelfSessionFilters()).toEqual({ 10: "all", 20: "active" })
   })
 })

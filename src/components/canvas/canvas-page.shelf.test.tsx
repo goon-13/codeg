@@ -80,10 +80,11 @@ describe("CanvasPage shelf layout", () => {
     expect(screen.queryByTestId("board-list")).toBeNull()
     expect(screen.queryByTestId("board-view")).toBeNull()
 
-    const shelf = screen.getByRole("button", { name: "Shelf" })
-    const board = screen.getByRole("button", { name: "Board" })
+    const shelf = screen.getByRole("button", { name: "Fixed" })
+    const board = screen.getByRole("button", { name: "Infinite Canvas" })
     expect(shelf).toHaveAttribute("aria-pressed", "true")
     expect(board).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByText("Shelf")).toBeTruthy()
     expect(shelf).toHaveAttribute("data-variant", "ghost")
     expect(shelf).toHaveAttribute("data-size", "xs")
     expect(board).toHaveAttribute("data-variant", "ghost")
@@ -115,14 +116,14 @@ describe("CanvasPage shelf layout", () => {
 
     expect(await screen.findByTestId("shelf-view")).toBeTruthy()
     expect(
-      screen.getByRole("heading", { name: "Infinite Canvas" })
+      screen.getByRole("heading", { name: "Session view" })
     ).toBeTruthy()
     expect(
       screen.queryByRole("button", { name: "Back to all canvases" })
     ).toBeNull()
     expect(screen.queryByRole("button", { name: "Canvas options" })).toBeNull()
 
-    await userEvent.click(screen.getByRole("button", { name: "Board" }))
+    await userEvent.click(screen.getByRole("button", { name: "Infinite Canvas" }))
 
     expect(await screen.findByTestId("board-view")).toBeTruthy()
     expect(screen.queryByTestId("board-list")).toBeNull()
@@ -131,7 +132,7 @@ describe("CanvasPage shelf layout", () => {
       screen.getByRole("button", { name: "Back to all canvases" })
     ).toBeTruthy()
     expect(
-      screen.queryByRole("heading", { name: "Infinite Canvas" })
+      screen.queryByRole("heading", { name: "Session view" })
     ).toBeNull()
   })
 })

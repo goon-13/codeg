@@ -8,8 +8,22 @@ export type ShelfProjectRow = {
   counts: ShelfCounts
 }
 
+export type ShelfSessionFilter = "active" | "all"
+
 export function isShelfConversation(c: DbConversationSummary): boolean {
   return c.kind === "regular"
+}
+
+export function isActiveShelfConversation(c: DbConversationSummary): boolean {
+  return c.status === "in_progress" || c.status === "pending_review"
+}
+
+export function filterShelfConversations(
+  conversations: DbConversationSummary[],
+  filter: ShelfSessionFilter
+): DbConversationSummary[] {
+  if (filter === "all") return conversations
+  return conversations.filter(isActiveShelfConversation)
 }
 
 export function countShelf(
@@ -36,11 +50,31 @@ export function sortShelfConversations(
   })
 }
 
+export function rowActivityMs(row: ShelfProjectRow): number {
+  let max = Date.parse(row.folder.last_opened_at) || 0
+  for (const c of row.conversations) {
+    const t = Date.parse(c.updated_at)
+    if (Number.isFinite(t) && t > max) max = t
+  }
+  return max
+}
+
+export function sortShelfRows(rows: ShelfProjectRow[]): ShelfProjectRow[] {
+  return [...rows].sort((a, b) => rowActivityMs(b) - rowActivityMs(a))
+}
+
+/** Working-set default: projects with running/waiting, else the 8 newest. */
+export function defaultVisibleFolderIds(rows: ShelfProjectRow[]): number[] {
+  const active = rows.filter((r) => r.counts.running + r.counts.waiting > 0)
+  if (active.length > 0) return active.map((r) => r.folder.id)
+  return rows.slice(0, 8).map((r) => r.folder.id)
+}
+
 export function buildShelfRows(
   folders: FolderDetail[],
   conversations: DbConversationSummary[]
 ): ShelfProjectRow[] {
-  return folders.map((folder) => {
+  const rows = folders.map((folder) => {
     const conversationsForFolder = sortShelfConversations(
       conversations.filter(
         (c) => c.folder_id === folder.id && isShelfConversation(c)
@@ -52,6 +86,7 @@ export function buildShelfRows(
       counts: countShelf(conversationsForFolder),
     }
   })
+  return sortShelfRows(rows)
 }
 
 export function shelfContextKey(conversationId: number): string {

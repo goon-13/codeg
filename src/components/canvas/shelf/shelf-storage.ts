@@ -3,6 +3,9 @@
 const LAYOUT_KEY = "workspace:canvas-layout"
 const COLLAPSED_FOLDERS_KEY = "workspace:shelf-collapsed-folders"
 const EXPANDED_CONVERSATIONS_KEY = "workspace:shelf-expanded-conversations"
+const VISIBLE_FOLDERS_KEY = "workspace:shelf-visible-folders"
+const SHOW_ALL_KEY = "workspace:shelf-show-all"
+const SESSION_FILTER_KEY = "workspace:shelf-session-filter"
 
 export type CanvasLayoutMode = "shelf" | "board"
 
@@ -63,4 +66,54 @@ export function loadShelfExpandedConversationIds(): number[] {
 
 export function saveShelfExpandedConversationIds(ids: number[]): void {
   writeJson(EXPANDED_CONVERSATIONS_KEY, [...ids])
+}
+
+/** `null` means the user has not edited the working set — use the auto default. */
+export function loadShelfVisibleFolderIds(): number[] | null {
+  const parsed = readJson(VISIBLE_FOLDERS_KEY)
+  if (parsed == null) return null
+  if (!Array.isArray(parsed)) return null
+  return parsed.filter((id): id is number => Number.isInteger(id))
+}
+
+export function saveShelfVisibleFolderIds(ids: number[] | null): void {
+  if (ids == null) {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.removeItem(VISIBLE_FOLDERS_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  writeJson(VISIBLE_FOLDERS_KEY, [...ids])
+}
+
+export function loadShelfShowAll(): boolean {
+  return readJson(SHOW_ALL_KEY) === true
+}
+
+export function saveShelfShowAll(showAll: boolean): void {
+  writeJson(SHOW_ALL_KEY, showAll)
+}
+
+/** Per-folder session filter. Missing id means `"active"` (running + waiting). */
+export function loadShelfSessionFilters(): Record<number, "active" | "all"> {
+  const parsed = readJson(SESSION_FILTER_KEY)
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {}
+  }
+  const out: Record<number, "active" | "all"> = {}
+  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+    const id = Number(key)
+    if (!Number.isInteger(id)) continue
+    if (value === "active" || value === "all") out[id] = value
+  }
+  return out
+}
+
+export function saveShelfSessionFilters(
+  filters: Record<number, "active" | "all">
+): void {
+  writeJson(SESSION_FILTER_KEY, filters)
 }

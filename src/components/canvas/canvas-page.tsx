@@ -89,8 +89,11 @@ function CanvasLayoutToggle({ mode }: { mode: CanvasLayoutMode }) {
         aria-pressed={mode === "shelf"}
         onClick={() => setCanvasLayoutMode("shelf")}
       >
-        {t("shelfView")}
+        {t("fixedView")}
       </Button>
+      {mode === "shelf" ? (
+        <span className="text-xs text-muted-foreground">{t("shelfView")}</span>
+      ) : null}
       <Button
         type="button"
         variant="ghost"

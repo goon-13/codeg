@@ -3,6 +3,9 @@ import type { DbConversationSummary, FolderDetail } from "@/lib/types"
 import {
   buildShelfRows,
   countShelf,
+  defaultVisibleFolderIds,
+  filterShelfConversations,
+  isActiveShelfConversation,
   isShelfConversation,
   shelfContextKey,
   sortShelfConversations,
@@ -114,6 +117,54 @@ describe("shelf-model", () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].conversations).toEqual([])
     expect(rows[0].counts).toEqual({ running: 0, waiting: 0 })
+  })
+
+  it("buildShelfRows orders projects by latest conversation then last_opened", () => {
+    const rows = buildShelfRows(
+      [folder(1, { name: "old" }), folder(2, { name: "new" })],
+      [
+        conv(10, {
+          folder_id: 1,
+          updated_at: "2026-09-01T00:00:00Z",
+          status: "completed",
+        }),
+        conv(11, {
+          folder_id: 2,
+          updated_at: "2026-10-12T00:00:00Z",
+          status: "completed",
+        }),
+      ]
+    )
+    expect(rows.map((r) => r.folder.id)).toEqual([2, 1])
+  })
+
+  it("filterShelfConversations active keeps running and waiting only", () => {
+    const conversations = [
+      conv(1, { status: "in_progress" }),
+      conv(2, { status: "pending_review" }),
+      conv(3, { status: "completed" }),
+      conv(4, { status: "cancelled" }),
+    ]
+    expect(isActiveShelfConversation(conversations[0])).toBe(true)
+    expect(isActiveShelfConversation(conversations[2])).toBe(false)
+    expect(filterShelfConversations(conversations, "active").map((c) => c.id)).toEqual(
+      [1, 2]
+    )
+    expect(filterShelfConversations(conversations, "all").map((c) => c.id)).toEqual(
+      [1, 2, 3, 4]
+    )
+  })
+
+  it("defaultVisibleFolderIds prefers running/waiting then newest", () => {
+    const rows = buildShelfRows(
+      [folder(1), folder(2), folder(3)],
+      [
+        conv(1, { folder_id: 1, status: "completed" }),
+        conv(2, { folder_id: 2, status: "in_progress" }),
+        conv(3, { folder_id: 3, status: "completed" }),
+      ]
+    )
+    expect(defaultVisibleFolderIds(rows)).toEqual([2])
   })
 
   it("shelfContextKey is stable per id", () => {
