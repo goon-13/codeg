@@ -2012,7 +2012,7 @@
       "tasks": "To-dos",
       "loadingSubsessions": "Loading sub-conversations…",
       "forge": "Repository panel",
-      "canvas": "Infinite Canvas",
+      "canvas": "Session view",
       "folderGroup": {
         "newGroup": "New group",
         "newGroupTitle": "New folder group",
@@ -6580,7 +6580,7 @@
     "save": "Save"
   },
   "Canvas": {
-    "title": "Infinite Canvas",
+    "title": "Session view",
     "untitled": "Untitled conversation",
     "unresolvedConversation": "Conversation removed",
     "removeCard": "Remove card",
@@ -6590,10 +6590,13 @@
     "runningCount": "{count} running",
     "waitingCount": "{count} waiting",
     "shelfView": "Shelf",
-    "boardView": "Board",
+    "boardView": "Infinite Canvas",
     "collapseProject": "Collapse project",
     "expandProject": "Expand project",
     "closeExpanded": "Close",
+    "showAllProjects": "Show all projects",
+    "showWorkingProjects": "Working on",
+    "hideFromShelf": "Remove from shelf",
     "childCount": "{count} sub-agents",
     "regionMenu": "Region options",
     "rename": "Rename",
@@ -6703,7 +6706,13 @@
     "deleteBoardDescription": "“{name}” and everything on it will be deleted for good. The conversations, folders and files it shows are not affected.",
     "deleteBoardItems": "It holds {count, plural, one {# item} other {# items}}.",
     "deleteBoardTerminals": "{count, plural, one {# terminal on it will be closed and its process stopped.} other {# terminals on it will be closed and their processes stopped.}}",
-    "deleteBoardConfirm": "Delete canvas"
+    "deleteBoardConfirm": "Delete canvas",
+    "fixedView": "Fixed",
+    "newInProject": "New conversation",
+    "showActiveSessions": "Active",
+    "showAllSessions": "All sessions",
+    "moveToProject": "Move to project",
+    "moveRunningBlocked": "Stop the agent before moving this conversation"
   },
   "Browser": {
     "toolbar": {

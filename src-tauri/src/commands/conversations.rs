@@ -2270,6 +2270,31 @@ pub async fn create_conversation(
     Ok(id)
 }
 
+pub async fn move_conversation_core(
+    conn: &sea_orm::DatabaseConnection,
+    conversation_id: i32,
+    to_folder_id: i32,
+) -> Result<Vec<i32>, AppCommandError> {
+    conversation_service::move_conversation(conn, conversation_id, to_folder_id)
+        .await
+        .map_err(AppCommandError::from)
+}
+
+#[cfg(feature = "tauri-runtime")]
+#[cfg_attr(feature = "tauri-runtime", tauri::command)]
+pub async fn move_conversation(
+    app: tauri::AppHandle,
+    db: tauri::State<'_, AppDatabase>,
+    conversation_id: i32,
+    to_folder_id: i32,
+) -> Result<(), AppCommandError> {
+    let ids = move_conversation_core(&db.conn, conversation_id, to_folder_id).await?;
+    for id in ids {
+        emit_conversation_upsert(&EventEmitter::Tauri(app.clone()), &db.conn, id).await;
+    }
+    Ok(())
+}
+
 /// Result of [`create_chat_conversation_core`]: the new conversation id plus the
 /// hidden chat folder backing it, so the frontend can drop the folder straight
 /// into `allFolders` (resolving cwd / active-folder) without a refetch.

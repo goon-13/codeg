@@ -1682,6 +1682,7 @@ mod tauri_app {
                 conversations::get_stats,
                 conversations::get_sidebar_data,
                 conversations::create_conversation,
+                conversations::move_conversation,
                 conversations::create_chat_conversation,
                 conversations::create_chat_dir,
                 conversations::update_conversation_status,

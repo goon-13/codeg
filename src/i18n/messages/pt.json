@@ -2012,7 +2012,7 @@
       "tasks": "Tarefas a fazer",
       "loadingSubsessions": "Carregando subconversas…",
       "forge": "Painel do repositório",
-      "canvas": "Canvas infinito",
+      "canvas": "Vista de conversas",
       "folderGroup": {
         "newGroup": "Novo grupo",
         "newGroupTitle": "Novo grupo de pastas",
@@ -6580,7 +6580,7 @@
     "save": "Salvar"
   },
   "Canvas": {
-    "title": "Canvas infinito",
+    "title": "Vista de conversas",
     "untitled": "Conversa sem título",
     "unresolvedConversation": "Conversa removida",
     "removeCard": "Remover cartão",
@@ -6590,10 +6590,13 @@
     "runningCount": "{count} em andamento",
     "waitingCount": "{count} em espera",
     "shelfView": "Prateleira",
-    "boardView": "Canvas",
+    "boardView": "Tela infinita",
     "collapseProject": "Recolher projeto",
     "expandProject": "Expandir projeto",
     "closeExpanded": "Fechar",
+    "showAllProjects": "Todos os projetos",
+    "showWorkingProjects": "Em andamento",
+    "hideFromShelf": "Remover da prateleira",
     "childCount": "{count} subagentes",
     "regionMenu": "Opções da região",
     "rename": "Renomear",
@@ -6703,7 +6706,13 @@
     "deleteBoardDescription": "“{name}” e tudo o que há nele serão excluídos definitivamente. As conversas, pastas e arquivos exibidos não são afetados.",
     "deleteBoardItems": "Ele contém {count, plural, one {# item} other {# itens}}.",
     "deleteBoardTerminals": "{count, plural, one {# terminal será fechado e seu processo encerrado.} other {# terminais serão fechados e seus processos encerrados.}}",
-    "deleteBoardConfirm": "Excluir canvas"
+    "deleteBoardConfirm": "Excluir canvas",
+    "fixedView": "Vista fixa",
+    "newInProject": "Nova conversa",
+    "showActiveSessions": "Ativas",
+    "showAllSessions": "Todas as conversas",
+    "moveToProject": "Mover para projeto",
+    "moveRunningBlocked": "Pare o agente antes de mover"
   },
   "Browser": {
     "toolbar": {

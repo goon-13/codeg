@@ -2012,7 +2012,7 @@
       "tasks": "待办任务",
       "loadingSubsessions": "正在加载子会话…",
       "forge": "仓库面板",
-      "canvas": "无限画布",
+      "canvas": "会话视图",
       "folderGroup": {
         "newGroup": "新建分组",
         "newGroupTitle": "新建文件夹分组",
@@ -6580,7 +6580,7 @@
     "save": "保存"
   },
   "Canvas": {
-    "title": "无限画布",
+    "title": "会话视图",
     "untitled": "未命名会话",
     "unresolvedConversation": "会话已删除",
     "removeCard": "移除卡片",
@@ -6590,10 +6590,13 @@
     "runningCount": "{count} 个进行中",
     "waitingCount": "{count} 个等你看",
     "shelfView": "货架",
-    "boardView": "画布",
+    "boardView": "无限画布",
     "collapseProject": "收起项目",
     "expandProject": "展开项目",
     "closeExpanded": "关闭",
+    "showAllProjects": "显示全部项目",
+    "showWorkingProjects": "正在做",
+    "hideFromShelf": "从货架拿掉",
     "childCount": "{count} 个子智能体",
     "regionMenu": "区域选项",
     "rename": "重命名",
@@ -6703,7 +6706,13 @@
     "deleteBoardDescription": "“{name}”及其上的全部内容将被永久删除。画布上展示的会话、文件夹和文件本身不受影响。",
     "deleteBoardItems": "画布上共有 {count} 个元素。",
     "deleteBoardTerminals": "其中 {count} 个终端卡片会被关闭，进程也会一并结束。",
-    "deleteBoardConfirm": "删除画布"
+    "deleteBoardConfirm": "删除画布",
+    "fixedView": "固定视图",
+    "newInProject": "新建会话",
+    "showActiveSessions": "在跑",
+    "showAllSessions": "全部会话",
+    "moveToProject": "移动到项目",
+    "moveRunningBlocked": "先停掉智能体再移动"
   },
   "Browser": {
     "toolbar": {

@@ -247,6 +247,10 @@ pub fn build_router(
             post(handlers::conversations::create_conversation),
         )
         .route(
+            "/move_conversation",
+            post(handlers::conversations::move_conversation),
+        )
+        .route(
             "/create_chat_conversation",
             post(handlers::conversations::create_chat_conversation),
         )

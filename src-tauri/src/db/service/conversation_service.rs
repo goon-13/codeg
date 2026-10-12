@@ -2,15 +2,21 @@ use std::collections::HashMap;
 
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect, Set,
+    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, ConnectionTrait, DatabaseConnection,
+    EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait,
 };
 
 use crate::db::entities::conversation::ConversationKind;
-use crate::db::entities::{conversation, folder};
+use crate::db::entities::{
+    conversation, conversation_tag, conversation_tag_link, folder, opened_tab,
+};
 use crate::db::error::DbError;
 use crate::db::service::conversation_tag_service;
 use crate::models::{AgentType, DbConversationSummary};
+
+pub const MOVE_CONVERSATION_IN_PROGRESS: &str =
+    "Stop the agent before moving this conversation";
+pub const MOVE_CONVERSATION_WRONG_KIND: &str = "Cannot move a chat or loop conversation";
 
 pub async fn create(
     conn: &DatabaseConnection,
@@ -1034,6 +1040,138 @@ pub async fn reparent_folder_conversations(
         .exec(conn)
         .await?;
     Ok(res.rows_affected)
+}
+
+/// Move one regular conversation (and its delegate subtree) to another folder.
+/// See the shelf move spec: refuse in_progress / chat / loop; stamp `origin_cwd`
+/// from the old folder path when empty; drop folder-scoped tags that do not
+/// belong on the destination tree; keep `external_id` and session files put.
+pub async fn move_conversation(
+    conn: &DatabaseConnection,
+    conversation_id: i32,
+    to_folder_id: i32,
+) -> Result<Vec<i32>, DbError> {
+    use sea_orm::sea_query::Expr;
+
+    let conv = conversation::Entity::find_by_id(conversation_id)
+        .filter(conversation::Column::DeletedAt.is_null())
+        .one(conn)
+        .await?
+        .ok_or_else(|| DbError::NotFound(format!("Conversation not found: {conversation_id}")))?;
+
+    folder::Entity::find_by_id(to_folder_id)
+        .one(conn)
+        .await?
+        .ok_or_else(|| DbError::NotFound(format!("Folder not found: {to_folder_id}")))?;
+
+    match conv.kind {
+        ConversationKind::Chat | ConversationKind::Loop => {
+            return Err(DbError::Validation(MOVE_CONVERSATION_WRONG_KIND.into()));
+        }
+        ConversationKind::Regular | ConversationKind::Delegate => {}
+    }
+
+    let old_folder_id = conv.folder_id;
+    if old_folder_id == to_folder_id {
+        return Ok(vec![conversation_id]);
+    }
+
+    let mut ids = vec![conversation_id];
+    let mut i = 0;
+    while i < ids.len() {
+        let children = conversation::Entity::find()
+            .filter(conversation::Column::ParentId.eq(ids[i]))
+            .filter(conversation::Column::DeletedAt.is_null())
+            .all(conn)
+            .await?;
+        for child in children {
+            if !ids.contains(&child.id) {
+                ids.push(child.id);
+            }
+        }
+        i += 1;
+    }
+
+    let tree = conversation::Entity::find()
+        .filter(conversation::Column::Id.is_in(ids.clone()))
+        .all(conn)
+        .await?;
+    if tree
+        .iter()
+        .any(|row| row.status == conversation::ConversationStatus::InProgress)
+    {
+        return Err(DbError::Validation(MOVE_CONVERSATION_IN_PROGRESS.into()));
+    }
+
+    let old_folder = folder::Entity::find_by_id(old_folder_id)
+        .one(conn)
+        .await?
+        .ok_or_else(|| DbError::NotFound(format!("Folder not found: {old_folder_id}")))?;
+    let old_path = old_folder.path.clone();
+    let new_root = conversation_tag_service::root_folder_id(conn, to_folder_id)
+        .await
+        .map_err(DbError::from)?;
+
+    let links = conversation_tag_link::Entity::find()
+        .filter(conversation_tag_link::Column::ConversationId.is_in(ids.clone()))
+        .all(conn)
+        .await?;
+    let mut drop_pairs: Vec<(i32, i32)> = Vec::new();
+    for link in links {
+        let tag = conversation_tag::Entity::find_by_id(link.tag_id)
+            .one(conn)
+            .await?;
+        if let Some(tag) = tag {
+            if let Some(owner) = tag.folder_id {
+                if Some(owner) != new_root {
+                    drop_pairs.push((link.conversation_id, link.tag_id));
+                }
+            }
+        }
+    }
+
+    conn.transaction::<_, (), DbError>(|txn| {
+        let ids = ids.clone();
+        let drop_pairs = drop_pairs.clone();
+        let old_path = old_path.clone();
+        Box::pin(async move {
+            conversation::Entity::update_many()
+                .col_expr(conversation::Column::FolderId, Expr::value(to_folder_id))
+                .col_expr(conversation::Column::UpdatedAt, Expr::value(Utc::now()))
+                .filter(conversation::Column::Id.is_in(ids.clone()))
+                .exec(txn)
+                .await?;
+            conversation::Entity::update_many()
+                .col_expr(
+                    conversation::Column::OriginCwd,
+                    Expr::value(Some(old_path)),
+                )
+                .filter(conversation::Column::Id.is_in(ids.clone()))
+                .filter(conversation::Column::OriginCwd.is_null())
+                .exec(txn)
+                .await?;
+            opened_tab::Entity::update_many()
+                .col_expr(opened_tab::Column::FolderId, Expr::value(to_folder_id))
+                .filter(opened_tab::Column::ConversationId.is_in(ids.clone()))
+                .exec(txn)
+                .await?;
+            for (conversation_id, tag_id) in drop_pairs {
+                conversation_tag_link::Entity::delete_many()
+                    .filter(conversation_tag_link::Column::ConversationId.eq(conversation_id))
+                    .filter(conversation_tag_link::Column::TagId.eq(tag_id))
+                    .exec(txn)
+                    .await?;
+            }
+            Ok(())
+        })
+    })
+    .await
+    .map_err(|e| match e {
+        sea_orm::TransactionError::Connection(err) => DbError::from(err),
+        sea_orm::TransactionError::Transaction(err) => err,
+    })?;
+
+    Ok(ids)
 }
 
 pub async fn soft_delete(conn: &DatabaseConnection, conversation_id: i32) -> Result<(), DbError> {
@@ -3416,5 +3554,322 @@ mod tests {
             !rows.iter().any(|r| r.title.as_deref() == Some("hide")),
             "loop row must be excluded"
         );
+    }
+
+    async fn mark_completed(conn: &DatabaseConnection, id: i32) {
+        update_status(conn, id, conversation::ConversationStatus::Completed)
+            .await
+            .expect("mark completed");
+    }
+
+    async fn insert_tab(
+        conn: &DatabaseConnection,
+        folder_id: i32,
+        conversation_id: i32,
+        agent_type: &str,
+        position: i32,
+    ) {
+        use crate::db::entities::opened_tab;
+        opened_tab::ActiveModel {
+            id: NotSet,
+            folder_id: Set(folder_id),
+            conversation_id: Set(Some(conversation_id)),
+            agent_type: Set(agent_type.to_string()),
+            position: Set(position),
+            is_active: Set(position == 0),
+            is_pinned: Set(false),
+            created_at: Set(Utc::now()),
+            updated_at: Set(Utc::now()),
+        }
+        .insert(conn)
+        .await
+        .expect("insert tab");
+    }
+
+    #[tokio::test]
+    async fn move_conversation_moves_parent_id_subtree() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-dest").await;
+        let (parent, child) = seed_parent_with_child(&db.conn, src).await;
+        let grandchild = create_with_delegation(
+            &db.conn,
+            src,
+            AgentType::Gemini,
+            Some("G".into()),
+            None,
+            Some(DelegationLink {
+                parent_conversation_id: child,
+                parent_tool_use_id: "tu-g".into(),
+                delegation_call_id: "call-g".into(),
+            }),
+        )
+        .await
+        .expect("grandchild");
+        let unrelated = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("stay".into()),
+            None,
+        )
+        .await
+        .expect("unrelated");
+        bind_external_id(&db.conn, parent, "ext-parent", &[])
+            .await
+            .expect("bind");
+        for id in [parent, child, grandchild.id, unrelated.id] {
+            mark_completed(&db.conn, id).await;
+        }
+
+        let moved = move_conversation(&db.conn, parent, dest)
+            .await
+            .expect("move");
+        assert_eq!(
+            moved.len(),
+            3,
+            "parent + child + grandchild, not the sibling: {moved:?}"
+        );
+
+        for id in [parent, child, grandchild.id] {
+            let row = get_by_id(&db.conn, id).await.expect("moved row");
+            assert_eq!(row.folder_id, dest, "id {id} must follow the tree");
+        }
+        let stay = get_by_id(&db.conn, unrelated.id).await.expect("unrelated");
+        assert_eq!(stay.folder_id, src, "sibling must stay in the source folder");
+        assert_eq!(
+            get_by_id(&db.conn, parent)
+                .await
+                .expect("parent")
+                .external_id
+                .as_deref(),
+            Some("ext-parent"),
+            "external_id must not change"
+        );
+    }
+
+    #[tokio::test]
+    async fn move_conversation_updates_opened_tab_folder_id() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-tab-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-tab-dest").await;
+        let other = seed_folder(&db, "/tmp/codeg-move-tab-other").await;
+        let (parent, child) = seed_parent_with_child(&db.conn, src).await;
+        let leftover = create(&db.conn, other, AgentType::Codex, Some("other".into()), None)
+            .await
+            .expect("other conv");
+        for id in [parent, child, leftover.id] {
+            mark_completed(&db.conn, id).await;
+        }
+        insert_tab(&db.conn, src, parent, "claude_code", 0).await;
+        insert_tab(&db.conn, src, child, "codex", 1).await;
+        insert_tab(&db.conn, other, leftover.id, "codex", 2).await;
+
+        move_conversation(&db.conn, parent, dest)
+            .await
+            .expect("move");
+
+        use crate::db::entities::opened_tab;
+        let tabs = opened_tab::Entity::find()
+            .all(&db.conn)
+            .await
+            .expect("tabs");
+        let folder_of = |cid: i32| {
+            tabs.iter()
+                .find(|t| t.conversation_id == Some(cid))
+                .map(|t| t.folder_id)
+        };
+        assert_eq!(folder_of(parent), Some(dest));
+        assert_eq!(folder_of(child), Some(dest));
+        assert_eq!(folder_of(leftover.id), Some(other));
+    }
+
+    #[tokio::test]
+    async fn move_conversation_stamps_origin_cwd_only_when_empty() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-cwd-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-cwd-dest").await;
+        let empty = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("empty".into()),
+            None,
+        )
+        .await
+        .expect("empty origin");
+        let kept = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("kept".into()),
+            None,
+        )
+        .await
+        .expect("kept origin");
+        let mut active: conversation::ActiveModel = conversation::Entity::find_by_id(kept.id)
+            .one(&db.conn)
+            .await
+            .expect("query")
+            .expect("row")
+            .into();
+        active.origin_cwd = Set(Some("/old/worktree".into()));
+        active.update(&db.conn).await.expect("stamp origin");
+        mark_completed(&db.conn, empty.id).await;
+        mark_completed(&db.conn, kept.id).await;
+
+        move_conversation(&db.conn, empty.id, dest)
+            .await
+            .expect("move empty");
+        move_conversation(&db.conn, kept.id, dest)
+            .await
+            .expect("move kept");
+
+        assert_eq!(
+            get_by_id(&db.conn, empty.id)
+                .await
+                .expect("empty")
+                .origin_cwd
+                .as_deref(),
+            Some("/tmp/codeg-move-cwd-src"),
+            "empty origin_cwd becomes the OLD folder.path"
+        );
+        assert_eq!(
+            get_by_id(&db.conn, kept.id)
+                .await
+                .expect("kept")
+                .origin_cwd
+                .as_deref(),
+            Some("/old/worktree"),
+            "an existing origin_cwd must be left alone"
+        );
+    }
+
+    #[tokio::test]
+    async fn move_conversation_unlinks_tags_missing_from_destination_tree() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-tag-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-tag-dest").await;
+        let conv = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("tagged".into()),
+            None,
+        )
+        .await
+        .expect("conv");
+        mark_completed(&db.conn, conv.id).await;
+        let global = conversation_tag_service::create_tag(&db.conn, None, "global", "#d73a4a")
+            .await
+            .expect("global");
+        let src_tag =
+            conversation_tag_service::create_tag(&db.conn, Some(src), "src-only", "#0e8a16")
+                .await
+                .expect("src tag");
+        let dest_tag =
+            conversation_tag_service::create_tag(&db.conn, Some(dest), "dest-only", "#1b4f72")
+                .await
+                .expect("dest tag");
+        conversation_tag_service::update_conversation_tags(
+            &db.conn,
+            conv.id,
+            &[global.id, src_tag.id],
+            &[],
+        )
+        .await
+        .expect("link src+global");
+        // Dest-scoped tags are not assignable while the row lives on `src`.
+        // Insert the link directly so the keep-rule is observable.
+        crate::db::entities::conversation_tag_link::ActiveModel {
+            conversation_id: Set(conv.id),
+            tag_id: Set(dest_tag.id),
+            created_at: Set(Utc::now()),
+        }
+        .insert(&db.conn)
+        .await
+        .expect("force dest tag link");
+
+        move_conversation(&db.conn, conv.id, dest)
+            .await
+            .expect("move");
+
+        let tags = get_by_id(&db.conn, conv.id).await.expect("row").tag_ids;
+        assert!(tags.contains(&global.id), "global tags travel: {tags:?}");
+        assert!(
+            tags.contains(&dest_tag.id),
+            "tags that exist on the dest tree stay: {tags:?}"
+        );
+        assert!(
+            !tags.contains(&src_tag.id),
+            "source-only folder tags must unlink without error: {tags:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn move_conversation_refuses_in_progress() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-busy-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-busy-dest").await;
+        let conv = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("running".into()),
+            None,
+        )
+        .await
+        .expect("conv");
+        assert_eq!(conv.status, conversation::ConversationStatus::InProgress);
+
+        let err = move_conversation(&db.conn, conv.id, dest)
+            .await
+            .expect_err("in_progress must refuse");
+        match err {
+            DbError::Validation(msg) => assert_eq!(msg, MOVE_CONVERSATION_IN_PROGRESS),
+            other => panic!("expected Validation, got {other:?}"),
+        }
+        assert_eq!(
+            get_by_id(&db.conn, conv.id).await.expect("unchanged").folder_id,
+            src
+        );
+    }
+
+    #[tokio::test]
+    async fn move_conversation_refuses_chat_and_loop_kind() {
+        let db = fresh_in_memory_db().await;
+        let src = seed_folder(&db, "/tmp/codeg-move-kind-src").await;
+        let dest = seed_folder(&db, "/tmp/codeg-move-kind-dest").await;
+        let chat = create_chat(&db.conn, src, AgentType::ClaudeCode, Some("chat".into()), None)
+            .await
+            .expect("chat");
+        let loop_row = create(
+            &db.conn,
+            src,
+            AgentType::ClaudeCode,
+            Some("loop".into()),
+            None,
+        )
+        .await
+        .expect("loop");
+        let mut active: conversation::ActiveModel = loop_row.clone().into();
+        active.kind = Set(ConversationKind::Loop);
+        active.update(&db.conn).await.expect("flip loop");
+        mark_completed(&db.conn, chat.id).await;
+        mark_completed(&db.conn, loop_row.id).await;
+
+        for id in [chat.id, loop_row.id] {
+            let err = move_conversation(&db.conn, id, dest)
+                .await
+                .expect_err("chat/loop must refuse");
+            match err {
+                DbError::Validation(msg) => assert_eq!(msg, MOVE_CONVERSATION_WRONG_KIND),
+                other => panic!("expected Validation for {id}, got {other:?}"),
+            }
+            assert_eq!(
+                get_by_id(&db.conn, id).await.expect("unchanged").folder_id,
+                src
+            );
+        }
     }
 }

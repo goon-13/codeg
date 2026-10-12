@@ -2012,7 +2012,7 @@
       "tasks": "할 일",
       "loadingSubsessions": "하위 대화 로드 중…",
       "forge": "리포지토리 패널",
-      "canvas": "무한 캔버스",
+      "canvas": "세션 보기",
       "folderGroup": {
         "newGroup": "새 그룹",
         "newGroupTitle": "새 폴더 그룹",
@@ -6580,7 +6580,7 @@
     "save": "저장"
   },
   "Canvas": {
-    "title": "무한 캔버스",
+    "title": "세션 보기",
     "untitled": "제목 없는 대화",
     "unresolvedConversation": "대화가 삭제됨",
     "removeCard": "카드 제거",
@@ -6590,10 +6590,13 @@
     "runningCount": "{count}개 실행 중",
     "waitingCount": "{count}개 대기 중",
     "shelfView": "선반",
-    "boardView": "캔버스",
+    "boardView": "무한 캔버스",
     "collapseProject": "프로젝트 접기",
     "expandProject": "프로젝트 펼치기",
     "closeExpanded": "닫기",
+    "showAllProjects": "모든 프로젝트 표시",
+    "showWorkingProjects": "진행 중",
+    "hideFromShelf": "선반에서 제거",
     "childCount": "하위 에이전트 {count}개",
     "regionMenu": "영역 옵션",
     "rename": "이름 바꾸기",
@@ -6703,7 +6706,13 @@
     "deleteBoardDescription": "“{name}”과(와) 그 위의 모든 내용이 영구적으로 삭제됩니다. 캔버스에 표시된 대화, 폴더, 파일 자체는 영향을 받지 않습니다.",
     "deleteBoardItems": "이 캔버스에는 요소 {count}개가 있습니다.",
     "deleteBoardTerminals": "그중 터미널 {count}개가 닫히고 프로세스도 종료됩니다.",
-    "deleteBoardConfirm": "캔버스 삭제"
+    "deleteBoardConfirm": "캔버스 삭제",
+    "fixedView": "고정 보기",
+    "newInProject": "새 대화",
+    "showActiveSessions": "실행 중",
+    "showAllSessions": "모든 대화",
+    "moveToProject": "프로젝트로 이동",
+    "moveRunningBlocked": "이동 전에 에이전트를 중지하십시오"
   },
   "Browser": {
     "toolbar": {

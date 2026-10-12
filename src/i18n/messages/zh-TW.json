@@ -2012,7 +2012,7 @@
       "tasks": "待辦任務",
       "loadingSubsessions": "正在載入子會話…",
       "forge": "儲存庫面板",
-      "canvas": "無限畫布",
+      "canvas": "會話檢視",
       "folderGroup": {
         "newGroup": "新增分組",
         "newGroupTitle": "新增資料夾分組",
@@ -6580,7 +6580,7 @@
     "save": "儲存"
   },
   "Canvas": {
-    "title": "無限畫布",
+    "title": "會話檢視",
     "untitled": "未命名會話",
     "unresolvedConversation": "會話已刪除",
     "removeCard": "移除卡片",
@@ -6590,10 +6590,13 @@
     "runningCount": "{count} 個進行中",
     "waitingCount": "{count} 個等你看",
     "shelfView": "貨架",
-    "boardView": "畫布",
+    "boardView": "無限畫布",
     "collapseProject": "收合專案",
     "expandProject": "展開專案",
     "closeExpanded": "關閉",
+    "showAllProjects": "顯示全部專案",
+    "showWorkingProjects": "進行中",
+    "hideFromShelf": "從貨架移除",
     "childCount": "{count} 個子智慧體",
     "regionMenu": "區域選項",
     "rename": "重新命名",
@@ -6703,7 +6706,13 @@
     "deleteBoardDescription": "「{name}」及其上的所有內容將被永久刪除。畫布上呈現的會話、資料夾和檔案本身不受影響。",
     "deleteBoardItems": "畫布上共有 {count} 個元素。",
     "deleteBoardTerminals": "其中 {count} 個終端機卡片會被關閉，處理程序也會一併結束。",
-    "deleteBoardConfirm": "刪除畫布"
+    "deleteBoardConfirm": "刪除畫布",
+    "fixedView": "固定檢視",
+    "newInProject": "新增會話",
+    "showActiveSessions": "進行中",
+    "showAllSessions": "全部會話",
+    "moveToProject": "移到專案",
+    "moveRunningBlocked": "先停掉智能體再移動"
   },
   "Browser": {
     "toolbar": {

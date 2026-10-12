@@ -3495,6 +3495,16 @@ export async function createConversation(
   })
 }
 
+export async function moveConversation(
+  conversationId: number,
+  toFolderId: number
+): Promise<void> {
+  return getTransport().call("move_conversation", {
+    conversationId,
+    toFolderId,
+  })
+}
+
 /**
  * Create a folderless "chat mode" conversation. The backend lazily creates a
  * dated per-conversation scratch dir and a dedicated hidden chat folder
