@@ -4,8 +4,9 @@ import {
   buildShelfRows,
   countShelf,
   defaultVisibleFolderIds,
-  filterShelfConversations,
+  defaultVisibleConversationIds,
   isActiveShelfConversation,
+  visibleShelfConversations,
   isShelfConversation,
   shelfContextKey,
   sortShelfConversations,
@@ -138,7 +139,7 @@ describe("shelf-model", () => {
     expect(rows.map((r) => r.folder.id)).toEqual([2, 1])
   })
 
-  it("filterShelfConversations active keeps running and waiting only", () => {
+  it("visibleShelfConversations uses the edited set, else running and waiting", () => {
     const conversations = [
       conv(1, { status: "in_progress" }),
       conv(2, { status: "pending_review" }),
@@ -147,12 +148,16 @@ describe("shelf-model", () => {
     ]
     expect(isActiveShelfConversation(conversations[0])).toBe(true)
     expect(isActiveShelfConversation(conversations[2])).toBe(false)
-    expect(filterShelfConversations(conversations, "active").map((c) => c.id)).toEqual(
-      [1, 2]
-    )
-    expect(filterShelfConversations(conversations, "all").map((c) => c.id)).toEqual(
-      [1, 2, 3, 4]
-    )
+    expect(defaultVisibleConversationIds(conversations)).toEqual([1, 2])
+    expect(
+      visibleShelfConversations(conversations, null, false).map((c) => c.id)
+    ).toEqual([1, 2])
+    expect(
+      visibleShelfConversations(conversations, [3], false).map((c) => c.id)
+    ).toEqual([3])
+    expect(
+      visibleShelfConversations(conversations, [3], true).map((c) => c.id)
+    ).toEqual([1, 2, 3, 4])
   })
 
   it("defaultVisibleFolderIds prefers running/waiting then newest", () => {

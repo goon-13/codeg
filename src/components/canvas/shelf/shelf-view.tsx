@@ -11,20 +11,23 @@ import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 
 import {
   buildShelfRows,
+  defaultVisibleConversationIds,
   defaultVisibleFolderIds,
-  type ShelfSessionFilter,
+  type ShelfProjectRow,
 } from "./shelf-model"
 import { ShelfProjectRowView } from "./shelf-project-row"
 import {
   loadShelfCollapsedFolderIds,
   loadShelfExpandedConversationIds,
-  loadShelfSessionFilters,
   loadShelfShowAll,
+  loadShelfShowAllConversationFolderIds,
+  loadShelfVisibleConversationIds,
   loadShelfVisibleFolderIds,
   saveShelfCollapsedFolderIds,
   saveShelfExpandedConversationIds,
-  saveShelfSessionFilters,
   saveShelfShowAll,
+  saveShelfShowAllConversationFolderIds,
+  saveShelfVisibleConversationIds,
   saveShelfVisibleFolderIds,
 } from "./shelf-storage"
 
@@ -34,6 +37,14 @@ function toggleMember(ids: number[], id: number): number[] {
 
 function agentForFolder(defaultAgent: AgentType | null): AgentType {
   return defaultAgent ?? "claude_code"
+}
+
+function workingConversationIds(
+  rows: ShelfProjectRow[],
+  visibleIds: number[] | null
+): number[] {
+  if (visibleIds != null) return visibleIds
+  return rows.flatMap((row) => defaultVisibleConversationIds(row.conversations))
 }
 
 export function ShelfView() {
@@ -54,7 +65,11 @@ export function ShelfView() {
     loadShelfVisibleFolderIds
   )
   const [showAll, setShowAll] = useState(loadShelfShowAll)
-  const [sessionFilters, setSessionFilters] = useState(loadShelfSessionFilters)
+  const [visibleConversationIds, setVisibleConversationIds] = useState<
+    number[] | null
+  >(loadShelfVisibleConversationIds)
+  const [showAllConversationFolderIds, setShowAllConversationFolderIds] =
+    useState(loadShelfShowAllConversationFolderIds)
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -73,8 +88,12 @@ export function ShelfView() {
   }, [showAll])
 
   useEffect(() => {
-    saveShelfSessionFilters(sessionFilters)
-  }, [sessionFilters])
+    saveShelfVisibleConversationIds(visibleConversationIds)
+  }, [visibleConversationIds])
+
+  useEffect(() => {
+    saveShelfShowAllConversationFolderIds(showAllConversationFolderIds)
+  }, [showAllConversationFolderIds])
 
   const expanded = useMemo(() => new Set(expandedIds), [expandedIds])
   const collapsed = useMemo(
@@ -85,6 +104,10 @@ export function ShelfView() {
   const shownRows = showAll
     ? rows
     : rows.filter((row) => workingIds.includes(row.folder.id))
+  const conversationWorkingIds = workingConversationIds(
+    rows,
+    visibleConversationIds
+  )
   const moveTargets = rows.map((row) => ({
     id: row.folder.id,
     name: row.folder.name,
@@ -124,7 +147,10 @@ export function ShelfView() {
           row={row}
           collapsed={collapsed.has(row.folder.id)}
           expandedIds={expanded}
-          sessionFilter={sessionFilters[row.folder.id] ?? "active"}
+          visibleConversationIds={visibleConversationIds}
+          showAllConversations={showAllConversationFolderIds.includes(
+            row.folder.id
+          )}
           moveTargets={moveTargets.filter((item) => item.id !== row.folder.id)}
           onToggleCollapsed={() =>
             setCollapsedFolderIds((ids) => toggleMember(ids, row.folder.id))
@@ -132,25 +158,42 @@ export function ShelfView() {
           onToggleExpand={(conversationId) =>
             setExpandedIds((ids) => toggleMember(ids, conversationId))
           }
-          onHideFromShelf={() => {
+          onHideProjectFromShelf={() => {
             setVisibleIds(workingIds.filter((id) => id !== row.folder.id))
             setShowAll(false)
           }}
-          onSessionFilter={(filter: ShelfSessionFilter) =>
-            setSessionFilters((prev) => ({
-              ...prev,
-              [row.folder.id]: filter,
-            }))
+          onShowAllConversations={(showAllConversations) =>
+            setShowAllConversationFolderIds((ids) =>
+              showAllConversations
+                ? ids.includes(row.folder.id)
+                  ? ids
+                  : [...ids, row.folder.id]
+                : ids.filter((id) => id !== row.folder.id)
+            )
+          }
+          onHideConversationFromShelf={(conversationId) =>
+            setVisibleConversationIds(
+              conversationWorkingIds.filter((id) => id !== conversationId)
+            )
+          }
+          onAddConversationToShelf={(conversationId) =>
+            setVisibleConversationIds(
+              conversationWorkingIds.includes(conversationId)
+                ? conversationWorkingIds
+                : [...conversationWorkingIds, conversationId]
+            )
           }
           onNewConversation={async () => {
             const id = await createConversation(
               row.folder.id,
               agentForFolder(row.folder.default_agent_type)
             )
-            setSessionFilters((prev) => ({ ...prev, [row.folder.id]: "all" }))
-            setExpandedIds((ids) =>
-              ids.includes(id) ? ids : [...ids, id]
+            setVisibleConversationIds(
+              conversationWorkingIds.includes(id)
+                ? conversationWorkingIds
+                : [...conversationWorkingIds, id]
             )
+            setExpandedIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
             setCollapsedFolderIds((ids) =>
               ids.filter((item) => item !== row.folder.id)
             )

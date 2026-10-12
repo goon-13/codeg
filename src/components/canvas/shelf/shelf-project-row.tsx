@@ -14,9 +14,8 @@ import {
 import { cn } from "@/lib/utils"
 
 import {
-  filterShelfConversations,
+  visibleShelfConversations,
   type ShelfProjectRow,
-  type ShelfSessionFilter,
 } from "./shelf-model"
 import { ShelfSessionCard } from "./shelf-session-card"
 
@@ -29,12 +28,15 @@ interface ShelfProjectRowViewProps {
   row: ShelfProjectRow
   collapsed: boolean
   expandedIds: ReadonlySet<number>
-  sessionFilter: ShelfSessionFilter
+  visibleConversationIds: number[] | null
+  showAllConversations: boolean
   moveTargets: MoveTarget[]
   onToggleCollapsed: () => void
   onToggleExpand: (conversationId: number) => void
-  onHideFromShelf: () => void
-  onSessionFilter: (filter: ShelfSessionFilter) => void
+  onHideProjectFromShelf: () => void
+  onShowAllConversations: (showAll: boolean) => void
+  onHideConversationFromShelf: (conversationId: number) => void
+  onAddConversationToShelf: (conversationId: number) => void
   onNewConversation: () => void | Promise<void>
   onMove: (conversationId: number, toFolderId: number) => void | Promise<void>
 }
@@ -43,17 +45,29 @@ export function ShelfProjectRowView({
   row,
   collapsed,
   expandedIds,
-  sessionFilter,
+  visibleConversationIds,
+  showAllConversations,
   moveTargets,
   onToggleCollapsed,
   onToggleExpand,
-  onHideFromShelf,
-  onSessionFilter,
+  onHideProjectFromShelf,
+  onShowAllConversations,
+  onHideConversationFromShelf,
+  onAddConversationToShelf,
   onNewConversation,
   onMove,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
-  const shown = filterShelfConversations(row.conversations, sessionFilter)
+  const shown = visibleShelfConversations(
+    row.conversations,
+    visibleConversationIds,
+    showAllConversations
+  )
+  const shelfIds = new Set(
+    visibleShelfConversations(row.conversations, visibleConversationIds, false).map(
+      (c) => c.id
+    )
+  )
   const hasExpanded = shown.some((c) => expandedIds.has(c.id))
 
   return (
@@ -93,8 +107,8 @@ export function ShelfProjectRowView({
                 variant="ghost"
                 size="icon-xs"
                 className="shrink-0"
-                aria-label={t("hideFromShelf")}
-                onClick={onHideFromShelf}
+                aria-label={t("hideProjectFromShelf")}
+                onClick={onHideProjectFromShelf}
               >
                 <X />
               </Button>
@@ -110,19 +124,19 @@ export function ShelfProjectRowView({
             <div className="mt-2 flex flex-wrap gap-1">
               <Button
                 type="button"
-                variant={sessionFilter === "active" ? "secondary" : "ghost"}
+                variant={showAllConversations ? "ghost" : "secondary"}
                 size="xs"
-                aria-pressed={sessionFilter === "active"}
-                onClick={() => onSessionFilter("active")}
+                aria-pressed={!showAllConversations}
+                onClick={() => onShowAllConversations(false)}
               >
-                {t("showActiveSessions")}
+                {t("showShelfConversations")}
               </Button>
               <Button
                 type="button"
-                variant={sessionFilter === "all" ? "secondary" : "ghost"}
+                variant={showAllConversations ? "secondary" : "ghost"}
                 size="xs"
-                aria-pressed={sessionFilter === "all"}
-                onClick={() => onSessionFilter("all")}
+                aria-pressed={showAllConversations}
+                onClick={() => onShowAllConversations(true)}
               >
                 {t("showAllSessions")}
               </Button>
@@ -133,8 +147,8 @@ export function ShelfProjectRowView({
           <ContextMenuItem onSelect={() => void onNewConversation()}>
             {t("newInProject")}
           </ContextMenuItem>
-          <ContextMenuItem onSelect={onHideFromShelf}>
-            {t("hideFromShelf")}
+          <ContextMenuItem onSelect={onHideProjectFromShelf}>
+            {t("hideProjectFromShelf")}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -150,9 +164,12 @@ export function ShelfProjectRowView({
             key={conversation.id}
             conversation={conversation}
             expanded={expandedIds.has(conversation.id)}
+            onShelf={shelfIds.has(conversation.id)}
             moveTargets={moveTargets}
             onToggleExpand={() => onToggleExpand(conversation.id)}
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
+            onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
+            onAddToShelf={() => onAddConversationToShelf(conversation.id)}
           />
         ))}
         {shown.length === 0 ? (

@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { AgentIcon } from "@/components/agent-icon"
@@ -35,17 +35,23 @@ interface MoveTarget {
 interface ShelfSessionCardProps {
   conversation: DbConversationSummary
   expanded: boolean
+  onShelf: boolean
   moveTargets: MoveTarget[]
   onToggleExpand: () => void
   onMove: (toFolderId: number) => void
+  onHideFromShelf: () => void
+  onAddToShelf: () => void
 }
 
 export function ShelfSessionCard({
   conversation,
   expanded,
+  onShelf,
   moveTargets,
   onToggleExpand,
   onMove,
+  onHideFromShelf,
+  onAddToShelf,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
   const status = conversation.status as ConversationStatus
@@ -56,6 +62,15 @@ export function ShelfSessionCard({
 
   const moveMenu = (
     <ContextMenuContent>
+      {onShelf ? (
+        <ContextMenuItem onSelect={onHideFromShelf}>
+          {t("hideFromShelf")}
+        </ContextMenuItem>
+      ) : (
+        <ContextMenuItem onSelect={onAddToShelf}>
+          {t("addToShelf")}
+        </ContextMenuItem>
+      )}
       <ContextMenuSub>
         <ContextMenuSubTrigger disabled={running}>
           {t("moveToProject")}
@@ -80,6 +95,7 @@ export function ShelfSessionCard({
 
   if (!expanded) {
     return (
+      <div className="relative shrink-0">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <button
@@ -121,6 +137,21 @@ export function ShelfSessionCard({
         </ContextMenuTrigger>
         {moveMenu}
       </ContextMenu>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="absolute right-1 top-1"
+          aria-label={onShelf ? t("hideFromShelf") : t("addToShelf")}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (onShelf) onHideFromShelf()
+            else onAddToShelf()
+          }}
+        >
+          {onShelf ? <X /> : <Plus />}
+        </Button>
+      </div>
     )
   }
 
