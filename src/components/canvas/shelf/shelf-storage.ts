@@ -5,7 +5,8 @@ const COLLAPSED_FOLDERS_KEY = "workspace:shelf-collapsed-folders"
 const EXPANDED_CONVERSATIONS_KEY = "workspace:shelf-expanded-conversations"
 const VISIBLE_FOLDERS_KEY = "workspace:shelf-visible-folders"
 const SHOW_ALL_KEY = "workspace:shelf-show-all"
-const SESSION_FILTER_KEY = "workspace:shelf-session-filter"
+const VISIBLE_CONVERSATIONS_KEY = "workspace:shelf-visible-conversations"
+const SHOW_ALL_CONVERSATIONS_KEY = "workspace:shelf-show-all-conversations"
 
 export type CanvasLayoutMode = "shelf" | "board"
 
@@ -97,23 +98,32 @@ export function saveShelfShowAll(showAll: boolean): void {
   writeJson(SHOW_ALL_KEY, showAll)
 }
 
-/** Per-folder session filter. Missing id means `"active"` (running + waiting). */
-export function loadShelfSessionFilters(): Record<number, "active" | "all"> {
-  const parsed = readJson(SESSION_FILTER_KEY)
-  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {}
-  }
-  const out: Record<number, "active" | "all"> = {}
-  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-    const id = Number(key)
-    if (!Number.isInteger(id)) continue
-    if (value === "active" || value === "all") out[id] = value
-  }
-  return out
+/** `null` means the conversation working set has not been edited. */
+export function loadShelfVisibleConversationIds(): number[] | null {
+  const parsed = readJson(VISIBLE_CONVERSATIONS_KEY)
+  if (parsed == null) return null
+  if (!Array.isArray(parsed)) return null
+  return parsed.filter((id): id is number => Number.isInteger(id))
 }
 
-export function saveShelfSessionFilters(
-  filters: Record<number, "active" | "all">
-): void {
-  writeJson(SESSION_FILTER_KEY, filters)
+export function saveShelfVisibleConversationIds(ids: number[] | null): void {
+  if (ids == null) {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.removeItem(VISIBLE_CONVERSATIONS_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  writeJson(VISIBLE_CONVERSATIONS_KEY, [...ids])
+}
+
+/** Folder ids whose rows currently list every conversation. */
+export function loadShelfShowAllConversationFolderIds(): number[] {
+  return loadIds(SHOW_ALL_CONVERSATIONS_KEY)
+}
+
+export function saveShelfShowAllConversationFolderIds(ids: number[]): void {
+  writeJson(SHOW_ALL_CONVERSATIONS_KEY, [...ids])
 }
