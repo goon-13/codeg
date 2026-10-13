@@ -101,3 +101,26 @@ export function buildShelfRows(
 export function shelfContextKey(conversationId: number): string {
   return `shelf:${conversationId}`
 }
+
+/** Expanded ∩ still-shown conversations, as official canvas live-surface keys. */
+export function shelfLiveSurfaceKeys(
+  rows: ShelfProjectRow[],
+  expandedIds: ReadonlySet<number>,
+  visibleConversationIds: number[] | null,
+  showAllConversationFolderIds: ReadonlySet<number>
+): Set<string> {
+  const keys = new Set<string>()
+  for (const row of rows) {
+    const shown = visibleShelfConversations(
+      row.conversations,
+      visibleConversationIds,
+      showAllConversationFolderIds.has(row.folder.id)
+    )
+    for (const conversation of shown) {
+      if (expandedIds.has(conversation.id)) {
+        keys.add(shelfContextKey(conversation.id))
+      }
+    }
+  }
+  return keys
+}
