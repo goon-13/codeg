@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { useAcpActions } from "@/contexts/acp-connections-context"
 import { createConversation, moveConversation } from "@/lib/api"
 import type { AgentType } from "@/lib/types"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
@@ -13,6 +14,7 @@ import {
   buildShelfRows,
   defaultVisibleConversationIds,
   defaultVisibleFolderIds,
+  shelfLiveSurfaceKeys,
   type ShelfProjectRow,
 } from "./shelf-model"
 import { ShelfProjectRowView } from "./shelf-project-row"
@@ -100,14 +102,34 @@ export function ShelfView() {
     () => new Set(collapsedFolderIds),
     [collapsedFolderIds]
   )
-  const workingIds = visibleIds ?? defaultVisibleFolderIds(rows)
-  const shownRows = showAll
-    ? rows
-    : rows.filter((row) => workingIds.includes(row.folder.id))
+  const workingIds = useMemo(
+    () => visibleIds ?? defaultVisibleFolderIds(rows),
+    [visibleIds, rows]
+  )
+  const shownRows = useMemo(
+    () =>
+      showAll ? rows : rows.filter((row) => workingIds.includes(row.folder.id)),
+    [showAll, rows, workingIds]
+  )
   const conversationWorkingIds = workingConversationIds(
     rows,
     visibleConversationIds
   )
+  const { registerLiveSurfaceKeys } = useAcpActions()
+  const liveKeys = useMemo(
+    () =>
+      shelfLiveSurfaceKeys(
+        shownRows,
+        expanded,
+        visibleConversationIds,
+        new Set(showAllConversationFolderIds)
+      ),
+    [shownRows, expanded, visibleConversationIds, showAllConversationFolderIds]
+  )
+  useEffect(() => {
+    registerLiveSurfaceKeys("shelf", liveKeys)
+    return () => registerLiveSurfaceKeys("shelf", new Set())
+  }, [liveKeys, registerLiveSurfaceKeys])
   const moveTargets = rows.map((row) => ({
     id: row.folder.id,
     name: row.folder.name,
