@@ -6722,7 +6722,9 @@
     "moveRunningBlocked": "実行中の会話は移動できません。先にエージェントを停止してください",
     "hideProjectFromShelf": "このプロジェクトをシェルフから外す",
     "addToShelf": "この会話をシェルフに追加",
-    "showShelfConversations": "シェルフの会話"
+    "showShelfConversations": "シェルフの会話",
+    "scrollToTop": "一番上へ",
+    "scrollToBottom": "一番下へ"
   },
   "Browser": {
     "toolbar": {

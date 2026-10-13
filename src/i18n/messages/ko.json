@@ -6722,7 +6722,9 @@
     "moveRunningBlocked": "진행 중인 대화는 이동할 수 없습니다. 먼저 에이전트를 중지하십시오",
     "hideProjectFromShelf": "이 프로젝트를 선반에서 제거",
     "addToShelf": "이 대화를 선반에 추가",
-    "showShelfConversations": "선반 대화"
+    "showShelfConversations": "선반 대화",
+    "scrollToTop": "맨 위로",
+    "scrollToBottom": "맨 아래로"
   },
   "Browser": {
     "toolbar": {
