@@ -6716,7 +6716,9 @@
     "moveRunningBlocked": "進行中的會話不可移動，請先停止智能體",
     "hideProjectFromShelf": "從貨架移除此專案",
     "addToShelf": "將此會話放到貨架",
-    "showShelfConversations": "貨架會話"
+    "showShelfConversations": "貨架會話",
+    "scrollToTop": "回到最上",
+    "scrollToBottom": "回到最下"
   },
   "Browser": {
     "toolbar": {

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Plus, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -13,10 +14,8 @@ import {
 } from "@/components/ui/context-menu"
 import { cn } from "@/lib/utils"
 
-import {
-  visibleShelfConversations,
-  type ShelfProjectRow,
-} from "./shelf-model"
+import { visibleShelfConversations, type ShelfProjectRow } from "./shelf-model"
+import { horizontalWheelDelta, isNestedVerticalScroller } from "./shelf-scroll"
 import { ShelfSessionCard } from "./shelf-session-card"
 
 interface MoveTarget {
@@ -58,17 +57,40 @@ export function ShelfProjectRowView({
   onMove,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
+  const filmRef = useRef<HTMLDivElement>(null)
   const shown = visibleShelfConversations(
     row.conversations,
     visibleConversationIds,
     showAllConversations
   )
   const shelfIds = new Set(
-    visibleShelfConversations(row.conversations, visibleConversationIds, false).map(
-      (c) => c.id
-    )
+    visibleShelfConversations(
+      row.conversations,
+      visibleConversationIds,
+      false
+    ).map((c) => c.id)
   )
   const hasExpanded = shown.some((c) => expandedIds.has(c.id))
+
+  useEffect(() => {
+    const el = filmRef.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      const delta = horizontalWheelDelta({
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        scrollLeft: el.scrollLeft,
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+        nestedVerticalScrollable: isNestedVerticalScroller(event.target, el),
+      })
+      if (delta == null) return
+      event.preventDefault()
+      el.scrollLeft += delta
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [])
 
   return (
     <div
@@ -82,7 +104,9 @@ export function ShelfProjectRowView({
       }}
       onDrop={(event) => {
         event.preventDefault()
-        const raw = event.dataTransfer.getData("application/x-codeg-conversation")
+        const raw = event.dataTransfer.getData(
+          "application/x-codeg-conversation"
+        )
         const conversationId = Number(raw)
         if (!Number.isInteger(conversationId) || conversationId <= 0) return
         if (row.conversations.some((item) => item.id === conversationId)) return
@@ -153,9 +177,14 @@ export function ShelfProjectRowView({
         </ContextMenuContent>
       </ContextMenu>
       <div
+        ref={filmRef}
         hidden={collapsed}
+        data-testid="shelf-row-cards"
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 items-start gap-2 overflow-x-auto p-2.5",
+          // overflow-y-hidden must be explicit: overflow-x-auto otherwise
+          // computes overflow-y to auto, and StickToBottom's height:100%
+          // transcript viewport collapses to 0 inside that nested scroller.
+          "flex min-h-0 min-w-0 flex-1 items-start gap-2 overflow-x-auto overflow-y-hidden p-2.5",
           collapsed && "hidden"
         )}
       >

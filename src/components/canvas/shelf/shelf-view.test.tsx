@@ -157,9 +157,7 @@ describe("ShelfView", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Add this conversation to the shelf" })
     )
-    fireEvent.click(
-      screen.getByRole("button", { name: "Shelf conversations" })
-    )
+    fireEvent.click(screen.getByRole("button", { name: "Shelf conversations" }))
     expect(screen.getByText("Ship the shelf")).toBeTruthy()
   })
 
@@ -297,4 +295,110 @@ describe("ShelfView", () => {
       )
     ).toEqual([10, 20])
   })
+
+  it("shows both jump buttons side by side in the middle of the shelf", () => {
+    renderShelf()
+    const scroller = screen.getByTestId("shelf-scroller")
+    const jump = screen.getByTestId("shelf-jump")
+    expect(jump.className).toMatch(/grid-cols-2/)
+    expect(jump.className).toMatch(/w-\[188px\]/)
+
+    setScrollerMetrics(scroller, {
+      scrollTop: 0,
+      clientHeight: 800,
+      scrollHeight: 800,
+    })
+    expect(screen.queryByRole("button", { name: "Jump to top" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Jump to bottom" })).toBeNull()
+
+    setScrollerMetrics(scroller, {
+      scrollTop: 0,
+      clientHeight: 800,
+      scrollHeight: 2400,
+    })
+    expect(screen.queryByRole("button", { name: "Jump to top" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Jump to bottom" })).toBeTruthy()
+
+    setScrollerMetrics(scroller, {
+      scrollTop: 800,
+      clientHeight: 800,
+      scrollHeight: 2400,
+    })
+    const toTop = screen.getByRole("button", { name: "Jump to top" })
+    const toBottom = screen.getByRole("button", { name: "Jump to bottom" })
+    expect(
+      toTop.compareDocumentPosition(toBottom) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+
+    setScrollerMetrics(scroller, {
+      scrollTop: 1600,
+      clientHeight: 800,
+      scrollHeight: 2400,
+    })
+    expect(screen.queryByRole("button", { name: "Jump to bottom" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Jump to top" })).toBeTruthy()
+  })
+
+  it("jumps the scroller from the project-column buttons", () => {
+    renderShelf()
+    const scroller = screen.getByTestId("shelf-scroller")
+    const scrollTo = vi.fn()
+    scroller.scrollTo = scrollTo
+
+    setScrollerMetrics(scroller, {
+      scrollTop: 800,
+      clientHeight: 800,
+      scrollHeight: 2400,
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Jump to bottom" }))
+    expect(scrollTo).toHaveBeenCalledWith({
+      top: 2400,
+      behavior: "smooth",
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Jump to top" }))
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" })
+  })
+
+  it("maps a vertical mouse wheel on the film strip to horizontal scroll", () => {
+    renderShelf()
+    const film = screen.getByTestId("shelf-row-cards")
+    let left = 40
+    Object.defineProperty(film, "scrollWidth", {
+      configurable: true,
+      value: 2000,
+    })
+    Object.defineProperty(film, "clientWidth", {
+      configurable: true,
+      value: 400,
+    })
+    Object.defineProperty(film, "scrollLeft", {
+      configurable: true,
+      get: () => left,
+      set: (value: number) => {
+        left = value
+      },
+    })
+
+    fireEvent.wheel(film, { deltaX: 0, deltaY: 80 })
+    expect(left).toBe(120)
+  })
 })
+
+function setScrollerMetrics(
+  scroller: HTMLElement,
+  metrics: { scrollTop: number; clientHeight: number; scrollHeight: number }
+) {
+  Object.defineProperty(scroller, "scrollTop", {
+    configurable: true,
+    value: metrics.scrollTop,
+  })
+  Object.defineProperty(scroller, "clientHeight", {
+    configurable: true,
+    value: metrics.clientHeight,
+  })
+  Object.defineProperty(scroller, "scrollHeight", {
+    configurable: true,
+    value: metrics.scrollHeight,
+  })
+  fireEvent.scroll(scroller)
+}
