@@ -257,45 +257,41 @@ export function ShelfView() {
         </div>
         <div
           data-testid="shelf-jump"
-          className="pointer-events-none absolute bottom-3 left-0 z-10 grid w-[188px] grid-cols-2"
+          className="pointer-events-none absolute bottom-3 left-0 z-10 flex w-[188px] justify-center gap-1"
         >
-          <div className="flex justify-center">
-            {jump.showTop ? (
-              <Button
-                className="pointer-events-auto rounded-full bg-background/90 hover:bg-muted/90"
-                onClick={() => {
-                  scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
-                }}
-                size="icon"
-                type="button"
-                variant="outline"
-                aria-label={t("scrollToTop")}
-              >
-                <ArrowUpIcon className="size-4" />
-              </Button>
-            ) : null}
-          </div>
-          <div className="flex justify-center">
-            {jump.showBottom ? (
-              <Button
-                className="pointer-events-auto rounded-full bg-background/90 hover:bg-muted/90"
-                onClick={() => {
-                  const scroller = scrollerRef.current
-                  if (!scroller) return
-                  scroller.scrollTo({
-                    top: scroller.scrollHeight,
-                    behavior: "smooth",
-                  })
-                }}
-                size="icon"
-                type="button"
-                variant="outline"
-                aria-label={t("scrollToBottom")}
-              >
-                <ArrowDownIcon className="size-4" />
-              </Button>
-            ) : null}
-          </div>
+          {jump.showTop ? (
+            <Button
+              className="pointer-events-auto rounded-full bg-background/90 hover:bg-muted/90"
+              onClick={() => {
+                scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+              }}
+              size="icon"
+              type="button"
+              variant="outline"
+              aria-label={t("scrollToTop")}
+            >
+              <ArrowUpIcon className="size-4" />
+            </Button>
+          ) : null}
+          {jump.showBottom ? (
+            <Button
+              className="pointer-events-auto rounded-full bg-background/90 hover:bg-muted/90"
+              onClick={() => {
+                const scroller = scrollerRef.current
+                if (!scroller) return
+                scroller.scrollTo({
+                  top: scroller.scrollHeight,
+                  behavior: "smooth",
+                })
+              }}
+              size="icon"
+              type="button"
+              variant="outline"
+              aria-label={t("scrollToBottom")}
+            >
+              <ArrowDownIcon className="size-4" />
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
