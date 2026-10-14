@@ -3154,6 +3154,7 @@
         "loadingSettings": "Loading settings...",
         "loadingMode": "Loading mode...",
         "modeLabel": "Mode",
+        "hermesRoleLabel": "Role",
         "toggleOn": "On",
         "toggleOff": "Off",
         "agentSettings": "Agent settings",

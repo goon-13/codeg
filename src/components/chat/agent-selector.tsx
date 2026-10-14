@@ -11,7 +11,7 @@ import {
 import { useTranslations } from "next-intl"
 import { MoreHorizontal } from "lucide-react"
 import { useAcpAgents } from "@/hooks/use-acp-agents"
-import type { AgentType, AcpAgentInfo } from "@/lib/types"
+import { compareAgentType, type AgentType, type AcpAgentInfo } from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
 import { AgentIcon } from "@/components/agent-icon"
 import { SelectorTooltip } from "@/components/chat/selector-tooltip"
@@ -79,7 +79,11 @@ export function AgentSelector({
   const t = useTranslations("Folder.chat.agentSelector")
   const { agents: rawAgents } = useAcpAgents()
   const agents = useMemo<AcpAgentInfo[]>(
-    () => rawAgents.filter((a) => a.enabled),
+    () =>
+      rawAgents
+        .filter((a) => a.enabled)
+        .slice()
+        .sort((a, b) => compareAgentType(a.agent_type, b.agent_type)),
     [rawAgents]
   )
   const onSelectRef = useRef(onSelect)
@@ -396,6 +400,7 @@ export function AgentSelector({
               <button
                 ref={setItemRef(agent.agent_type)}
                 data-slot="agent-pill"
+                data-agent-type={agent.agent_type}
                 aria-pressed={isSelected}
                 disabled={disabled || !agent.available}
                 onClick={() => handleSelect(agent.agent_type)}

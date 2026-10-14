@@ -11,6 +11,7 @@ pub mod deepseek;
 pub mod gemini;
 pub mod grok;
 pub mod hermes;
+pub mod hermes_role;
 pub mod kimi_code;
 pub mod openclaw;
 pub mod opencode;

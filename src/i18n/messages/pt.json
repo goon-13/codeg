@@ -3152,6 +3152,7 @@
         "loadingSettings": "Carregando configurações...",
         "loadingMode": "Carregando modo...",
         "modeLabel": "Modo",
+        "hermesRoleLabel": "Função",
         "toggleOn": "Ligado",
         "toggleOff": "Desligado",
         "agentSettings": "Configurações do agente",

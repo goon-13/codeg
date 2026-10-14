@@ -11,6 +11,7 @@ import { isConnectionBusy } from "@/lib/connection-teardown"
 import { TurnBusyError } from "@/lib/turn-busy"
 import { type AgentType, type PromptDraft } from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
+import { isHermesFamilyAgent } from "@/lib/hermes-profile-option"
 
 interface UseConnectionLifecycleOptions {
   contextKey: string
@@ -85,6 +86,7 @@ export interface UseConnectionLifecycleReturn {
     }
   ) => void
   handleSetConfigOption: (configId: string, valueId: string) => void
+  handleDisconnect: () => Promise<void>
   handleCancel: () => void
   handleRespondPermission: (requestId: string, optionId: string) => void
 }
@@ -176,7 +178,12 @@ export function useConnectionLifecycle({
   const configOptionsLoading = !hasCachedSelectors && selectorsPending
   // Gate for send button: block until the backend session is fully
   // initialized (selectorsReady from the real backend event, not cache).
-  const selectorsLoading = isInteractiveStatus && !selectorsReady
+  // Hermes session/new builds AIAgent for 30–40s after Connected; prompts
+  // are buffered, so parking send on selectorsReady is the click hang.
+  const selectorsLoading =
+    isInteractiveStatus &&
+    !selectorsReady &&
+    !isHermesFamilyAgent(agentType)
   const [lastAutoConnectError, setLastAutoConnectError] = useState<{
     contextKey: string
     agentType: AgentType
@@ -329,7 +336,7 @@ export function useConnectionLifecycle({
       return
     }
 
-    if (selectorsReady) {
+    if (selectorsReady || isHermesFamilyAgent(agentType)) {
       clearSelectorTask()
       return
     }
@@ -500,6 +507,10 @@ export function useConnectionLifecycle({
     [connSetMode, sendPrompt, contextKey, touchActivity, t]
   )
 
+  const handleDisconnect = useCallback(() => {
+    return connDisconnect()
+  }, [connDisconnect])
+
   const handleCancel = useCallback(() => {
     connCancel().catch((e: unknown) =>
       console.error("[ConnLifecycle] cancel:", e)
@@ -535,6 +546,7 @@ export function useConnectionLifecycle({
     handleFocus,
     handleSend,
     handleSetConfigOption,
+    handleDisconnect,
     handleCancel,
     handleRespondPermission,
   }

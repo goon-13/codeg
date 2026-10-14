@@ -13,7 +13,8 @@ import { AgentSelector } from "@/components/chat/agent-selector"
 import { ConversationShell } from "@/components/chat/conversation-shell"
 import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
 import { MessageListView } from "@/components/message/message-list-view"
-import { useAcpActions } from "@/contexts/acp-connections-context"
+import { getCachedSelectors, useAcpActions } from "@/contexts/acp-connections-context"
+import { useAcpAgents } from "@/hooks/use-acp-agents"
 import { useConnectionLifecycle } from "@/hooks/use-connection-lifecycle"
 import { useConversationDetail } from "@/hooks/use-conversation-detail"
 import {
@@ -21,10 +22,25 @@ import {
   createChatConversation,
   createConversation,
   createChatDir,
+  updateConversationAgentType,
 } from "@/lib/api"
 import { toErrorMessage } from "@/lib/app-error"
 import { notify } from "@/lib/notify"
 import { getAgentLabel } from "@/lib/custom-agents"
+import {
+  beginHermesRoleSwitch,
+  clearHermesRoleSwitchSkip,
+  hermesCachedConfigOptions,
+  hermesComposerConfigOptions,
+  hermesComposerSelectorsPending,
+  hermesLiveOrCachedConfigOptions,
+  hermesResumeSessionId,
+  hermesRoleListReady,
+  interceptHermesProfileConfigChange,
+  planHermesRoleSwitch,
+  shouldClearHermesResumeSkip,
+  useHermesRoleSwitchSkip,
+} from "@/lib/hermes-profile-option"
 import {
   extractUserImagesFromDraft,
   getPromptDraftDisplayText,
@@ -183,7 +199,10 @@ export function CanvasConversationSurface({
 }: CanvasConversationSurfaceProps) {
   const t = useTranslations("Canvas")
   const sharedT = useTranslations("Folder.chat.shared")
+  const tCmp = useTranslations("Folder.chat.messageInput")
+  const tWelcome = useTranslations("Folder.chat.welcomeInputPanel")
   const tAsyncTasks = useTranslations("Folder.chat.asyncTasks")
+  const { agents: acpAgents, fresh: acpAgentsFresh } = useAcpAgents()
   const acpActions = useAcpActions()
   const {
     appendOptimisticTurn,
@@ -264,6 +283,14 @@ export function CanvasConversationSurface({
   const [modeId, setModeId] = useState<string | null>(() =>
     getSavedModeId(agentType)
   )
+  const [roleOverride, setRoleOverride] = useState<AgentType | null>(null)
+  const skipHermesResumeForAgent = useHermesRoleSwitchSkip(dbConversationId)
+  const selectedAgent = roleOverride ?? agentType
+  useEffect(() => {
+    if (roleOverride != null && roleOverride === agentType) {
+      setRoleOverride(null)
+    }
+  }, [agentType, roleOverride])
   const [sendSignal, setSendSignal] = useState(0)
   const creatingRef = useRef(false)
   // Mirrors `creatingRef` as state, purely so the card can refuse to be thrown
@@ -305,7 +332,8 @@ export function CanvasConversationSurface({
   // guessing: the error is already on screen with a retry.
   const awaitingHistoricalSessionId =
     dbConversationId != null &&
-    agentType !== "cline" &&
+    selectedAgent !== "cline" &&
+    skipHermesResumeForAgent == null &&
     (detailLoading || detailError != null || acpLoadError != null) &&
     externalId == null
 
@@ -362,12 +390,13 @@ export function CanvasConversationSurface({
     selectorsLoading,
     handleFocus,
     handleSend: lifecycleSend,
-    handleSetConfigOption,
+    handleSetConfigOption: lifecycleSetConfigOption,
+    handleDisconnect,
     handleCancel,
     handleRespondPermission,
   } = useConnectionLifecycle({
     contextKey,
-    agentType,
+    agentType: selectedAgent,
     // Without a cwd there is nothing to connect to yet (a chat draft before its
     // scratch dir lands); auto-connect would fire with an undefined dir.
     isActive: isActive && workingDir != null && !awaitingHistoricalSessionId,
@@ -376,17 +405,91 @@ export function CanvasConversationSurface({
     // cwd wait has nothing to report: a dormant draft card isn't opening).
     preparing: isActive && awaitingHistoricalSessionId,
     workingDir,
-    sessionId:
-      dbConversationId != null && agentType !== "cline"
-        ? externalId
-        : undefined,
+    sessionId: hermesResumeSessionId({
+      skipForAgent: skipHermesResumeForAgent,
+      persistedSessionId:
+        dbConversationId != null && selectedAgent !== "cline"
+          ? externalId
+          : undefined,
+    }),
     // Cross-surface viewer attach: when this conversation is already live on
     // another surface (a workspace tab, another window), join that connection
     // instead of spawning a second agent for the same session.
     conversationId: dbConversationId ?? undefined,
   })
+  const handleSetConfigOption = useCallback(
+    (configId: string, valueId: string) => {
+      const profileAgent = interceptHermesProfileConfigChange(configId, valueId)
+      if (profileAgent != null) {
+        const plan = planHermesRoleSwitch({
+          nextAgent: profileAgent,
+          currentAgent: selectedAgent,
+        })
+        if (plan === "noop") return
+        if (dbConversationId == null) {
+          setRoleOverride(profileAgent)
+          onAgentTypeChange?.(profileAgent)
+          return
+        }
+        beginHermesRoleSwitch(dbConversationId, profileAgent)
+        setExternalId(dbConversationId, null)
+        void (async () => {
+          try {
+            await handleDisconnect()
+            await updateConversationAgentType(dbConversationId, profileAgent)
+            await refreshConversations()
+            refetchDetail(dbConversationId)
+            setRoleOverride(profileAgent)
+            onAgentTypeChange?.(profileAgent)
+          } catch (err) {
+            clearHermesRoleSwitchSkip(dbConversationId)
+            notify({
+              level: "error",
+              key: `hermes-role-switch:${contextKey}`,
+              title: tWelcome("createConversationFailed"),
+              description: toErrorMessage(err),
+            })
+          }
+        })()
+        return
+      }
+      lifecycleSetConfigOption(configId, valueId)
+    },
+    [
+      contextKey,
+      dbConversationId,
+      handleDisconnect,
+      lifecycleSetConfigOption,
+      onAgentTypeChange,
+      refetchDetail,
+      refreshConversations,
+      selectedAgent,
+      setExternalId,
+      tWelcome,
+    ]
+  )
   const connStatus = conn.status
   const connSessionId = conn.sessionId
+  useEffect(() => {
+    if (dbConversationId == null) return
+    if (
+      !shouldClearHermesResumeSkip({
+        skipForAgent: skipHermesResumeForAgent,
+        liveAgent: conn.agentType,
+        liveStatus: connStatus,
+        liveSessionId: connSessionId,
+      })
+    ) {
+      return
+    }
+    clearHermesRoleSwitchSkip(dbConversationId)
+  }, [
+    conn.agentType,
+    connSessionId,
+    connStatus,
+    dbConversationId,
+    skipHermesResumeForAgent,
+  ])
 
   /**
    * Re-entry repair: let the database have the last word on a session this
@@ -477,9 +580,15 @@ export function CanvasConversationSurface({
   // Mirror the resolved session id into the runtime store so a reconnect
   // resumes the same agent session instead of falling back to session/new.
   useEffect(() => {
+    if (skipHermesResumeForAgent != null) return
     if (!connSessionId) return
     setExternalId(effectiveConversationId, connSessionId)
-  }, [connSessionId, effectiveConversationId, setExternalId])
+  }, [
+    connSessionId,
+    effectiveConversationId,
+    setExternalId,
+    skipHermesResumeForAgent,
+  ])
 
   // Promote the finished turn on the prompting → idle edge, then refresh the
   // per-turn metadata (token counts, duration) the summary row shows.
@@ -508,13 +617,13 @@ export function CanvasConversationSurface({
       // The preference stores the whole mode SHAPE, not just the id, so it can
       // be shipped to the backend at connect time.
       if (conn.modes) {
-        saveModePreference(agentType, {
+        saveModePreference(selectedAgent, {
           ...conn.modes,
           current_mode_id: nextModeId,
         })
       }
     },
-    [agentType, conn.modes]
+    [conn.modes, selectedAgent]
   )
 
   const handleSend = useCallback(
@@ -587,7 +696,7 @@ export function CanvasConversationSurface({
           let sendFolderId: number
           if (draftTarget.kind === "chat") {
             const res = await createChatConversation(
-              agentType,
+              selectedAgent,
               title || undefined,
               chatDirRef.current ?? undefined
             )
@@ -599,7 +708,7 @@ export function CanvasConversationSurface({
           } else {
             newId = await createConversation(
               draftTarget.folderId,
-              agentType,
+              selectedAgent,
               title || undefined
             )
             sendFolderId = draftTarget.folderId
@@ -637,7 +746,7 @@ export function CanvasConversationSurface({
       })()
     },
     [
-      agentType,
+      selectedAgent,
       appendOptimisticTurn,
       boundFolderId,
       connSessionId,
@@ -720,10 +829,50 @@ export function CanvasConversationSurface({
     () => conn.modes?.available_modes ?? [],
     [conn.modes]
   )
-  const connectionConfigOptions = useMemo(
-    () => conn.configOptions ?? [],
-    [conn.configOptions]
+  const connIsForOtherAgent =
+    conn.agentType != null && conn.agentType !== selectedAgent
+  const hermesLiveSelectorsReady =
+    !connIsForOtherAgent && conn.selectorsReady
+  const cachedHermesConfig = hermesCachedConfigOptions(
+    selectedAgent,
+    getCachedSelectors
   )
+  const effectiveConfigOptions = hermesLiveOrCachedConfigOptions({
+    currentAgent: selectedAgent,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+    liveConfigOptions: connIsForOtherAgent
+      ? cachedHermesConfig
+      : conn.configOptions,
+    cachedConfigOptions: cachedHermesConfig,
+  })
+  const hermesAgentsReady = hermesRoleListReady(acpAgents, acpAgentsFresh)
+  const hermesSelectorsPending = hermesComposerSelectorsPending({
+    currentAgent: selectedAgent,
+    acpConfigOptions: effectiveConfigOptions,
+    agentsReady: hermesAgentsReady,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+  })
+  const connectionConfigOptions = useMemo(
+    () =>
+      hermesComposerConfigOptions({
+        currentAgent: selectedAgent,
+        acpConfigOptions: effectiveConfigOptions,
+        agents: acpAgents,
+        agentsReady: hermesAgentsReady,
+        liveSelectorsReady: hermesLiveSelectorsReady,
+        label: tCmp("hermesRoleLabel"),
+      }),
+    [
+      acpAgents,
+      effectiveConfigOptions,
+      hermesAgentsReady,
+      hermesLiveSelectorsReady,
+      selectedAgent,
+      tCmp,
+    ]
+  )
+  const composerModes = hermesSelectorsPending ? [] : connectionModes
+  const composerConfigLoading = configOptionsLoading || hermesSelectorsPending
   const selectedModeId = useMemo(() => {
     if (connectionModes.length === 0) return null
     if (modeId && connectionModes.some((mode) => mode.id === modeId)) {
@@ -756,7 +905,7 @@ export function CanvasConversationSurface({
           status={connStatus}
           promptCapabilities={conn.promptCapabilities}
           defaultPath={workingDir}
-          agentName={getAgentLabel(agentType)}
+          agentName={getAgentLabel(selectedAgent)}
           claudeApiRetry={conn.claudeApiRetry}
           sessionFailures={conn.sessionFailures}
           onSessionFailureDismiss={handleSessionFailureDismiss}
@@ -773,15 +922,15 @@ export function CanvasConversationSurface({
           onAnswerQuestion={handleAnswerQuestion}
           onAnswerAskQuestion={handleAnswerAskQuestion}
           onAnswerPlanApproval={handleAnswerPlanApproval}
-          modes={connectionModes}
+          modes={composerModes}
           configOptions={connectionConfigOptions}
           modeLoading={modeLoading}
-          configOptionsLoading={configOptionsLoading}
+          configOptionsLoading={composerConfigLoading}
           selectorsLoading={selectorsLoading}
           selectedModeId={selectedModeId}
           onModeChange={handleModeChange}
           onConfigOptionChange={handleSetConfigOption}
-          agentType={agentType}
+          agentType={selectedAgent}
           availableCommands={conn.availableCommands ?? []}
           draftStorageKey={`canvas-draft:${contextKey}`}
           getSentHistory={getSentHistory}
@@ -796,7 +945,7 @@ export function CanvasConversationSurface({
             <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
               <AgentSelector
                 align="center"
-                defaultAgentType={agentType}
+                defaultAgentType={selectedAgent}
                 onSelect={onAgentTypeChange}
                 onFallback={onAgentTypeChange}
                 disabled={conn.status === "connecting"}
@@ -811,7 +960,7 @@ export function CanvasConversationSurface({
             // stay unresolved until a later refetch. `undefined` (never a
             // wrong guess) leaves MessageListView's folder fallback in place.
             imageRoot={workingDir}
-            agentType={agentType}
+            agentType={selectedAgent}
             availableCommands={conn.availableCommands}
             connStatus={connStatus}
             isActive={isActive}

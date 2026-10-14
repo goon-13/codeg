@@ -76,6 +76,14 @@ impl AgentType {
         }
     }
 
+    /// Built-in Hermes plus every registered `custom:hermes-*` profile.
+    pub fn is_hermes_family(&self) -> bool {
+        matches!(self, AgentType::Hermes)
+            || self
+                .custom_id()
+                .is_some_and(|id| id.starts_with("hermes-"))
+    }
+
     /// Build a custom agent type from a raw registry id, interning the slug.
     /// Returns `None` when the id is not a valid slug (see
     /// [`is_valid_custom_agent_id`]).
@@ -281,6 +289,16 @@ mod tests {
             assert!(!agent.is_custom());
             assert_eq!(agent.custom_id(), None);
         }
+    }
+
+    #[test]
+    fn hermes_family_is_builtin_plus_custom_prefix() {
+        assert!(AgentType::Hermes.is_hermes_family());
+        assert!(AgentType::custom("hermes-homeops")
+            .unwrap()
+            .is_hermes_family());
+        assert!(!AgentType::Grok.is_hermes_family());
+        assert!(!AgentType::custom("goose").unwrap().is_hermes_family());
     }
 
     #[test]

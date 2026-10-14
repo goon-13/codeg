@@ -89,6 +89,7 @@ import {
   createConversation,
   getFolderConversation,
   openSettingsWindow,
+  updateConversationAgentType,
 } from "@/lib/api"
 import { isWindowedDetail } from "@/lib/turn-window"
 import {
@@ -104,6 +105,20 @@ import {
 import { TurnBusyError } from "@/lib/turn-busy"
 import { deliverQueuedSteer } from "@/lib/queued-steer"
 import { toErrorMessage } from "@/lib/app-error"
+import {
+  beginHermesRoleSwitch,
+  clearHermesRoleSwitchSkip,
+  hermesCachedConfigOptions,
+  hermesComposerConfigOptions,
+  hermesComposerSelectorsPending,
+  hermesLiveOrCachedConfigOptions,
+  hermesResumeSessionId,
+  hermesRoleListReady,
+  interceptHermesProfileConfigChange,
+  planHermesRoleSwitch,
+  shouldClearHermesResumeSkip,
+  useHermesRoleSwitchSkip,
+} from "@/lib/hermes-profile-option"
 import { notify } from "@/lib/notify"
 import {
   claimRuntimeSession,
@@ -311,6 +326,7 @@ const ConversationTabView = memo(function ConversationTabView({
     openNewConversationTab,
     closeTab,
     confirmDraftAgent,
+    setTabAgentType,
     setDraftAgentFromFallback,
   } = useTabActions()
   const {
@@ -376,6 +392,7 @@ const ConversationTabView = memo(function ConversationTabView({
     null
   )
   const [hasSentMessage, setHasSentMessage] = useState(false)
+  const skipHermesResumeForAgent = useHermesRoleSwitchSkip(dbConversationId)
   // One inbox for everything pushed into this tab's composer from outside it:
   // welcome-page quick actions (replace) and quoted transcript selections
   // (append). Exactly one composer is mounted at a time — the welcome one or the
@@ -605,13 +622,16 @@ const ConversationTabView = memo(function ConversationTabView({
   // fetch starts only in that render's effects. `useConversationDetail`
   // reports the fetch it is about to start as loading for exactly this.
   const awaitingHistoricalSessionId =
-    hasPersistedConversation && selectedAgent !== "cline" && detailLoading
+    hasPersistedConversation &&
+    selectedAgent !== "cline" &&
+    skipHermesResumeForAgent == null &&
+    detailLoading
   // Install status of the currently selected agent. An agent can be enabled and
   // platform-available yet have no CLI/SDK installed; selecting one can never
   // connect. Rather than firing a doomed (and racy) auto-connect whose only
   // outcome is a transient "not installed" toast, we skip the connect and
   // surface a persistent install prompt instead (see composerBlockedMessage).
-  const { agents: acpAgents } = useAcpAgents()
+  const { agents: acpAgents, fresh: acpAgentsFresh } = useAcpAgents()
   const selectedAgentNotInstalled = useMemo(() => {
     const info = acpAgents.find((a) => a.agent_type === selectedAgent)
     return (
@@ -666,7 +686,8 @@ const ConversationTabView = memo(function ConversationTabView({
     autoConnectError,
     handleFocus,
     handleSend: lifecycleSend,
-    handleSetConfigOption,
+    handleSetConfigOption: lifecycleSetConfigOption,
+    handleDisconnect,
     handleCancel,
     handleRespondPermission,
   } = useConnectionLifecycle({
@@ -674,10 +695,13 @@ const ConversationTabView = memo(function ConversationTabView({
     agentType: selectedAgent,
     isActive: isActive && canAutoConnect,
     workingDir: workingDirForConnection,
-    sessionId:
-      dbConversationId != null && selectedAgent !== "cline"
-        ? externalId
-        : undefined,
+    sessionId: hermesResumeSessionId({
+      skipForAgent: skipHermesResumeForAgent,
+      persistedSessionId:
+        dbConversationId != null && selectedAgent !== "cline"
+          ? externalId
+          : undefined,
+    }),
     // Drives cross-client viewer discovery: when another client is already
     // live on this conversation, attach to its connection instead of spawning.
     conversationId: dbConversationId ?? undefined,
@@ -694,7 +718,82 @@ const ConversationTabView = memo(function ConversationTabView({
       [tabId, groupId]
     ),
   })
+  const handleSetConfigOption = useCallback(
+    (configId: string, valueId: string) => {
+      const profileAgent = interceptHermesProfileConfigChange(configId, valueId)
+      if (profileAgent != null) {
+        const plan = planHermesRoleSwitch({
+          nextAgent: profileAgent,
+          currentAgent: selectedAgent,
+        })
+        if (plan === "noop") return
+        if (dbConversationId == null) {
+          setDraftAgentType(profileAgent)
+          setModeId(getSavedModeId(profileAgent))
+          setAgentConnectError(null)
+          confirmDraftAgent(tabId, profileAgent)
+          return
+        }
+        beginHermesRoleSwitch(dbConversationId, profileAgent)
+        setExternalId(dbConversationId, null)
+        void (async () => {
+          try {
+            await handleDisconnect()
+            await updateConversationAgentType(dbConversationId, profileAgent)
+            await refreshConversations()
+            refetchDetail(dbConversationId)
+            setTabAgentType(tabId, profileAgent)
+            setModeId(getSavedModeId(profileAgent))
+            setAgentConnectError(null)
+          } catch (err) {
+            clearHermesRoleSwitchSkip(dbConversationId)
+            notify({
+              level: "error",
+              key: `hermes-role-switch:${tabId}`,
+              title: tWelcome("createConversationFailed"),
+              description: toErrorMessage(err),
+            })
+          }
+        })()
+        return
+      }
+      lifecycleSetConfigOption(configId, valueId)
+    },
+    [
+      confirmDraftAgent,
+      dbConversationId,
+      handleDisconnect,
+      lifecycleSetConfigOption,
+      refetchDetail,
+      refreshConversations,
+      selectedAgent,
+      setExternalId,
+      setTabAgentType,
+      tWelcome,
+      tabId,
+    ]
+  )
   const { status: connStatus, sessionId: connSessionId } = conn
+  useEffect(() => {
+    if (dbConversationId == null) return
+    if (
+      !shouldClearHermesResumeSkip({
+        skipForAgent: skipHermesResumeForAgent,
+        liveAgent: conn.agentType,
+        liveStatus: connStatus,
+        liveSessionId: connSessionId,
+      })
+    ) {
+      return
+    }
+    clearHermesRoleSwitchSkip(dbConversationId)
+  }, [
+    conn.agentType,
+    connSessionId,
+    connStatus,
+    dbConversationId,
+    skipHermesResumeForAgent,
+  ])
   const messageQueue = useMessageQueue()
   const {
     queue: msgQueue,
@@ -730,12 +829,23 @@ const ConversationTabView = memo(function ConversationTabView({
   // selectors (empty until it connects).
   const connIsForOtherAgent =
     conn.agentType != null && conn.agentType !== selectedAgent
+  const hermesLiveSelectorsReady =
+    !connIsForOtherAgent && conn.selectorsReady
+  const cachedHermesConfig = hermesCachedConfigOptions(
+    selectedAgent,
+    getCachedSelectors
+  )
   const effectiveModes = connIsForOtherAgent
     ? (getCachedSelectors(selectedAgent)?.modes ?? null)
     : conn.modes
-  const effectiveConfigOptions = connIsForOtherAgent
-    ? (getCachedSelectors(selectedAgent)?.configOptions ?? null)
-    : conn.configOptions
+  const effectiveConfigOptions = hermesLiveOrCachedConfigOptions({
+    currentAgent: selectedAgent,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+    liveConfigOptions: connIsForOtherAgent
+      ? cachedHermesConfig
+      : conn.configOptions,
+    cachedConfigOptions: cachedHermesConfig,
+  })
   // The live connection is ready for THIS tab only when it's connected AND its
   // cwd matches the tab's intended working dir. A just-retargeted chat draft (or
   // any mid-reconnect) can briefly read a stale "connected" for the PREVIOUS cwd;
@@ -774,10 +884,34 @@ const ConversationTabView = memo(function ConversationTabView({
     () => effectiveModes?.available_modes ?? [],
     [effectiveModes]
   )
+  const hermesAgentsReady = hermesRoleListReady(acpAgents, acpAgentsFresh)
+  const hermesSelectorsPending = hermesComposerSelectorsPending({
+    currentAgent: selectedAgent,
+    acpConfigOptions: effectiveConfigOptions,
+    agentsReady: hermesAgentsReady,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+  })
   const connectionConfigOptions = useMemo(
-    () => effectiveConfigOptions ?? [],
-    [effectiveConfigOptions]
+    () =>
+      hermesComposerConfigOptions({
+        currentAgent: selectedAgent,
+        acpConfigOptions: effectiveConfigOptions,
+        agents: acpAgents,
+        agentsReady: hermesAgentsReady,
+        liveSelectorsReady: hermesLiveSelectorsReady,
+        label: tCmp("hermesRoleLabel"),
+      }),
+    [
+      acpAgents,
+      effectiveConfigOptions,
+      hermesAgentsReady,
+      hermesLiveSelectorsReady,
+      selectedAgent,
+      tCmp,
+    ]
   )
+  const composerModes = hermesSelectorsPending ? [] : connectionModes
+  const composerConfigLoading = configOptionsLoading || hermesSelectorsPending
   // `null` until this tab's agent has advertised (no connection, one still
   // coming up, or one still bound to another agent), never `[]`, which is an
   // answer: the agent offers no commands. The composers read the two alike;
@@ -1040,23 +1174,35 @@ const ConversationTabView = memo(function ConversationTabView({
 
   useEffect(() => {
     if (effectiveConversationId <= 0) return
+    if (skipHermesResumeForAgent != null) return
     // Only ever WRITE a real id — never clear one. `detail` is null while a
     // (re)fetch is in flight, and writing null then would wipe a session id the
     // connSessionId effect below had already resolved. That store value is one
     // of the two sources `externalId` (and therefore the sessionId passed to
     // acp_connect) resolves from, so clearing it can turn a reconnect into
-    // session/new and strand the conversation's history. Nothing ever nulls a
-    // row's external_id, and switching conversations changes the store key
-    // rather than clearing this one, so there is no case that needs the clear.
+    // session/new and strand the conversation's history. A Hermes role switch
+    // is the exception: it calls `setExternalId(..., null)` so the next
+    // connect cannot `session/load` the previous profile's id.
     const persisted = detail?.summary.external_id
     if (!persisted) return
     setExternalId(effectiveConversationId, persisted)
-  }, [effectiveConversationId, detail?.summary.external_id, setExternalId])
+  }, [
+    effectiveConversationId,
+    detail?.summary.external_id,
+    setExternalId,
+    skipHermesResumeForAgent,
+  ])
 
   useEffect(() => {
+    if (skipHermesResumeForAgent != null) return
     if (!connSessionId) return
     setExternalId(effectiveConversationId, connSessionId)
-  }, [connSessionId, effectiveConversationId, setExternalId])
+  }, [
+    connSessionId,
+    effectiveConversationId,
+    setExternalId,
+    skipHermesResumeForAgent,
+  ])
 
   useEffect(() => {
     if (dbConversationId == null) return
@@ -2324,10 +2470,10 @@ const ConversationTabView = memo(function ConversationTabView({
       onAnswerQuestion={handleAnswerQuestion}
       onAnswerAskQuestion={handleAnswerAskQuestion}
       onAnswerPlanApproval={handleAnswerPlanApproval}
-      modes={connectionModes}
+      modes={composerModes}
       configOptions={connectionConfigOptions}
       modeLoading={modeLoading}
-      configOptionsLoading={configOptionsLoading}
+      configOptionsLoading={composerConfigLoading}
       selectorsLoading={selectorsLoading}
       selectedModeId={selectedModeId}
       onModeChange={handleModeChange}
@@ -2461,10 +2607,10 @@ const ConversationTabView = memo(function ConversationTabView({
                 onFocus={handleFocus}
                 onSend={handleSend}
                 onCancel={handleCancel}
-                modes={connectionModes}
+                modes={composerModes}
                 configOptions={connectionConfigOptions}
                 modeLoading={modeLoading}
-                configOptionsLoading={configOptionsLoading}
+                configOptionsLoading={composerConfigLoading}
                 selectorsLoading={selectorsLoading}
                 selectedModeId={selectedModeId}
                 onModeChange={handleModeChange}

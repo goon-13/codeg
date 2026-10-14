@@ -85,12 +85,15 @@ vi.mock("@/hooks/use-connection", () => ({
 
 import { useConnectionLifecycle } from "@/hooks/use-connection-lifecycle"
 
-function renderLifecycle(preparing: boolean) {
+function renderLifecycle(
+  preparing: boolean,
+  agentType: "claude_code" | "hermes" = "claude_code"
+) {
   return renderHook(
     (props: { preparing: boolean }) =>
       useConnectionLifecycle({
         contextKey: "ctx-1",
-        agentType: "claude_code",
+        agentType,
         // Mirrors the panel: the auto-connect gate is CLOSED while preparing.
         isActive: !props.preparing,
         preparing: props.preparing,
@@ -163,5 +166,23 @@ describe("useConnectionLifecycle opening legs", () => {
     // The status-bar row is independent of the cache — the session itself is
     // still not up.
     expect(tasks.live()).toHaveLength(1)
+  })
+
+  it("does not park Hermes on 正在初始化 after Connected while session/new runs", () => {
+    const { rerender, result } = renderLifecycle(false, "hermes")
+    conn.status = "connecting"
+    act(() => rerender({ preparing: false }))
+    expect(
+      tasks.live().some((row) => row.label.includes("connectingTitle"))
+    ).toBe(true)
+
+    conn.status = "connected"
+    conn.selectorsReady = false
+    act(() => rerender({ preparing: false }))
+
+    expect(
+      tasks.live().some((row) => row.label.includes("initSessionTitle"))
+    ).toBe(false)
+    expect(result.current.selectorsLoading).toBe(false)
   })
 })

@@ -1106,13 +1106,34 @@ const AGENT_DISPLAY_ORDER_INDEX = new Map<AgentType, number>(
 )
 
 /**
- * Sort built-ins into their curated order. Custom agents have no pinned
- * position, so they fall to the end and tie-break alphabetically among
- * themselves — a stable order that does not shuffle as agents are added.
+ * Sort built-ins into their curated order. Hermes named profiles
+ * (`custom:hermes-*`) sit immediately after built-in `hermes`. Other custom
+ * agents have no pinned position, so they fall to the end and tie-break
+ * alphabetically among themselves.
  */
+function hermesFamilyRank(agent: AgentType): number | null {
+  if (agent === "hermes") return 0
+  if (agent === "custom:hermes" || agent.startsWith("custom:hermes-")) return 1
+  return null
+}
+
 export function compareAgentType(a: AgentType, b: AgentType): number {
-  const aIndex = AGENT_DISPLAY_ORDER_INDEX.get(a) ?? Number.MAX_SAFE_INTEGER
-  const bIndex = AGENT_DISPLAY_ORDER_INDEX.get(b) ?? Number.MAX_SAFE_INTEGER
+  const aFamily = hermesFamilyRank(a)
+  const bFamily = hermesFamilyRank(b)
+  if (aFamily !== null && bFamily !== null) {
+    if (aFamily !== bFamily) return aFamily - bFamily
+    return a.localeCompare(b)
+  }
+  const hermesIndex =
+    AGENT_DISPLAY_ORDER_INDEX.get("hermes") ?? Number.MAX_SAFE_INTEGER
+  const aIndex =
+    aFamily !== null
+      ? hermesIndex
+      : (AGENT_DISPLAY_ORDER_INDEX.get(a) ?? Number.MAX_SAFE_INTEGER)
+  const bIndex =
+    bFamily !== null
+      ? hermesIndex
+      : (AGENT_DISPLAY_ORDER_INDEX.get(b) ?? Number.MAX_SAFE_INTEGER)
   if (aIndex !== bIndex) return aIndex - bIndex
   return a.localeCompare(b)
 }

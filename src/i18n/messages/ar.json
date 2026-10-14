@@ -3152,6 +3152,7 @@
         "loadingSettings": "جارٍ تحميل الإعدادات...",
         "loadingMode": "جارٍ تحميل الوضع...",
         "modeLabel": "الوضع",
+        "hermesRoleLabel": "الدور",
         "toggleOn": "تشغيل",
         "toggleOff": "إيقاف",
         "agentSettings": "إعدادات الوكيل",

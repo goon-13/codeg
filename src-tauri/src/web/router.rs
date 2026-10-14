@@ -271,6 +271,10 @@ pub fn build_router(
             post(handlers::conversations::update_conversation_title),
         )
         .route(
+            "/update_conversation_agent_type",
+            post(handlers::conversations::update_conversation_agent_type),
+        )
+        .route(
             "/update_conversation_pinned",
             post(handlers::conversations::update_conversation_pinned),
         )

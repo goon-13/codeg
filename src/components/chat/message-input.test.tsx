@@ -1165,6 +1165,41 @@ describe("MessageInput selector loading placeholder", () => {
       screen.queryByRole("button", { name: MSGS.agentSettings })
     ).toBeNull()
   })
+
+  it("keeps the Hermes mode chip when the synthetic Role option is present", async () => {
+    const { container } = renderInput({
+      configOptions: [
+        {
+          id: "codeg:hermes-profile",
+          name: "Role",
+          kind: {
+            type: "select",
+            current_value: "hermes",
+            options: [
+              { value: "hermes", name: "Hermes Agent" },
+              { value: "custom:hermes-homeops", name: "Hermes 家网运维" },
+            ],
+            groups: [],
+          },
+        },
+        MODEL_OPTION,
+      ],
+      modes: [{ id: "default", name: "Default", description: null }],
+      selectedModeId: "default",
+    })
+    await waitFor(() =>
+      expect(container.querySelector('[role="textbox"]')).not.toBeNull()
+    )
+    expect(
+      screen.getByRole("button", { name: "Role: Hermes Agent" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Model: Default" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Mode: Default" })
+    ).toBeInTheDocument()
+  })
 })
 
 describe("MessageInput collapsed selectors popover", () => {

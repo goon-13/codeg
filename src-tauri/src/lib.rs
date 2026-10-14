@@ -1688,6 +1688,7 @@ mod tauri_app {
                 conversations::create_chat_dir,
                 conversations::update_conversation_status,
                 conversations::update_conversation_title,
+                conversations::update_conversation_agent_type,
                 conversations::update_conversation_pinned,
                 conversation_tags::list_conversation_tags,
                 conversation_tags::create_conversation_tag,
