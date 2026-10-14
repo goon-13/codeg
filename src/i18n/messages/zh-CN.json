@@ -6722,7 +6722,9 @@
     "moveRunningBlocked": "进行中的会话不可移动，请先停止智能体",
     "hideProjectFromShelf": "从货架拿掉此项目",
     "addToShelf": "将此会话放到货架",
-    "showShelfConversations": "货架会话"
+    "showShelfConversations": "货架会话",
+    "scrollToTop": "回到最上",
+    "scrollToBottom": "回到最下"
   },
   "Browser": {
     "toolbar": {
