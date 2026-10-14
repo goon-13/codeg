@@ -6748,7 +6748,7 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
         }
 
         // Orphan rescue: when no entry exists at this contextKey but an
-        // alive connection with the same sessionId exists at another
+        // alive connection for the same session exists at another
         // contextKey, rekey instead of creating a fresh backend connection.
         // This handles tab close+reopen for newly-created conversations:
         // the original tab's contextKey (e.g. "new-XXXX") differs from
@@ -6756,21 +6756,70 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
         // {agent}-{convId}"), and the orphaned connection holds the
         // in-flight live state (live_message, pending_permission, etc.)
         // that we want to preserve across the remount.
-        if (!existing && sessionId) {
+        //
+        // The first-send window is the same remount *before* session_started:
+        // Official marks Connected with session_id still None, so the
+        // remounted surface arrives with sessionId undefined. Steal only a
+        // unique sessionless live owner of this (agent, cwd) — a named
+        // session belongs to a persisted conversation and must not be claimed
+        // by a brand-new surface.
+        if (!existing) {
           let orphanKey: string | null = null
           let orphanConn: ConnectionState | null = null
-          for (const [key, conn] of storeRef.current.connections) {
-            if (key === contextKey) continue
-            if (
-              conn.sessionId === sessionId &&
-              conn.agentType === agentType &&
-              conn.workingDir === nextWorkingDir &&
-              conn.status !== "disconnected" &&
-              conn.status !== "error"
-            ) {
-              orphanKey = key
-              orphanConn = conn
-              break
+          if (sessionId) {
+            for (const [key, conn] of storeRef.current.connections) {
+              if (key === contextKey) continue
+              if (
+                conn.sessionId === sessionId &&
+                conn.agentType === agentType &&
+                conn.workingDir === nextWorkingDir &&
+                conn.status !== "disconnected" &&
+                conn.status !== "error"
+              ) {
+                orphanKey = key
+                orphanConn = conn
+                break
+              }
+            }
+          } else if (
+            contextKey.startsWith("conv-") ||
+            contextKey.startsWith("canvas-node-") ||
+            contextKey.startsWith("shelf:")
+          ) {
+            // First-send remount: sidebar `new-*` → `conv-*`, canvas
+            // `canvas-draft-*` → `canvas-node-*`, shelf `shelf-draft:*` →
+            // `shelf:*`. A second New Conversation is itself `new-*` /
+            // `canvas-draft-*` / `shelf-draft:*` and must spawn.
+            const draftPrefix = contextKey.startsWith("canvas-node-")
+              ? "canvas-draft-"
+              : contextKey.startsWith("shelf:")
+                ? "shelf-draft:"
+                : "new-"
+            const candidates: Array<[string, ConnectionState]> = []
+            for (const [key, conn] of storeRef.current.connections) {
+              if (key === contextKey) continue
+              if (!key.startsWith(draftPrefix)) continue
+              if (conn.agentType !== agentType) continue
+              if (conn.workingDir !== nextWorkingDir) continue
+              if (conn.status === "disconnected" || conn.status === "error") {
+                continue
+              }
+              if (conn.isViewer || conn.isDelegationChild) continue
+              if (conn.sessionId) continue
+              candidates.push([key, conn])
+            }
+            const prompting = candidates.filter(
+              ([, conn]) => conn.status === "prompting"
+            )
+            const pick =
+              prompting.length === 1
+                ? prompting[0]
+                : candidates.length === 1
+                  ? candidates[0]
+                  : null
+            if (pick) {
+              orphanKey = pick[0]
+              orphanConn = pick[1]
             }
           }
           if (orphanKey && orphanConn) {

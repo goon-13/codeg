@@ -140,6 +140,12 @@ interface CanvasConversationSurfaceProps {
   folderPickerOverride?: ConversationFolderPickerOverride
   /** Focus/priority hint for the connection lifecycle and the transcript. */
   isActive?: boolean
+  /**
+   * Read at unmount: true when this surface is being taken down because the
+   * shelf card collapsed (or a tab reparented), not because the user left.
+   * The remounted surface re-attaches to the same connection.
+   */
+  isTransientUnmount?: () => boolean
   className?: string
 }
 
@@ -195,6 +201,7 @@ export function CanvasConversationSurface({
   onSaveSelectionAsNote,
   folderPickerOverride,
   isActive = true,
+  isTransientUnmount,
   className,
 }: CanvasConversationSurfaceProps) {
   const t = useTranslations("Canvas")
@@ -416,6 +423,7 @@ export function CanvasConversationSurface({
     // another surface (a workspace tab, another window), join that connection
     // instead of spawning a second agent for the same session.
     conversationId: dbConversationId ?? undefined,
+    isTransientUnmount,
   })
   const handleSetConfigOption = useCallback(
     (configId: string, valueId: string) => {

@@ -112,9 +112,15 @@ export function shouldDisconnectOnUnmount(args: {
   isViewer: boolean
   backgroundOutstanding: number
   transientUnmount?: boolean
+  sessionId?: string | null
 }): boolean {
   if (args.transientUnmount) return false
   if (args.isViewer) return true
+  // Official marks Connected while session_id is still None. Unmount in that
+  // window would acpDisconnect a spawn the remounted surface cannot rekey —
+  // orphan rescue used to require a sessionId. Preview-tab reclaim
+  // (`disconnectIfIdle`) still tears idle sessionless owners down.
+  if (args.status === "connected" && args.sessionId === null) return false
   return !isConnectionBusy(args)
 }
 
@@ -218,6 +224,10 @@ export function useConnectionLifecycle({
   useEffect(() => {
     sessionIdRef.current = sessionId
   }, [sessionId])
+  const liveSessionIdRef = useRef(conn.sessionId)
+  useEffect(() => {
+    liveSessionIdRef.current = conn.sessionId
+  }, [conn.sessionId])
   const conversationIdRef = useRef(conversationId)
   useEffect(() => {
     conversationIdRef.current = conversationId
@@ -376,8 +386,9 @@ export function useConnectionLifecycle({
   // Clean up on unmount (e.g. tab closed): disconnect the ACP connection
   // so it doesn't leak, and remove lingering tasks.
   // However, if the agent is actively prompting (generating a response),
-  // keep it alive so it can finish in the background — the idle sweep
-  // will clean it up once it transitions back to "connected".
+  // still connecting, or Connected with no session_id yet (first-send
+  // remount), keep it alive so the remounted surface can rekey it. The idle
+  // sweep reclaims it once it is a named idle session.
   useEffect(() => {
     return () => {
       // Owners keep a prompting agent alive in the background to finish the
@@ -398,6 +409,7 @@ export function useConnectionLifecycle({
           isViewer: isViewerRef.current,
           backgroundOutstanding: backgroundOutstandingRef.current,
           transientUnmount: isTransientUnmountRef.current?.() === true,
+          sessionId: liveSessionIdRef.current,
         })
       ) {
         connDisconnectRef.current().catch(() => {})

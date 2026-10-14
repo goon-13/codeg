@@ -169,6 +169,37 @@ pub async fn update_status_if(
     Ok(result.rows_affected > 0)
 }
 
+/// Boot recovery for ordinary chats. A fresh process has no live ACP
+/// connection, so every still-`in_progress` row is an interruption. Cancel
+/// them (never `pending_review` or `completed` — the turn did not finish).
+///
+/// Only sound while this process holds the data-dir engine lock. Callers in
+/// `codeg_server` and desktop setup gate on `automation::build_engine`
+/// returning `Some`, and they await this before accepting new connections.
+pub async fn boot_cancel_orphaned_in_progress(
+    conn: &DatabaseConnection,
+) -> Result<u64, DbError> {
+    let rows = conversation::Entity::find()
+        .filter(conversation::Column::Status.eq(conversation::ConversationStatus::InProgress))
+        .filter(conversation::Column::DeletedAt.is_null())
+        .all(conn)
+        .await?;
+    let mut n = 0u64;
+    for row in rows {
+        if update_status_if(
+            conn,
+            row.id,
+            conversation::ConversationStatus::InProgress,
+            conversation::ConversationStatus::Cancelled,
+        )
+        .await?
+        {
+            n += 1;
+        }
+    }
+    Ok(n)
+}
+
 /// Manual rename: set the title AND lock it. Once locked, the per-turn
 /// auto-title backfill ([`refresh_auto_title`]) leaves this row alone, so the
 /// user's hand-picked name survives every subsequent session-file parse.
@@ -3918,5 +3949,74 @@ mod tests {
                 src
             );
         }
+    }
+
+    #[tokio::test]
+    async fn boot_cancel_orphaned_in_progress_cancels_only_in_progress() {
+        let db = fresh_in_memory_db().await;
+        let folder = seed_folder(&db, "/tmp/codeg-boot-cancel-in-progress").await;
+        let spinning_a = create(&db.conn, folder, AgentType::Grok, Some("a".into()), None)
+            .await
+            .expect("a");
+        let spinning_b = create(&db.conn, folder, AgentType::Grok, Some("b".into()), None)
+            .await
+            .expect("b");
+        let review = create(&db.conn, folder, AgentType::Grok, Some("c".into()), None)
+            .await
+            .expect("c");
+        update_status(
+            &db.conn,
+            review.id,
+            conversation::ConversationStatus::PendingReview,
+        )
+        .await
+        .expect("review");
+        let done = create(&db.conn, folder, AgentType::Grok, Some("d".into()), None)
+            .await
+            .expect("d");
+        update_status(
+            &db.conn,
+            done.id,
+            conversation::ConversationStatus::Completed,
+        )
+        .await
+        .expect("done");
+
+        assert_eq!(
+            boot_cancel_orphaned_in_progress(&db.conn).await.expect("boot"),
+            2
+        );
+        assert_eq!(
+            boot_cancel_orphaned_in_progress(&db.conn)
+                .await
+                .expect("second"),
+            0,
+            "a second boot must not touch rows already cancelled"
+        );
+
+        async fn status(conn: &DatabaseConnection, id: i32) -> conversation::ConversationStatus {
+            conversation::Entity::find_by_id(id)
+                .one(conn)
+                .await
+                .expect("query")
+                .expect("row")
+                .status
+        }
+        assert_eq!(
+            status(&db.conn, spinning_a.id).await,
+            conversation::ConversationStatus::Cancelled
+        );
+        assert_eq!(
+            status(&db.conn, spinning_b.id).await,
+            conversation::ConversationStatus::Cancelled
+        );
+        assert_eq!(
+            status(&db.conn, review.id).await,
+            conversation::ConversationStatus::PendingReview
+        );
+        assert_eq!(
+            status(&db.conn, done.id).await,
+            conversation::ConversationStatus::Completed
+        );
     }
 }
