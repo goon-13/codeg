@@ -54,6 +54,7 @@ const h = vi.hoisted(() => {
 
   return {
     surfaceRendered: vi.fn(),
+    registerLiveSurfaceKeys: vi.fn(),
     createConversation: vi.fn().mockResolvedValue(42),
     moveConversation: vi.fn().mockResolvedValue(undefined),
     folders: [folder(10, "Alpha"), folder(20, "Beta")],
@@ -70,6 +71,12 @@ vi.mock("../canvas-conversation-surface", () => ({
     h.surfaceRendered(props)
     return <div data-testid="conversation-surface" />
   },
+}))
+
+vi.mock("@/contexts/acp-connections-context", () => ({
+  useAcpActions: () => ({
+    registerLiveSurfaceKeys: h.registerLiveSurfaceKeys,
+  }),
 }))
 
 vi.mock("@/lib/api", () => ({
@@ -101,6 +108,7 @@ function renderShelf() {
 beforeEach(() => {
   localStorage.clear()
   h.surfaceRendered.mockClear()
+  h.registerLiveSurfaceKeys.mockClear()
   h.createConversation.mockClear()
   h.moveConversation.mockClear()
 })
@@ -296,5 +304,55 @@ describe("ShelfView", () => {
         localStorage.getItem("workspace:shelf-collapsed-folders") ?? "[]"
       )
     ).toEqual([10, 20])
+  })
+
+  it("registers expanded shelf keys as a live surface source", () => {
+    renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    fireEvent.click(screen.getByText("Review the patch"))
+    const calls = h.registerLiveSurfaceKeys.mock.calls
+    const last = calls[calls.length - 1]
+    expect(last[0]).toBe("shelf")
+    expect([...last[1]].sort()).toEqual(["shelf:7", "shelf:8"])
+  })
+
+  it("drops a key when that card collapses", () => {
+    renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    fireEvent.click(screen.getByText("Review the patch"))
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
+    const last =
+      h.registerLiveSurfaceKeys.mock.calls[
+        h.registerLiveSurfaceKeys.mock.calls.length - 1
+      ]
+    expect(last[0]).toBe("shelf")
+    expect([...last[1]]).toEqual(["shelf:8"])
+  })
+
+  it("clears the shelf source on unmount", () => {
+    const view = renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    view.unmount()
+    const last =
+      h.registerLiveSurfaceKeys.mock.calls[
+        h.registerLiveSurfaceKeys.mock.calls.length - 1
+      ]
+    expect(last[0]).toBe("shelf")
+    expect(last[1].size).toBe(0)
+  })
+
+  it("claims a hydrated expanded card on first paint", () => {
+    localStorage.setItem(
+      "workspace:shelf-expanded-conversations",
+      JSON.stringify([8])
+    )
+    renderShelf()
+    const claimed = h.registerLiveSurfaceKeys.mock.calls.some(
+      (call) =>
+        call[0] === "shelf" &&
+        call[1] instanceof Set &&
+        (call[1] as Set<string>).has("shelf:8")
+    )
+    expect(claimed).toBe(true)
   })
 })

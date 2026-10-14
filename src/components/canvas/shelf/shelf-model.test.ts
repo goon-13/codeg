@@ -9,6 +9,7 @@ import {
   visibleShelfConversations,
   isShelfConversation,
   shelfContextKey,
+  shelfLiveSurfaceKeys,
   sortShelfConversations,
 } from "./shelf-model"
 
@@ -176,5 +177,84 @@ describe("shelf-model", () => {
     expect(shelfContextKey(7)).toBe("shelf:7")
     expect(shelfContextKey(7)).toBe("shelf:7")
     expect(shelfContextKey(8)).toBe("shelf:8")
+  })
+})
+
+describe("shelfLiveSurfaceKeys", () => {
+  it("claims only expanded conversations that are currently shown", () => {
+    const rows = buildShelfRows(
+      [folder(10, { name: "Alpha" })],
+      [
+        conv(7, {
+          folder_id: 10,
+          title: "Fix",
+          status: "in_progress",
+          updated_at: "2026-10-02T00:00:00Z",
+        }),
+        conv(8, {
+          folder_id: 10,
+          title: "Review",
+          status: "pending_review",
+          updated_at: "2026-10-01T00:00:00Z",
+        }),
+        conv(9, {
+          folder_id: 10,
+          title: "Ship",
+          status: "completed",
+          updated_at: "2026-09-01T00:00:00Z",
+        }),
+      ]
+    )
+    const keys = shelfLiveSurfaceKeys(
+      rows,
+      new Set([7, 9]),
+      [7, 8],
+      new Set()
+    )
+    expect([...keys].sort()).toEqual(["shelf:7"])
+  })
+
+  it("includes a completed conversation when the row is showing all", () => {
+    const rows = buildShelfRows(
+      [folder(10, { name: "Alpha" })],
+      [
+        conv(7, {
+          folder_id: 10,
+          title: "Fix",
+          status: "in_progress",
+          updated_at: "2026-10-02T00:00:00Z",
+        }),
+        conv(9, {
+          folder_id: 10,
+          title: "Ship",
+          status: "completed",
+          updated_at: "2026-09-01T00:00:00Z",
+        }),
+      ]
+    )
+    const keys = shelfLiveSurfaceKeys(
+      rows,
+      new Set([9]),
+      [7],
+      new Set([10])
+    )
+    expect([...keys]).toEqual(["shelf:9"])
+  })
+
+  it("returns an empty set when nothing is expanded", () => {
+    const rows = buildShelfRows(
+      [folder(10, { name: "Alpha" })],
+      [
+        conv(7, {
+          folder_id: 10,
+          title: "Fix",
+          status: "in_progress",
+          updated_at: "2026-10-02T00:00:00Z",
+        }),
+      ]
+    )
+    expect(shelfLiveSurfaceKeys(rows, new Set(), null, new Set()).size).toBe(
+      0
+    )
   })
 })
