@@ -358,8 +358,10 @@ describe("ShelfView", () => {
     renderShelf()
     const scroller = screen.getByTestId("shelf-scroller")
     const jump = screen.getByTestId("shelf-jump")
-    expect(jump.className).toMatch(/grid-cols-2/)
+    expect(jump.className).toMatch(/justify-center/)
+    expect(jump.className).toMatch(/gap-1/)
     expect(jump.className).toMatch(/w-\[188px\]/)
+    expect(jump.className).not.toMatch(/grid-cols-2/)
 
     setScrollerMetrics(scroller, {
       scrollTop: 0,
