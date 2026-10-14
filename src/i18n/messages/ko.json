@@ -6724,7 +6724,13 @@
     "addToShelf": "이 대화를 선반에 추가",
     "showShelfConversations": "선반 대화",
     "scrollToTop": "맨 위로",
-    "scrollToBottom": "맨 아래로"
+    "scrollToBottom": "맨 아래로",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down"
   },
   "Browser": {
     "toolbar": {

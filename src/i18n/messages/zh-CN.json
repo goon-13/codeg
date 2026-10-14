@@ -6724,7 +6724,13 @@
     "addToShelf": "将此会话放到货架",
     "showShelfConversations": "货架会话",
     "scrollToTop": "回到最上",
-    "scrollToBottom": "回到最下"
+    "scrollToBottom": "回到最下",
+    "shelfOutline": "货架",
+    "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
+    "shelfOutlineTitle": "编辑货架",
+    "shelfOutlineEmpty": "没有匹配的项目或会话",
+    "shelfMoveUp": "上移",
+    "shelfMoveDown": "下移"
   },
   "Browser": {
     "toolbar": {

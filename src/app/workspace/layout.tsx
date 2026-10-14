@@ -49,6 +49,7 @@ import {
   WorkbenchRouteStrip,
   useHasWorkbenchRouteStrip,
 } from "@/components/workbench/workbench-content"
+import { ShelfKeepAlive } from "@/components/canvas/shelf/shelf-keep-alive"
 import {
   AuxPanelProvider,
   useAuxPanelContext,
@@ -336,7 +337,7 @@ function WorkspaceContent({ children }: { children: React.ReactNode }) {
     [applyLayout, mode]
   )
 
-  const { isConversations } = useWorkbenchRoute()
+  const { isConversations, routeId } = useWorkbenchRoute()
   const hasRouteStrip = useHasWorkbenchRouteStrip()
   const { isOpen: sidebarOpen } = useSidebarContext()
   const { isOpen: auxOpen } = useAuxPanelContext()
@@ -582,7 +583,8 @@ function WorkspaceContent({ children }: { children: React.ReactNode }) {
           </ResizablePanel>
         </ResizablePanelGroup>
       </KeptMountedSurface>
-      {!isConversations ? (
+      <ShelfKeepAlive reserveLeft={leftCornerWidth} />
+      {!isConversations && routeId !== "canvas" ? (
         // `bg-background ws-transparent-bg` matches the conversation surface
         // exactly: opaque background normally, fully transparent (image shows
         // through, no frost) with a workspace background image on — the
@@ -616,7 +618,7 @@ function WorkspaceContent({ children }: { children: React.ReactNode }) {
 
 function MobileWorkspaceContent({ children }: { children: React.ReactNode }) {
   const { mode, activePane } = useWorkspaceView()
-  const { isConversations } = useWorkbenchRoute()
+  const { isConversations, routeId } = useWorkbenchRoute()
   const hasRouteStrip = useHasWorkbenchRouteStrip()
 
   const showConversation =
@@ -651,7 +653,8 @@ function MobileWorkspaceContent({ children }: { children: React.ReactNode }) {
           </section>
         )}
       </KeptMountedSurface>
-      {!isConversations ? (
+      <ShelfKeepAlive />
+      {!isConversations && routeId !== "canvas" ? (
         // Same canvas as the desktop overlay: conversation-identical background
         // (opaque normally, transparent under a workspace background image).
         <div className="absolute inset-0 z-40 flex flex-col bg-background ws-transparent-bg">

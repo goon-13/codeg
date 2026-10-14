@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { WorkbenchPageTitle } from "@/components/workbench/workbench-page-title"
 import type { CanvasBoardSummary } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { useCanvasBoardsStore } from "@/stores/canvas-boards-store"
 import { useCanvasStore } from "@/stores/canvas-store"
 import {
@@ -43,9 +44,9 @@ import {
 
 /**
  * ReactFlow (and the canvas machinery) stays out of the first-paint chunk:
- * the page shell is registered in WORKBENCH_ROUTES, the heavy view loads on
- * first visit. `ssr: false` is moot under static export but explicit — the
- * view reads `window` for viewport math.
+ * the page shell lives in ShelfKeepAlive after the first Session-view visit,
+ * the heavy view loads on first visit. `ssr: false` is moot under static
+ * export but explicit — the view reads `window` for viewport math.
  */
 function CanvasChunkSpinner() {
   return (
@@ -151,28 +152,33 @@ export function CanvasPage() {
     acknowledgeClosedNotice()
   }, [closedNotice, acknowledgeClosedNotice, t])
 
-  if (mode === "shelf") {
-    return (
-      <div className="h-full min-h-0 w-full">
-        <ShelfView />
-      </div>
-    )
-  }
-
-  if (activeBoardId == null) return <CanvasBoardList />
-
   const exportName =
     displayName(board?.board).replace(UNSAFE_FILE_CHARS, "-").trim() || "canvas"
+
   return (
-    <div className="h-full min-h-0 w-full">
-      {/* Keyed by board: every piece of the view's state (viewport, drafts,
-          expansions, selection, live surfaces) is per board, and a remount is
-          what starts it from the next board's own memory. */}
-      <CanvasView
-        key={activeBoardId}
-        boardId={activeBoardId}
-        exportName={exportName}
-      />
+    <div className="relative h-full min-h-0 w-full">
+      <div
+        className={cn(
+          "absolute inset-0 min-h-0",
+          mode !== "shelf" && "conversation-tab-hidden invisible pointer-events-none"
+        )}
+        inert={mode !== "shelf" || undefined}
+      >
+        <ShelfView />
+      </div>
+      {mode === "board" ? (
+        <div className="absolute inset-0 min-h-0">
+          {activeBoardId == null ? (
+            <CanvasBoardList />
+          ) : (
+            <CanvasView
+              key={activeBoardId}
+              boardId={activeBoardId}
+              exportName={exportName}
+            />
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }

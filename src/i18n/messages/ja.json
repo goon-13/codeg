@@ -6724,7 +6724,13 @@
     "addToShelf": "この会話をシェルフに追加",
     "showShelfConversations": "シェルフの会話",
     "scrollToTop": "一番上へ",
-    "scrollToBottom": "一番下へ"
+    "scrollToBottom": "一番下へ",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down"
   },
   "Browser": {
     "toolbar": {

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest"
 import type { DbConversationSummary, FolderDetail } from "@/lib/types"
 import {
+  applyShelfOrder,
   buildShelfRows,
   countShelf,
   defaultVisibleFolderIds,
   defaultVisibleConversationIds,
+  filterShelfMiniRows,
   isActiveShelfConversation,
+  mergePersistedShelfOrder,
+  moveShelfOrderId,
   visibleShelfConversations,
   isShelfConversation,
   shelfContextKey,
@@ -180,81 +184,94 @@ describe("shelf-model", () => {
   })
 })
 
+describe("applyShelfOrder", () => {
+  it("keeps enter order when a conversation becomes newer", () => {
+    const older = buildShelfRows(
+      [folder(10, { name: "A" }), folder(20, { name: "B" })],
+      [
+        conv(1, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+        conv(2, { folder_id: 20, updated_at: "2026-10-01T00:00:00Z" }),
+      ]
+    )
+    const first = applyShelfOrder(older, null)
+    expect(first.rows.map((r) => r.folder.id)).toEqual([10, 20])
+
+    const bumped = buildShelfRows(
+      [folder(10, { name: "A" }), folder(20, { name: "B" })],
+      [
+        conv(1, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+        conv(2, { folder_id: 20, updated_at: "2026-10-03T00:00:00Z" }),
+      ]
+    )
+    const held = applyShelfOrder(bumped, first.snapshot)
+    expect(held.rows.map((r) => r.folder.id)).toEqual([10, 20])
+    expect(held.rows[1].conversations[0].updated_at).toBe(
+      "2026-10-03T00:00:00Z"
+    )
+  })
+})
+
+describe("mergePersistedShelfOrder", () => {
+  it("puts unordered new folders after the user order, newest first", () => {
+    const live = buildShelfRows(
+      [
+        folder(10, { name: "A", last_opened_at: "2026-10-01T00:00:00Z" }),
+        folder(20, { name: "B", last_opened_at: "2026-10-03T00:00:00Z" }),
+        folder(30, { name: "C", last_opened_at: "2026-10-02T00:00:00Z" }),
+      ],
+      []
+    )
+    const merged = mergePersistedShelfOrder(live, [10], null)
+    expect(merged.map((r) => r.folder.id)).toEqual([10, 20, 30])
+  })
+})
+
+describe("moveShelfOrderId", () => {
+  it("moves an id up and clamps at the ends", () => {
+    expect(moveShelfOrderId([10, 20, 30], 20, -1)).toEqual([20, 10, 30])
+    expect(moveShelfOrderId([10, 20, 30], 10, -1)).toEqual([10, 20, 30])
+  })
+})
+
 describe("shelfLiveSurfaceKeys", () => {
   it("claims only expanded conversations that are currently shown", () => {
     const rows = buildShelfRows(
-      [folder(10, { name: "Alpha" })],
+      [folder(10)],
       [
-        conv(7, {
-          folder_id: 10,
-          title: "Fix",
-          status: "in_progress",
-          updated_at: "2026-10-02T00:00:00Z",
-        }),
-        conv(8, {
-          folder_id: 10,
-          title: "Review",
-          status: "pending_review",
-          updated_at: "2026-10-01T00:00:00Z",
-        }),
-        conv(9, {
-          folder_id: 10,
-          title: "Ship",
-          status: "completed",
-          updated_at: "2026-09-01T00:00:00Z",
-        }),
+        conv(7, { folder_id: 10, status: "in_progress" }),
+        conv(9, { folder_id: 10, status: "completed" }),
       ]
     )
-    const keys = shelfLiveSurfaceKeys(
-      rows,
-      new Set([7, 9]),
-      [7, 8],
-      new Set()
-    )
-    expect([...keys].sort()).toEqual(["shelf:7"])
+    const keys = shelfLiveSurfaceKeys(rows, new Set([7, 9]), [7])
+    expect([...keys]).toEqual(["shelf:7"])
+  })
+})
+
+describe("filterShelfMiniRows", () => {
+  const rows = buildShelfRows(
+    [folder(10, { name: "Alpha" }), folder(20, { name: "Beta" })],
+    [
+      conv(7, { folder_id: 10, title: "Fix the flaky test" }),
+      conv(8, { folder_id: 10, title: "Review the patch" }),
+      conv(9, { folder_id: 20, title: "Ship the shelf" }),
+    ]
+  )
+
+  it("returns all rows when the query is blank", () => {
+    expect(filterShelfMiniRows(rows, "  ").map((r) => r.folder.id)).toEqual([
+      10, 20,
+    ])
   })
 
-  it("includes a completed conversation when the row is showing all", () => {
-    const rows = buildShelfRows(
-      [folder(10, { name: "Alpha" })],
-      [
-        conv(7, {
-          folder_id: 10,
-          title: "Fix",
-          status: "in_progress",
-          updated_at: "2026-10-02T00:00:00Z",
-        }),
-        conv(9, {
-          folder_id: 10,
-          title: "Ship",
-          status: "completed",
-          updated_at: "2026-09-01T00:00:00Z",
-        }),
-      ]
-    )
-    const keys = shelfLiveSurfaceKeys(
-      rows,
-      new Set([9]),
-      [7],
-      new Set([10])
-    )
-    expect([...keys]).toEqual(["shelf:9"])
+  it("keeps a whole row when the folder name matches", () => {
+    const hit = filterShelfMiniRows(rows, "alp")
+    expect(hit.map((r) => r.folder.id)).toEqual([10])
+    expect(hit[0].conversations.map((c) => c.id)).toEqual([7, 8])
   })
 
-  it("returns an empty set when nothing is expanded", () => {
-    const rows = buildShelfRows(
-      [folder(10, { name: "Alpha" })],
-      [
-        conv(7, {
-          folder_id: 10,
-          title: "Fix",
-          status: "in_progress",
-          updated_at: "2026-10-02T00:00:00Z",
-        }),
-      ]
-    )
-    expect(shelfLiveSurfaceKeys(rows, new Set(), null, new Set()).size).toBe(
-      0
-    )
+  it("keeps only matching conversations when the title matches", () => {
+    const hit = filterShelfMiniRows(rows, "shelf")
+    expect(hit.map((r) => r.folder.id)).toEqual([20])
+    expect(hit[0].conversations.map((c) => c.id)).toEqual([9])
   })
 })

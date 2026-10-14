@@ -206,9 +206,7 @@ export const ChatInput = memo(function ChatInput({
         onFocus={onFocus}
         defaultPath={defaultPath}
         disabled={
-          allowOfflineCompose
-            ? false
-            : (!isConnected && !isPrompting) || selectorsLoading
+          allowOfflineCompose ? false : !isConnected && !isPrompting
         }
         isPrompting={isPrompting}
         onCancel={onCancel}

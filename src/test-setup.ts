@@ -62,3 +62,29 @@ if (typeof Range !== "undefined") {
       y: 0,
     }) as DOMRect
 }
+
+// Node 24's jsdom no longer exposes localStorage unless --localstorage-file
+// is set. Shelf storage tests read/write it directly.
+if (typeof globalThis !== "undefined" && !globalThis.localStorage) {
+  const store = new Map<string, string>()
+  const localStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, String(value))
+    },
+    removeItem: (key: string) => {
+      store.delete(key)
+    },
+    clear: () => {
+      store.clear()
+    },
+    key: (index: number) => [...store.keys()][index] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+  Object.defineProperty(globalThis, "localStorage", { value: localStorage })
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "localStorage", { value: localStorage })
+  }
+}

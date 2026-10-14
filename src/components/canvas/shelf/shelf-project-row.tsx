@@ -28,16 +28,15 @@ interface ShelfProjectRowViewProps {
   collapsed: boolean
   expandedIds: ReadonlySet<number>
   visibleConversationIds: number[] | null
-  showAllConversations: boolean
   moveTargets: MoveTarget[]
   onToggleCollapsed: () => void
   onToggleExpand: (conversationId: number) => void
   onHideProjectFromShelf: () => void
-  onShowAllConversations: (showAll: boolean) => void
   onHideConversationFromShelf: (conversationId: number) => void
   onAddConversationToShelf: (conversationId: number) => void
   onNewConversation: () => void | Promise<void>
   onMove: (conversationId: number, toFolderId: number) => void | Promise<void>
+  isTransientUnmount?: (conversationId: number) => boolean
 }
 
 export function ShelfProjectRowView({
@@ -45,23 +44,22 @@ export function ShelfProjectRowView({
   collapsed,
   expandedIds,
   visibleConversationIds,
-  showAllConversations,
   moveTargets,
   onToggleCollapsed,
   onToggleExpand,
   onHideProjectFromShelf,
-  onShowAllConversations,
   onHideConversationFromShelf,
   onAddConversationToShelf,
   onNewConversation,
   onMove,
+  isTransientUnmount,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
   const filmRef = useRef<HTMLDivElement>(null)
   const shown = visibleShelfConversations(
     row.conversations,
     visibleConversationIds,
-    showAllConversations
+    false
   )
   const shelfIds = new Set(
     visibleShelfConversations(
@@ -95,6 +93,7 @@ export function ShelfProjectRowView({
   return (
     <div
       data-testid="shelf-row"
+      data-shelf-folder={row.folder.id}
       className={cn(
         "flex shrink-0 items-stretch border-b border-border",
         hasExpanded ? "min-h-[560px]" : "min-h-[148px]"
@@ -145,26 +144,6 @@ export function ShelfProjectRowView({
               <ConversationStatusDot status="pending_review" size="sm" />
               {t("waitingCount", { count: row.counts.waiting })}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1">
-              <Button
-                type="button"
-                variant={showAllConversations ? "ghost" : "secondary"}
-                size="xs"
-                aria-pressed={!showAllConversations}
-                onClick={() => onShowAllConversations(false)}
-              >
-                {t("showShelfConversations")}
-              </Button>
-              <Button
-                type="button"
-                variant={showAllConversations ? "secondary" : "ghost"}
-                size="xs"
-                aria-pressed={showAllConversations}
-                onClick={() => onShowAllConversations(true)}
-              >
-                {t("showAllSessions")}
-              </Button>
-            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -199,6 +178,11 @@ export function ShelfProjectRowView({
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
             onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
             onAddToShelf={() => onAddConversationToShelf(conversation.id)}
+            isTransientUnmount={
+              isTransientUnmount
+                ? () => isTransientUnmount(conversation.id)
+                : undefined
+            }
           />
         ))}
         {shown.length === 0 ? (

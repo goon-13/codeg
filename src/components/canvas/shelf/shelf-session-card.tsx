@@ -1,5 +1,13 @@
 "use client"
 
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import { Plus, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -27,6 +35,40 @@ import { shelfContextKey } from "./shelf-model"
 const SHELF_EXPANDED_WIDTH = 520
 const SHELF_EXPANDED_HEIGHT = 560
 
+type ShelfComposerFocus = {
+  activeKey: string | null
+  claim: (key: string) => void
+}
+
+const ShelfComposerFocusContext = createContext<ShelfComposerFocus>({
+  activeKey: null,
+  claim: () => {},
+})
+
+export function ShelfComposerFocusProvider({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const [activeKey, setActiveKey] = useState<string | null>(null)
+  const claim = useCallback((key: string) => {
+    setActiveKey((current) => (current === key ? current : key))
+  }, [])
+  const value = useMemo(
+    () => ({ activeKey, claim }),
+    [activeKey, claim]
+  )
+  return (
+    <ShelfComposerFocusContext.Provider value={value}>
+      {children}
+    </ShelfComposerFocusContext.Provider>
+  )
+}
+
+function useShelfComposerFocus() {
+  return useContext(ShelfComposerFocusContext)
+}
+
 interface MoveTarget {
   id: number
   name: string
@@ -41,6 +83,7 @@ interface ShelfSessionCardProps {
   onMove: (toFolderId: number) => void
   onHideFromShelf: () => void
   onAddToShelf: () => void
+  isTransientUnmount?: () => boolean
 }
 
 export function ShelfSessionCard({
@@ -52,13 +95,22 @@ export function ShelfSessionCard({
   onMove,
   onHideFromShelf,
   onAddToShelf,
+  isTransientUnmount: _isTransientUnmount,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
+  const { activeKey, claim } = useShelfComposerFocus()
+  const surfaceKey = shelfContextKey(conversation.id)
+  const composerActive = expanded && activeKey === surfaceKey
   const status = conversation.status as ConversationStatus
   const running = status === "in_progress"
   const title = conversation.title
     ? formatConversationTitle(conversation.title)
     : t("untitled")
+
+  function expandAndClaim() {
+    if (!expanded) claim(surfaceKey)
+    onToggleExpand()
+  }
 
   const moveMenu = (
     <ContextMenuContent>
@@ -112,7 +164,9 @@ export function ShelfSessionCard({
               )
               event.dataTransfer.effectAllowed = "move"
             }}
-            onClick={onToggleExpand}
+            data-shelf-card={conversation.id}
+            data-testid="shelf-card-title"
+            onClick={expandAndClaim}
             className={cn(
               "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
               "border-foreground/15 hover:border-foreground/30",
@@ -157,8 +211,10 @@ export function ShelfSessionCard({
 
   return (
     <div
+      data-shelf-card={conversation.id}
       className="flex w-[520px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card ring-2 ring-primary/25"
       style={{ width: SHELF_EXPANDED_WIDTH, height: SHELF_EXPANDED_HEIGHT }}
+      onPointerDownCapture={() => claim(surfaceKey)}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-2.5 py-1.5">
         <AgentIcon
@@ -192,7 +248,7 @@ export function ShelfSessionCard({
         contextKey={shelfContextKey(conversation.id)}
         conversationId={conversation.id}
         agentType={conversation.agent_type}
-        isActive={expanded}
+        isActive={composerActive}
         // Bound conversation: show its own folder and do not move the
         // workspace tab. The chip is display-only (`editable: false`).
         folderPickerOverride={{
