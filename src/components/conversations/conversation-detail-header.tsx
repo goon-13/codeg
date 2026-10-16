@@ -181,6 +181,7 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
   // Live tab, not a dialog snapshot: discard the inline draft. Do not commit it.
   useEffect(() => {
     editorRef.current?.cancel()
+    setEditing(false)
   }, [conversationId])
 
   function handleTitleKeyDown(event: KeyboardEvent) {

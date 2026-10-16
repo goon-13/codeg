@@ -181,6 +181,18 @@ describe("ConversationDetailHeader inline title", () => {
     expect(h.updateConversationTitle).not.toHaveBeenCalled()
   })
 
+  it("switching to draft while inline editing cancels", () => {
+    const { getByTestId, queryByTestId, rerender } = render(
+      withIntl(<ConversationDetailHeader {...A} />)
+    )
+    fireEvent.click(getByTestId("conversation-header-title"))
+    expect(getByTestId("inline-title-editor-input")).toBeTruthy()
+    const draft = { ...A, conversationId: null, title: "" }
+    rerender(withIntl(<ConversationDetailHeader {...draft} />))
+    expect(queryByTestId("inline-title-editor-input")).toBeNull()
+    expect(h.updateConversationTitle).not.toHaveBeenCalled()
+  })
+
   it("F2 on focused header title starts inline", () => {
     const { getByTestId } = render(withIntl(<ConversationDetailHeader {...A} />))
     const rest = getByTestId("conversation-header-title")
