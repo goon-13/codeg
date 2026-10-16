@@ -2117,6 +2117,7 @@
       "restore": "还原",
       "attachToCurrentSession": "添加到会话",
       "rename": "重命名",
+      "editTitle": "重命名标题",
       "status": "状态",
       "delete": "删除",
       "importLocalSessions": "导入本地会话",
@@ -4005,6 +4006,9 @@
     },
     "toasts": {
       "cloneFailed": "克隆仓库失败"
+    },
+    "cluster": {
+      "editTitle": "重命名主题"
     }
   },
   "ProjectBoot": {
@@ -6606,6 +6610,7 @@
     "showAllProjects": "显示全部项目",
     "showWorkingProjects": "货架项目",
     "hideFromShelf": "从货架拿掉此会话",
+    "renameShelfTitle": "重命名这条会话",
     "childCount": "{count} 个子智能体",
     "regionMenu": "区域选项",
     "rename": "重命名",

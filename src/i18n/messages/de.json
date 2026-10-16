@@ -2117,6 +2117,7 @@
       "restore": "Wiederherstellen",
       "attachToCurrentSession": "Zur Sitzung hinzufügen",
       "rename": "Umbenennen",
+      "editTitle": "Titel umbenennen",
       "status": "Zustand",
       "delete": "Löschen",
       "importLocalSessions": "Lokale Sitzungen importieren",
@@ -4005,6 +4006,9 @@
     },
     "toasts": {
       "cloneFailed": "Repository konnte nicht geklont werden"
+    },
+    "cluster": {
+      "editTitle": "Thema umbenennen"
     }
   },
   "ProjectBoot": {
@@ -6606,6 +6610,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "renameShelfTitle": "Diese Unterhaltung umbenennen",
     "childCount": "{count} Subagenten",
     "regionMenu": "Regionsoptionen",
     "rename": "Umbenennen",

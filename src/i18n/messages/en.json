@@ -2117,6 +2117,7 @@
       "restore": "Restore",
       "attachToCurrentSession": "Add to session",
       "rename": "Rename",
+      "editTitle": "Rename title",
       "status": "Status",
       "delete": "Delete",
       "importLocalSessions": "Import local sessions",
@@ -4005,6 +4006,9 @@
     },
     "toasts": {
       "cloneFailed": "Failed to clone repository"
+    },
+    "cluster": {
+      "editTitle": "Rename theme"
     }
   },
   "ProjectBoot": {
@@ -6606,6 +6610,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "renameShelfTitle": "Rename this conversation",
     "childCount": "{count} sub-agents",
     "regionMenu": "Region options",
     "rename": "Rename",

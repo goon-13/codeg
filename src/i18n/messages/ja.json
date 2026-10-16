@@ -2117,6 +2117,7 @@
       "restore": "元に戻す",
       "attachToCurrentSession": "セッションに追加",
       "rename": "名前を変更",
+      "editTitle": "タイトルを変更",
       "status": "ステータス",
       "delete": "削除",
       "importLocalSessions": "ローカルセッションをインポート",
@@ -4005,6 +4006,9 @@
     },
     "toasts": {
       "cloneFailed": "リポジトリのクローンに失敗しました"
+    },
+    "cluster": {
+      "editTitle": "テーマ名を変更"
     }
   },
   "ProjectBoot": {
@@ -6606,6 +6610,7 @@
     "showAllProjects": "すべてのプロジェクトを表示",
     "showWorkingProjects": "シェルフのプロジェクト",
     "hideFromShelf": "この会話をシェルフから外す",
+    "renameShelfTitle": "この会話の名前を変更",
     "childCount": "サブエージェント {count} 件",
     "regionMenu": "リージョンのオプション",
     "rename": "名前を変更",

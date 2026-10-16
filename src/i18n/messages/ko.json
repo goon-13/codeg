@@ -2117,6 +2117,7 @@
       "restore": "복원",
       "attachToCurrentSession": "세션에 추가",
       "rename": "이름 변경",
+      "editTitle": "제목 바꾸기",
       "status": "상태",
       "delete": "삭제",
       "importLocalSessions": "로컬 세션 가져오기",
@@ -4005,6 +4006,9 @@
     },
     "toasts": {
       "cloneFailed": "저장소 클론에 실패했습니다"
+    },
+    "cluster": {
+      "editTitle": "테마 이름 바꾸기"
     }
   },
   "ProjectBoot": {
@@ -6606,6 +6610,7 @@
     "showAllProjects": "모든 프로젝트 표시",
     "showWorkingProjects": "선반 프로젝트",
     "hideFromShelf": "이 대화를 선반에서 제거",
+    "renameShelfTitle": "이 대화 이름 바꾸기",
     "childCount": "하위 에이전트 {count}개",
     "regionMenu": "영역 옵션",
     "rename": "이름 바꾸기",
