@@ -4,6 +4,7 @@ import {
   memo,
   useState,
   useCallback,
+  useRef,
   type CSSProperties,
   type FocusEvent,
 } from "react"
@@ -30,6 +31,14 @@ import type { DbConversationSummary, ConversationStatus } from "@/lib/types"
 import { STATUS_ORDER } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { formatConversationTitle } from "@/lib/conversation-title"
+import {
+  normalizeTitle,
+  SESSION_TITLE_MAX_CHARS,
+} from "@/lib/normalize-title"
+import {
+  InlineTitleEditor,
+  type InlineTitleEditorHandle,
+} from "@/components/shared/inline-title-editor"
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -202,6 +211,7 @@ interface SidebarConversationCardProps {
   expanded?: boolean
   /** Toggle this conversation's sub-session subtree (lazily loads on expand). */
   onToggleExpand?: (id: number) => void
+  onLeaveCluster?: (id: number) => void
 }
 
 export const SidebarConversationCard = memo(function SidebarConversationCard({
@@ -220,16 +230,22 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
   hasChildren = false,
   expanded = false,
   onToggleExpand,
+  onLeaveCluster,
 }: SidebarConversationCardProps) {
   const t = useTranslations("Folder.conversationCard")
   const ime = useImeGuard()
   const tSidebar = useTranslations("Folder.sidebar")
   const tStatus = useTranslations("Folder.statusLabels")
   const tDetails = useTranslations("Folder.sessionDetails")
+  const tCluster = useTranslations("Folder.cluster")
+  const tSide = useTranslations("Folder.side")
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [renameValue, setRenameValue] = useState("")
+  const [editing, setEditing] = useState(false)
+  const editorRef = useRef<InlineTitleEditorHandle>(null)
+  const chromeRef = useRef<HTMLElement | null>(null)
   const [attachTabId, setAttachTabId] = useState<string | null>(null)
   const [hoverOpen, setHoverOpen] = useState(false)
   const [newTagOpen, setNewTagOpen] = useState(false)
@@ -297,16 +313,30 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
     emitAttachSessionToSession({ tabId, conversation })
   }, [conversation])
 
+  const handleEditingChange = (next: boolean) => {
+    setEditing(next)
+    if (next) setHoverOpen(false)
+    if (!next) queueMicrotask(() => chromeRef.current?.focus())
+  }
+
   const handleRenameOpen = useCallback(() => {
+    editorRef.current?.cancel()
     setRenameValue(conversation.title || "")
     setRenameOpen(true)
   }, [conversation.title])
 
   const handleRenameConfirm = useCallback(async () => {
-    const trimmed = renameValue.trim()
-    if (trimmed && trimmed !== conversation.title) {
-      await onRename(conversation.id, trimmed)
+    const stored = conversation.title || ""
+    if (renameValue === stored || renameValue.trim() === stored.trim()) {
+      setRenameOpen(false)
+      return
     }
+    const next = normalizeTitle(renameValue, SESSION_TITLE_MAX_CHARS)
+    if (next === null) {
+      setRenameOpen(false)
+      return
+    }
+    await onRename(conversation.id, next)
     setRenameOpen(false)
   }, [renameValue, conversation.id, conversation.title, onRename])
 
@@ -373,8 +403,15 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                       : "hover:bg-[color-mix(in_oklab,var(--sidebar-accent),var(--sidebar-foreground)_2%)]"
                   )}
                 >
-                  <button
+                  {(() => {
+                    const RowChrome = editing ? "div" : "button"
+                    return (
+                  <RowChrome
+                    ref={chromeRef as never}
                     data-conversation-id={conversation.id}
+                    data-side-row={
+                      conversation.kind === "side" ? "" : undefined
+                    }
                     onClick={handleClick}
                     onDoubleClick={handleDblClick}
                     className={cn(
@@ -444,15 +481,30 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                     rather than at the far end. A long title still yields
                     first: its basis is zero, so the chips take their width
                     before it takes the rest. */}
-                    <span
+                    <InlineTitleEditor
+                      ref={editorRef}
+                      value={conversation.title || ""}
+                      restLabel={
+                        formatConversationTitle(conversation.title) ||
+                        t("untitledConversation")
+                      }
+                      maxChars={SESSION_TITLE_MAX_CHARS}
+                      editing={editing}
+                      onEditingChange={handleEditingChange}
+                      restOpensEditor
+                      onCommit={(next) => onRename(conversation.id, next)}
                       className={cn(
                         "relative min-w-0 max-w-max flex-1 truncate text-[0.875rem] font-normal",
                         isOpenInTab && "text-primary"
                       )}
-                    >
-                      {formatConversationTitle(conversation.title) ||
-                        t("untitledConversation")}
-                    </span>
+                      aria-label={t("editTitle")}
+                      data-testid="sidebar-conversation-title"
+                    />
+                    {conversation.kind === "side" ? (
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-border px-1.5 text-xs leading-none text-muted-foreground">
+                        {tSide("tag")}
+                      </span>
+                    ) : null}
                     {/* Inline, inside the row's fixed 2rem height: the list's
                     virtualizer and rail geometry assume one line per row. The
                     full set of tags is in the hover bubble. Capped so the
@@ -485,7 +537,9 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                         </span>
                       </span>
                     ) : null}
-                  </button>
+                  </RowChrome>
+                    )
+                  })()}
 
                   {/* Expand/collapse affordance for delegation children. It overlays
                   the agent icon at the rail axis: idle shows the icon, and
@@ -739,6 +793,11 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                 )}
               </ContextMenuSubContent>
             </ContextMenuSub>
+            {onLeaveCluster && conversation.cluster_id != null && !isSubsession ? (
+              <ContextMenuItem onSelect={() => onLeaveCluster(conversation.id)}>
+                {tCluster("leave")}
+              </ContextMenuItem>
+            ) : null}
             <ContextMenuSeparator />
             <ContextMenuItem
               variant="destructive"
