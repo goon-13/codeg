@@ -44,6 +44,13 @@ import {
 } from "lucide-react"
 import { useActiveFolder } from "@/contexts/active-folder-context"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
+import {
+  loadClusterExpanded,
+  saveClusterExpanded,
+  useConversationClustersStore,
+} from "@/stores/conversation-clusters-store"
+import { SidebarClusterHeader } from "@/components/conversations/cluster/sidebar-cluster-header"
+import { setConversationCluster } from "@/lib/api"
 import { useTabActions, useTabStore } from "@/contexts/tab-context"
 import { useWorkbenchRoute } from "@/contexts/workbench-route-context"
 import { useTerminalContext } from "@/contexts/terminal-context"
@@ -117,6 +124,7 @@ import {
   layoutToEntries,
   locateEntry,
   reconcileLayout,
+  clusterScrollTarget,
   computeStickyState,
   flatIndexOfConversation,
   folderHeaderFlatIndices,
@@ -1017,6 +1025,23 @@ export function SidebarConversationList({
 
   const { sortedTypes: availableAgents, fresh: availableAgentsFresh } =
     useSortedAvailableAgents()
+  const [clusterExpanded, setClusterExpanded] = useState<Record<number, boolean>>(
+    () => loadClusterExpanded()
+  )
+  const clustersById = useConversationClustersStore((s) => s.clustersById)
+  const renameCluster = useConversationClustersStore((s) => s.renameCluster)
+  const deleteCluster = useConversationClustersStore((s) => s.deleteCluster)
+  const toggleCluster = useCallback((clusterId: number) => {
+    setClusterExpanded((prev) => {
+      const currentlyExpanded = prev[clusterId] !== false
+      const next = { ...prev, [clusterId]: !currentlyExpanded }
+      saveClusterExpanded(next)
+      return next
+    })
+  }, [])
+  const handleLeaveCluster = useCallback(async (conversationId: number) => {
+    await setConversationCluster({ conversationId, clusterId: null })
+  }, [])
   const [folderExpanded, setFolderExpanded] = useState<Record<number, boolean>>(
     {}
   )
@@ -1579,6 +1604,8 @@ export function SidebarConversationList({
         layout,
         groupExpanded: folderGroupExpanded,
         hideEmptyFolders: tagFilterActive,
+        clustersById,
+        clusterExpanded,
       }),
     [
       pinned,
@@ -1603,6 +1630,8 @@ export function SidebarConversationList({
       layout,
       folderGroupExpanded,
       tagFilterActive,
+      clustersById,
+      clusterExpanded,
     ]
   )
 
@@ -1776,14 +1805,66 @@ export function SidebarConversationList({
           pendingScrollRef.current = true
           return
         }
+        // Cluster, parent row, then folder group — each step waits one render
+        // so the flat model actually contains the target before scrolling.
+        if (
+          conv.cluster_id != null &&
+          clusterExpanded[conv.cluster_id] === false
+        ) {
+          const clusterId = conv.cluster_id
+          setClusterExpanded((prev) => {
+            const next = { ...prev, [clusterId]: true }
+            saveClusterExpanded(next)
+            return next
+          })
+          pendingScrollRef.current = true
+          return
+        }
+        if (
+          conv.parent_id != null &&
+          !conversationExpanded.has(conv.parent_id)
+        ) {
+          const parentId = conv.parent_id
+          setConversationExpanded((prev) => {
+            const next = new Set(prev)
+            next.add(parentId)
+            saveConversationExpanded([...next])
+            return next
+          })
+          void ensureChildrenLoaded(parentId)
+          pendingScrollRef.current = true
+          return
+        }
+        const groupCandidates = new Set([conv.folder_id, displayFolderId])
+        let groupId: number | null = null
+        for (const [gid, members] of layoutRef.current.membersByGroup) {
+          if (members.some((id) => groupCandidates.has(id))) {
+            groupId = gid
+            break
+          }
+        }
+        if (groupId != null && folderGroupExpanded[groupId] === false) {
+          const expandGroupId = groupId
+          setFolderGroupExpanded((prev) => {
+            const next = { ...prev, [expandGroupId]: true }
+            saveFolderGroupExpanded(next)
+            return next
+          })
+          pendingScrollRef.current = true
+          return
+        }
       }
       // Off-screen virtualized rows are not in the DOM, so resolve the flat row
-      // index and let virtua scroll to it.
-      const index = flatIndexOfConversation(
+      // index and let virtua scroll to it. A clustered member scrolls to the
+      // cluster header; everything else stays on the conversation row.
+      const scrolled = clusterScrollTarget(
         rowsRef.current,
         targetId,
         targetAgent
       )
+      const index =
+        scrolled?.index ??
+        flatIndexOfConversation(rowsRef.current, targetId, targetAgent)
       if (index < 0) return
       virtualizerRef.current?.scrollToIndex(index, {
         align: "center",
@@ -1807,6 +1888,9 @@ export function SidebarConversationList({
     pinnedExpanded,
     foldersExpanded,
     chatsExpanded,
+    clusterExpanded,
+    conversationExpanded,
+    folderGroupExpanded,
   ])
 
   const toggleFolder = useCallback((folderId: number) => {
@@ -1912,6 +1996,31 @@ export function SidebarConversationList({
     },
     [ensureChildrenLoaded]
   )
+
+
+  // Side-chat create (and similar host child inserts) ask the list to expand
+  // the parent so the new row is visible without a second click on the chevron.
+  useEffect(() => {
+    const onExpand = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: number }>).detail?.id
+      if (typeof id !== "number") return
+      setConversationExpanded((prev) => {
+        if (prev.has(id)) return prev
+        const next = new Set(prev)
+        next.add(id)
+        saveConversationExpanded([...next])
+        return next
+      })
+      void ensureChildrenLoaded(id)
+      // The new side row only exists after this expand; scroll once the flat
+      // model rebuilds (and once more immediately in case it already has).
+      pendingScrollRef.current = true
+      scrollToActiveRef.current()
+    }
+    window.addEventListener("codeg:expand-conversation-tree", onExpand)
+    return () =>
+      window.removeEventListener("codeg:expand-conversation-tree", onExpand)
+  }, [ensureChildrenLoaded])
 
   // Restore-time lazy load, driven by the RENDERED rows (not the raw persisted
   // set): fetch children for every expanded parent actually visible in `rows`
@@ -2875,6 +2984,23 @@ export function SidebarConversationList({
         </div>
       )
     }
+    if (row.kind === "cluster") {
+      return (
+        <SidebarClusterHeader
+          clusterId={row.clusterId}
+          title={row.title}
+          memberCount={row.memberCount}
+          agentTypes={row.agentTypes}
+          expanded={row.expanded}
+          depth={row.depth}
+          onToggle={toggleCluster}
+          onRename={renameCluster}
+          onDissolve={(id) => {
+            void deleteCluster(id)
+          }}
+        />
+      )
+    }
     if (row.kind === "folder") {
       return folderHeaderElement(row.folderId, {
         dragging: dragging?.kind === "folder" && dragging.id === row.folderId,
@@ -3096,6 +3222,7 @@ export function SidebarConversationList({
         hasChildren={conv.child_count > 0}
         expanded={conversationExpanded.has(conv.id)}
         onToggleExpand={toggleConversation}
+        onLeaveCluster={handleLeaveCluster}
       />
     )
   }
@@ -3108,6 +3235,7 @@ export function SidebarConversationList({
     if (row.kind === "section") return `section-${row.section}`
     if (row.kind === "folder-group") return `foldergroup-${row.groupId}`
     if (row.kind === "group-empty") return `groupempty-${row.groupId}`
+    if (row.kind === "cluster") return `cluster-${row.clusterId}`
     if (row.kind === "folder") return `folder-${row.folderId}`
     if (row.kind === "root-group") return `rootgroup-${row.folderId}`
     if (row.kind === "empty") return `empty-${row.folderId}`
