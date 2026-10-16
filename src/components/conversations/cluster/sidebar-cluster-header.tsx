@@ -60,7 +60,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
   expanded: boolean
   depth: number
   onToggle: (clusterId: number) => void
-  onRename: (clusterId: number, title: string) => void | Promise<void>
+  onRename: (clusterId: number, title: string) => void | Promise<unknown>
   onDissolve: (clusterId: number) => void
 }) {
   const t = useTranslations("Folder.cluster")
