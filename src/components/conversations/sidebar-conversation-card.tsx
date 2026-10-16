@@ -7,6 +7,7 @@ import {
   useRef,
   type CSSProperties,
   type FocusEvent,
+  type KeyboardEvent,
 } from "react"
 import {
   AtSign,
@@ -319,6 +320,13 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
     if (!next) queueMicrotask(() => chromeRef.current?.focus())
   }
 
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "F2") return
+    if (editing) return
+    event.preventDefault()
+    editorRef.current?.start()
+  }
+
   const handleRenameOpen = useCallback(() => {
     editorRef.current?.cancel()
     setRenameValue(conversation.title || "")
@@ -414,6 +422,7 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                     }
                     onClick={handleClick}
                     onDoubleClick={handleDblClick}
+                    onKeyDown={handleTitleKeyDown}
                     className={cn(
                       "relative flex h-full min-w-0 flex-1 items-center gap-[0.625rem] text-left outline-none",
                       "rounded-full",

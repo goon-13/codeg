@@ -180,4 +180,12 @@ describe("ConversationDetailHeader inline title", () => {
     expect(queryByTestId("inline-title-editor-input")).toBeNull()
     expect(h.updateConversationTitle).not.toHaveBeenCalled()
   })
+
+  it("F2 on focused header title starts inline", () => {
+    const { getByTestId } = render(withIntl(<ConversationDetailHeader {...A} />))
+    const rest = getByTestId("conversation-header-title")
+    rest.focus()
+    fireEvent.keyDown(rest, { key: "F2" })
+    expect(getByTestId("inline-title-editor-input")).toBeTruthy()
+  })
 })

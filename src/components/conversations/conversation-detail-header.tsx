@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import {
   ChevronRight,
   Circle,
@@ -183,6 +183,13 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
     editorRef.current?.cancel()
   }, [conversationId])
 
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "F2") return
+    if (editing) return
+    event.preventDefault()
+    editorRef.current?.start()
+  }
+
   const handleTogglePin = useCallback(() => {
     if (conversationId == null) return
     const next = !isPinned
@@ -295,6 +302,7 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
         {/* The title takes the ellipsis, so the folder crumb on the left stays
             fully visible — but grows only as far as its own text
             (`max-w-max`), so the tags follow it instead of the far edge. */}
+        <div className="min-w-0 max-w-max flex-1" onKeyDown={handleTitleKeyDown}>
         <InlineTitleEditor
           ref={editorRef}
           value={title || ""}
@@ -319,6 +327,7 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
           aria-label={t("editTitle")}
           data-testid="conversation-header-title"
         />
+        </div>
         {/* Capped at half the row so a long tag list squeezes its own chips
             (they truncate) before it squeezes the title. */}
         {taggable && conversationId != null ? (

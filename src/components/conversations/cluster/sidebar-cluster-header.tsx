@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useRef, useState } from "react"
+import { memo, useRef, useState, type KeyboardEvent } from "react"
 import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AgentIcon } from "@/components/agent-icon"
@@ -71,6 +71,13 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
   const [editing, setEditing] = useState(false)
   const editorRef = useRef<InlineTitleEditorHandle>(null)
 
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "F2") return
+    if (editing) return
+    event.preventDefault()
+    editorRef.current?.start()
+  }
+
   const handleRenameOpen = () => {
     editorRef.current?.cancel()
     setRenameValue(title)
@@ -109,6 +116,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
             <RowChrome
               type={editing ? undefined : "button"}
               onClick={() => onToggle(clusterId)}
+              onKeyDown={handleTitleKeyDown}
               className={cn(
                 "relative flex h-[1.9375rem] w-full items-center rounded-full text-left text-[0.75rem] text-sidebar-foreground outline-none transition-colors duration-[120ms] hover:bg-[color-mix(in_oklab,var(--sidebar-accent),var(--sidebar-foreground)_2%)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               )}

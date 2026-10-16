@@ -154,4 +154,12 @@ describe("SidebarClusterHeader", () => {
     })
     expect(screen.getByTestId("inline-title-editor-input")).toBeTruthy()
   })
+
+  it("F2 on focused cluster chrome starts inline", () => {
+    renderHeader()
+    const chrome = document.querySelector("[data-conversation-cluster] button") as HTMLElement
+    chrome.focus()
+    fireEvent.keyDown(chrome, { key: "F2" })
+    expect(screen.getByTestId("inline-title-editor-input")).toBeTruthy()
+  })
 })

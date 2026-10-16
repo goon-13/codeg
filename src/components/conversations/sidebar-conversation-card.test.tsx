@@ -902,4 +902,20 @@ describe("SidebarConversationCard inline title", () => {
       document.querySelector("button[data-conversation-id='1']")
     ).toBeNull()
   })
+
+  it("F2 on focused row starts inline", () => {
+    renderCard()
+    const row = document.querySelector("[data-conversation-id='1']") as HTMLElement
+    row.focus()
+    fireEvent.keyDown(row, { key: "F2" })
+    expect(screen.getByTestId("inline-title-editor-input")).toBeTruthy()
+  })
+
+  it("F2 while input focused does not retrigger start", async () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    const input = screen.getByTestId("inline-title-editor-input")
+    fireEvent.keyDown(input, { key: "F2" })
+    expect(screen.getAllByTestId("inline-title-editor-input")).toHaveLength(1)
+  })
 })
