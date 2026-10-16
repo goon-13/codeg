@@ -20,7 +20,7 @@ export type InlineTitleEditorProps = {
   editing: boolean
   onEditingChange: (editing: boolean) => void
   restOpensEditor: boolean
-  onCommit: (next: string) => void | Promise<void>
+  onCommit: (next: string) => void | Promise<unknown>
   disabled?: boolean
   className?: string
   tabIndex?: number
