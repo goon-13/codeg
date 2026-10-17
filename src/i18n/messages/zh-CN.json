@@ -2145,7 +2145,14 @@
       "typeToSearch": "输入关键词搜索会话",
       "typeToSearchFiles": "输入关键词搜索文件或目录",
       "noResults": "未找到结果。",
-      "untitledConversation": "未命名会话"
+      "untitledConversation": "未命名会话",
+      "groupConversations": "会话",
+      "groupFiles": "文件",
+      "groupCode": "代码",
+      "recentConversations": "最近",
+      "placeholderAll": "搜索会话和文件…",
+      "threadFindPlaceholder": "在会话中查找",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "显示侧边栏",
@@ -6730,6 +6737,10 @@
     "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
     "shelfOutlineTitle": "编辑货架",
     "shelfOutlineEmpty": "没有匹配的项目或会话",
+    "shelfFilmFilter": "过滤货架",
+    "homeListFilter": "筛选会话",
+    "homeListEmpty": "没有匹配的会话",
+    "shelfFilmEmpty": "货架上没有匹配的项目或会话",
     "shelfMoveUp": "上移",
     "shelfMoveDown": "下移"
   },

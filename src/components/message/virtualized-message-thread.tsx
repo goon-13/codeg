@@ -40,6 +40,12 @@ const SCROLL_KEYS = new Set([
   " ",
 ])
 
+/** Controls that take their own focus. A bare `[tabindex]` is not in here:
+ *  the scrollport itself is tabIndex=0, so an ancestor match would skip every
+ *  transcript click. The thread find root uses the same list. */
+export const TRANSCRIPT_ACTIVATION_SELECTOR =
+  'a[href],button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="link"],[role="checkbox"],[role="switch"],[role="radio"],[role="tab"],[role="textbox"],[role="menuitem"],[role="option"],[role="combobox"],[role="slider"]'
+
 interface VirtualizedMessageThreadProps<T> {
   /** Data to virtualise — each entry becomes one virtual row. */
   items: T[]
@@ -268,12 +274,7 @@ function VirtualizedMessageThreadImpl<T>({
       // their own focus (some do it in pointerdown). We deliberately do NOT
       // match a bare `[tabindex]` here: the viewport itself has tabIndex=0, so
       // an ancestor match would suppress focusing on every transcript click.
-      if (
-        target?.closest(
-          'a[href],button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="link"],[role="checkbox"],[role="switch"],[role="radio"],[role="tab"],[role="textbox"],[role="menuitem"],[role="option"],[role="combobox"],[role="slider"]'
-        )
-      )
-        return
+      if (target?.closest(TRANSCRIPT_ACTIVATION_SELECTOR)) return
       el.setAttribute("data-focus-origin", "pointer")
       el.focus({ preventScroll: true })
     }

@@ -2145,7 +2145,14 @@
       "typeToSearch": "Type to search conversations",
       "typeToSearchFiles": "Type to search files or directories",
       "noResults": "No results found.",
-      "untitledConversation": "Untitled conversation"
+      "untitledConversation": "Untitled conversation",
+      "groupConversations": "Conversations",
+      "groupFiles": "Files",
+      "groupCode": "Code",
+      "recentConversations": "Recent",
+      "placeholderAll": "Search conversations and files…",
+      "threadFindPlaceholder": "Find in conversation",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "Show Sidebar",
@@ -6730,6 +6737,10 @@
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfFilmFilter": "Filter shelf",
+    "homeListFilter": "Filter conversations",
+    "homeListEmpty": "No matching conversations",
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf",
     "shelfMoveUp": "Move up",
     "shelfMoveDown": "Move down"
   },

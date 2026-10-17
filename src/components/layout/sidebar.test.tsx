@@ -28,6 +28,7 @@ const spies = vi.hoisted(() => ({
     showCompleted?: boolean
     showRecent?: boolean
     sectionOrder?: readonly string[]
+    titleQuery?: string
   } | null,
 }))
 const mockState = vi.hoisted(() => ({
@@ -51,6 +52,7 @@ vi.mock("@/components/conversations/sidebar-conversation-list", async () => {
       showCompleted?: boolean
       showRecent?: boolean
       sectionOrder?: readonly string[]
+      titleQuery?: string
     }) => {
       spies.listProps = props
       useImperativeHandle(ref, () => ({
@@ -135,6 +137,86 @@ async function openViewOptionsGroup(
   await userEvent.click(screen.getByRole("button", { name: "View options" }))
   await userEvent.click(screen.getByRole("menuitem", { name: group }))
 }
+
+describe("Sidebar — home list title filter", () => {
+  beforeEach(() => {
+    mockState.activeFolder = { id: 7, path: "/x" }
+  })
+
+  afterEach(() => {
+    document
+      .querySelectorAll("[data-testid='shelf-view']")
+      .forEach((node) => {
+        const parent = node.parentElement
+        if (parent && parent !== document.body) parent.remove()
+        else node.remove()
+      })
+    document.body.querySelectorAll("textarea").forEach((node) => node.remove())
+  })
+
+  it("renders a search input and threads the query to the list", () => {
+    renderSidebar()
+    const input = screen.getByTestId("home-list-filter")
+    expect(input).toHaveAttribute("type", "search")
+    expect(input).toHaveAttribute("placeholder", "Filter conversations")
+    expect(spies.listProps?.titleQuery).toBe("")
+    fireEvent.change(input, { target: { value: "login" } })
+    expect(spies.listProps?.titleQuery).toBe("login")
+  })
+
+  it("Escape clears the query and blurs the field", () => {
+    renderSidebar()
+    const input = screen.getByTestId("home-list-filter")
+    fireEvent.change(input, { target: { value: "login" } })
+    input.focus()
+    fireEvent.keyDown(input, { key: "Escape" })
+    expect(spies.listProps?.titleQuery).toBe("")
+    expect(document.activeElement).not.toBe(input)
+  })
+
+  it("Mod+F focuses the home filter when the shelf is not live", () => {
+    renderSidebar()
+    const input = screen.getByTestId("home-list-filter")
+    fireEvent.keyDown(window, { key: "f", ctrlKey: true })
+    expect(document.activeElement).toBe(input)
+  })
+
+  it("Mod+F leaves a live shelf alone", () => {
+    const shelf = document.createElement("div")
+    shelf.setAttribute("data-testid", "shelf-view")
+    document.body.appendChild(shelf)
+    renderSidebar()
+    const input = screen.getByTestId("home-list-filter")
+    fireEvent.keyDown(window, { key: "f", ctrlKey: true })
+    expect(document.activeElement).not.toBe(input)
+    shelf.remove()
+  })
+
+  it("Mod+F still focuses home when the shelf is keep-alive hidden", () => {
+    const wrap = document.createElement("div")
+    wrap.className = "conversation-tab-hidden"
+    wrap.setAttribute("inert", "")
+    const shelf = document.createElement("div")
+    shelf.setAttribute("data-testid", "shelf-view")
+    wrap.appendChild(shelf)
+    document.body.appendChild(wrap)
+    renderSidebar()
+    const input = screen.getByTestId("home-list-filter")
+    fireEvent.keyDown(window, { key: "f", ctrlKey: true })
+    expect(document.activeElement).toBe(input)
+    wrap.remove()
+  })
+
+  it("Mod+F does not steal focus from a composer field", () => {
+    renderSidebar()
+    const box = document.createElement("textarea")
+    document.body.appendChild(box)
+    box.focus()
+    fireEvent.keyDown(box, { key: "f", ctrlKey: true })
+    expect(document.activeElement).toBe(box)
+    box.remove()
+  })
+})
 
 describe("Sidebar — fixed nav region", () => {
   beforeEach(() => {

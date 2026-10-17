@@ -93,6 +93,10 @@ import {
 } from "@/components/conversations/sidebar-tag-filter"
 import { SidebarSectionOrderControl } from "./sidebar-section-order-control"
 import { cn } from "@/lib/utils"
+import {
+  isElementLive,
+  resolveModFTarget,
+} from "@/lib/search-surface"
 
 // Keyboard-shortcut hint at the trailing edge of the New chat row.
 // Mirrors the folder count badge exactly — same chip (0.9375rem height,
@@ -169,6 +173,7 @@ function SidebarNavButton({
 
 export function Sidebar() {
   const t = useTranslations("Folder.sidebar")
+  const tCanvas = useTranslations("Canvas")
   const { isOpen, toggle } = useSidebarContext()
   const { activeFolder } = useActiveFolder()
   const { openNewConversationTab, openChatModeTab } = useTabActions()
@@ -181,6 +186,8 @@ export function Sidebar() {
   const { shortcuts } = useShortcutSettings()
   const isMobile = useIsMobile()
   const listRef = useRef<SidebarConversationListHandle>(null)
+  const homeListFilterRef = useRef<HTMLInputElement>(null)
+  const [homeListQuery, setHomeListQuery] = useState("")
   // On desktop the header's top-left is owned by the fixed window-chrome overlay
   // (sidebar toggle + remote); reserve exactly its width so the view controls
   // and drag region clear it. The reserve scales with the app zoom to track the
@@ -289,6 +296,27 @@ export function Sidebar() {
     },
     []
   )
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      if (event.key !== "f" && event.key !== "F") return
+      const target = resolveModFTarget({
+        eventTarget: event.target,
+        threadOwnsFind: false,
+        shelfLive: isElementLive(
+          document.querySelector('[data-testid="shelf-view"]')
+        ),
+        homeListLive: isElementLive(homeListFilterRef.current),
+      })
+      if (target !== "home-list") return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      homeListFilterRef.current?.focus()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   const handleToggleExpandAll = useCallback(() => {
     if (allExpanded) {
@@ -644,7 +672,28 @@ export function Sidebar() {
             : undefined
         }
       >
-        <SidebarTagFilterBar filter={tagFilter} onChange={handleSetTagFilter} />
+        <div className="flex shrink-0 items-center gap-1.5 px-1.5 pb-1.5 [&>[role=status]]:min-w-0 [&>[role=status]]:flex-1 [&>[role=status]]:shrink">
+          <SidebarTagFilterBar
+            filter={tagFilter}
+            onChange={handleSetTagFilter}
+          />
+          <input
+            ref={homeListFilterRef}
+            data-testid="home-list-filter"
+            type="search"
+            value={homeListQuery}
+            placeholder={tCanvas("homeListFilter")}
+            aria-label={tCanvas("homeListFilter")}
+            className="h-8 min-w-0 flex-1 rounded-lg bg-foreground/5 px-2.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground"
+            onChange={(event) => setHomeListQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return
+              event.preventDefault()
+              setHomeListQuery("")
+              event.currentTarget.blur()
+            }}
+          />
+        </div>
         <SidebarConversationList
           ref={listRef}
           showCompleted={showCompleted}
@@ -653,6 +702,7 @@ export function Sidebar() {
           sortMode={sortMode}
           sectionOrder={sectionOrder}
           tagFilter={tagFilter}
+          titleQuery={homeListQuery}
         />
       </div>
     </aside>

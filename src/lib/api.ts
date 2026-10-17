@@ -2181,6 +2181,32 @@ export async function listAllConversations(params?: {
   })
 }
 
+export type CorpusHit = {
+  conversation_id: number
+  folder_id: number
+  agent_type: AgentType | string
+  title: string | null
+  snippet: string
+  message_ref: string
+  source: "title" | "body"
+}
+
+export async function searchCorpus(params: {
+  query: string
+  folder_ids?: number[] | null
+  agent_type?: string | null
+  after?: string | null
+  limit?: number
+}): Promise<{ hits: CorpusHit[] }> {
+  return getTransport().call("search_corpus", {
+    query: params.query,
+    folderIds: params.folder_ids ?? null,
+    agentType: params.agent_type ?? null,
+    after: params.after ?? null,
+    limit: params.limit ?? null,
+  })
+}
+
 export async function listChildConversations(
   parentConversationId: number
 ): Promise<DbConversationSummary[]> {

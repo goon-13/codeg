@@ -1778,3 +1778,79 @@ describe("SidebarConversationList — tag filter", () => {
     expect(probes.folder).toBe(0)
   })
 })
+
+describe("SidebarConversationList — title filter", () => {
+  const queryHarness: { set: (q: string) => void } = { set: () => {} }
+  function QueryHarness({ initial }: { initial: string }) {
+    const [titleQuery, setTitleQuery] = useState(initial)
+    useEffect(() => {
+      queryHarness.set = setTitleQuery
+    }, [])
+    return (
+      <SidebarConversationList
+        showCompleted
+        sortMode="created"
+        titleQuery={titleQuery}
+      />
+    )
+  }
+  const queried = (initial: string) => (
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <QueryHarness initial={initial} />
+    </NextIntlClientProvider>
+  )
+
+  beforeEach(() => {
+    probes.card = 0
+    probes.folder = 0
+    store.activeTabId = null
+    store.tabSpec = []
+    const folders = [folder(1, "Folder 1"), folder(2, "Folder 2")]
+    useAppWorkspaceStore.setState({
+      folders,
+      allFolders: folders,
+      conversations: [
+        conv(11, 1, { title: "Fix the Login bug" }),
+        conv(12, 1, { title: "[README.md](file:///tmp/secret/README.md)" }),
+        conv(21, 2, { title: null }),
+        conv(31, 9, { kind: "chat", title: "Chat about shipping" }),
+      ],
+    })
+  })
+
+  const shownIds = (container: HTMLElement) =>
+    [...container.querySelectorAll("[data-conversation-id]")].map((el) =>
+      Number(el.getAttribute("data-conversation-id"))
+    )
+
+  it("keeps every conversation when the query is blank", () => {
+    const { container } = render(queried(""))
+    expect(shownIds(container).sort((a, b) => a - b)).toEqual([11, 12, 21, 31])
+  })
+
+  it("hides conversations whose display title does not include the query", () => {
+    const { container, queryByText } = render(queried("login"))
+    expect(shownIds(container)).toEqual([11])
+    expect(container.querySelector('[data-folder-id="2"]')).toBeNull()
+    expect(queryByText("No matching conversations")).toBeNull()
+  })
+
+  it("matches the folded title, not the reference uri", () => {
+    const { container } = render(queried("readme"))
+    expect(shownIds(container)).toEqual([12])
+    const { container: missed } = render(queried("secret"))
+    expect(shownIds(missed)).toEqual([])
+    expect(missed.textContent).toContain("No matching conversations")
+  })
+
+  it("matches an empty title against the untitled label", () => {
+    const { container } = render(queried("Untitled conversation"))
+    expect(shownIds(container)).toEqual([21])
+  })
+
+  it("restores the full list when the query is cleared", () => {
+    const { container } = render(queried("login"))
+    act(() => queryHarness.set(""))
+    expect(shownIds(container).sort((a, b) => a - b)).toEqual([11, 12, 21, 31])
+  })
+})

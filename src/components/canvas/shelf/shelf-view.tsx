@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useAcpActions } from "@/contexts/acp-connections-context"
 import { createConversation, moveConversation } from "@/lib/api"
+import { isElementLive } from "@/lib/search-surface"
 import type { AgentType } from "@/lib/types"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 
@@ -17,6 +18,7 @@ import {
   buildShelfRows,
   defaultVisibleConversationIds,
   defaultVisibleFolderIds,
+  filterShelfFilmRows,
   mergePersistedShelfOrder,
   moveShelfOrderId,
   shelfLiveSurfaceKeys,
@@ -103,6 +105,8 @@ export function ShelfView() {
   >(loadShelfVisibleConversationIds)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [jump, setJump] = useState<ShelfJumpButtons>(EMPTY_JUMP)
+  const [filmQuery, setFilmQuery] = useState("")
+  const filterInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -136,6 +140,25 @@ export function ShelfView() {
   )
   const workingIds = visibleIds ?? defaultVisibleFolderIds(rows)
   const shownRows = rows.filter((row) => workingIds.includes(row.folder.id))
+  const filmRows = useMemo(() => {
+    const filtered = filterShelfFilmRows(shownRows, filmQuery)
+    if (!filmQuery.trim()) return filtered
+    const filteredIds = new Set(
+      filtered.flatMap((row) => row.conversations.map((c) => c.id))
+    )
+    return shownRows.flatMap((row) => {
+      const hit = filtered.find((item) => item.folder.id === row.folder.id)
+      const kept = hit?.conversations ?? []
+      const extra = row.conversations.filter(
+        (c) => expanded.has(c.id) && !filteredIds.has(c.id)
+      )
+      if (!hit && extra.length === 0) return []
+      const conversations = hit
+        ? [...kept, ...extra.filter((c) => !kept.some((k) => k.id === c.id))]
+        : extra
+      return [{ ...row, conversations }]
+    })
+  }, [shownRows, filmQuery, expanded])
   const conversationWorkingIds = workingConversationIds(
     rows,
     visibleConversationIds
@@ -185,6 +208,29 @@ export function ShelfView() {
     setVisibleConversationIds(nextConversations)
   }
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey)) return
+      if (event.key !== "f" && event.key !== "F") return
+      if (
+        !isElementLive(document.querySelector('[data-testid="shelf-view"]'))
+      ) {
+        return
+      }
+      const el = event.target
+      if (el instanceof HTMLElement) {
+        const tag = el.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable) {
+          return
+        }
+      }
+      event.preventDefault()
+      filterInputRef.current?.focus()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   return (
     <ShelfComposerFocusProvider>
       <div
@@ -192,6 +238,21 @@ export function ShelfView() {
         className="relative flex h-full min-h-0 flex-col bg-background"
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+          <input
+            ref={filterInputRef}
+            data-testid="shelf-film-filter"
+            type="search"
+            value={filmQuery}
+            placeholder={t("shelfFilmFilter")}
+            className="h-8 w-48 rounded-lg bg-foreground/5 px-2.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground"
+            onChange={(event) => setFilmQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return
+              event.preventDefault()
+              setFilmQuery("")
+              event.currentTarget.blur()
+            }}
+          />
           <ShelfOutline
             rows={rows}
             visibleFolderIds={workingIds}
@@ -274,7 +335,12 @@ export function ShelfView() {
           data-testid="shelf-scroller"
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          {shownRows.map((row) => (
+          {filmRows.length === 0 ? (
+            <p className="px-3 py-8 text-center text-[0.8125rem] text-muted-foreground">
+              {t("shelfFilmEmpty")}
+            </p>
+          ) : (
+          filmRows.map((row) => (
             <ShelfProjectRowView
               key={row.folder.id}
               row={row}
@@ -347,7 +413,8 @@ export function ShelfView() {
                 }
               }}
             />
-          ))}
+          ))
+          )}
         </div>
         <div
           data-testid="shelf-jump"

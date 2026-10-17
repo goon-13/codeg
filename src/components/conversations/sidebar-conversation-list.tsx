@@ -151,6 +151,7 @@ import {
   matchesTagFilter,
   type TagFilter,
 } from "@/lib/conversation-tags"
+import { filterHomeListConversations } from "@/lib/home-list-filter"
 import { CloneDialog } from "@/components/layout/clone-dialog"
 import { RemoteWorkspaceManageDialog } from "@/components/layout/remote-workspace-manage-dialog"
 import { WorkspaceFolderDialog } from "@/components/layout/workspace-folder-dialog"
@@ -896,6 +897,9 @@ export interface SidebarConversationListProps {
    *  `matchesTagFilter`). Must be referentially stable — it feeds the bucket
    *  memos. Defaults to no filter. */
   tagFilter?: TagFilter
+  /** Temporary title filter. Blank keeps the post-tag array reference.
+   *  Not persisted — the sidebar owns the field and clears it on Escape. */
+  titleQuery?: string
 }
 
 export function SidebarConversationList({
@@ -906,10 +910,13 @@ export function SidebarConversationList({
   showWorktrees = false,
   showRecent = false,
   tagFilter = EMPTY_TAG_FILTER,
+  titleQuery = "",
 }: SidebarConversationListProps & {
   ref?: Ref<SidebarConversationListHandle>
 }) {
   const t = useTranslations("Folder.sidebar")
+  const tCanvas = useTranslations("Canvas")
+  const tCard = useTranslations("Folder.conversationCard")
   const tCommon = useTranslations("Folder.common")
   const tTags = useTranslations("ConversationTags")
   const tFolderDropdown = useTranslations("Folder.folderNameDropdown")
@@ -1328,18 +1335,31 @@ export function SidebarConversationList({
     return () => clearInterval(interval)
   }, [])
 
-  // The tag filter narrows what every section DRAWS — pinned, folders, chats
-  // and recent all bucket from this. It never touches the per-folder counts
-  // further down (`folderTotalCounts`, `folderRunningCounts`): a folder's
-  // running badge answers "is work under way in there", filter or not. With no
-  // filter this is `conversations` itself, so nothing downstream changes.
+  // Tag filter, then the temporary title filter. Both narrow what every
+  // section draws (pinned, folders, chats, recent). Neither touches the
+  // per-folder counts further down (`folderTotalCounts`, `folderRunningCounts`):
+  // a folder's running badge answers "is work under way in there", filter or
+  // not. With both off, `shownConversations` is `conversations` itself.
   const tagFilterActive = isTagFilterActive(tagFilter)
-  const shownConversations = useMemo(
+  const titleFilterActive = titleQuery.trim().length > 0
+  const untitledLabel = tCard("untitledConversation")
+  // Tag filter first, then the temporary title filter, then the section
+  // buckets. A blank title query returns the same array the tag step produced.
+  const taggedConversations = useMemo(
     () =>
       tagFilterActive
         ? conversations.filter((c) => matchesTagFilter(c, tagFilter))
         : conversations,
     [conversations, tagFilter, tagFilterActive]
+  )
+  const shownConversations = useMemo(
+    () =>
+      filterHomeListConversations(
+        taggedConversations,
+        titleQuery,
+        untitledLabel
+      ),
+    [taggedConversations, titleQuery, untitledLabel]
   )
 
   // Folder grouping source: pinned conversations are surfaced in the dedicated
@@ -1578,7 +1598,7 @@ export function SidebarConversationList({
         rootGroupCollapsed,
         layout,
         groupExpanded: folderGroupExpanded,
-        hideEmptyFolders: tagFilterActive,
+        hideEmptyFolders: tagFilterActive || titleFilterActive,
       }),
     [
       pinned,
@@ -1603,6 +1623,7 @@ export function SidebarConversationList({
       layout,
       folderGroupExpanded,
       tagFilterActive,
+      titleFilterActive,
     ]
   )
 
@@ -3182,6 +3203,15 @@ export function SidebarConversationList({
             <Download className="h-3.5 w-3.5 mr-1.5" />
             {t("importLocalSessions")}
           </Button>
+        </div>
+      ) : titleFilterActive && shownConversations.length === 0 ? (
+        <div
+          data-testid="home-list-empty"
+          className="flex flex-1 items-center justify-center px-3"
+        >
+          <p className="text-xs text-muted-foreground">
+            {tCanvas("homeListEmpty")}
+          </p>
         </div>
       ) : (
         <ContextMenu>

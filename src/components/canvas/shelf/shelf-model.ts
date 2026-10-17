@@ -235,3 +235,11 @@ export function filterShelfMiniRows(
     return [{ ...row, conversations }]
   })
 }
+
+export function filterShelfFilmRows(
+  worksetRows: readonly ShelfProjectRow[],
+  query: string
+): ShelfProjectRow[] {
+  if (!query.trim()) return worksetRows as ShelfProjectRow[]
+  return filterShelfMiniRows(worksetRows as ShelfProjectRow[], query)
+}
