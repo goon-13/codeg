@@ -21,6 +21,7 @@ import {
   hermesLiveOrCachedConfigOptions,
   hermesRoleListReady,
   interceptHermesProfileConfigChange,
+  isAgentSelectorVisibleType,
   isHermesFamilyAgent,
   beginHermesRoleSwitch,
   clearHermesRoleSwitchSkip,
@@ -113,6 +114,17 @@ describe("isHermesFamilyAgent", () => {
     expect(isHermesFamilyAgent("grok")).toBe(false)
     expect(isHermesFamilyAgent("custom:goose")).toBe(false)
     expect(isHermesFamilyAgent("custom:hermes")).toBe(false)
+  })
+})
+
+describe("isAgentSelectorVisibleType", () => {
+  it("hides custom hermes roles from the session agent row", () => {
+    expect(isAgentSelectorVisibleType("hermes")).toBe(true)
+    expect(isAgentSelectorVisibleType("grok")).toBe(true)
+    expect(isAgentSelectorVisibleType("cursor")).toBe(true)
+    expect(isAgentSelectorVisibleType("custom:goose")).toBe(true)
+    expect(isAgentSelectorVisibleType("custom:hermes-homeops")).toBe(false)
+    expect(isAgentSelectorVisibleType("custom:hermes-roleadmin")).toBe(false)
   })
 })
 
@@ -267,31 +279,42 @@ describe("composer parents intercept the synthetic role id", () => {
     )
     const interceptIdx = body.indexOf("interceptHermesProfileConfigChange")
     const planIdx = body.indexOf("planHermesRoleSwitch")
-    const draftIdx = body.indexOf("onAgentTypeChange")
-    const persistIdx = body.indexOf("updateConversationAgentType(")
+    const retargetIdx = body.indexOf("handleAgentRowSelect(")
     const stolenDraft = body.indexOf("openNewConversationTab(")
     const createIdx = body.indexOf("createConversation(")
     const openIdx = body.indexOf("openTab(")
     const acpIdx = body.indexOf("lifecycleSetConfigOption(configId, valueId)")
     expect(interceptIdx).toBeGreaterThan(-1)
     expect(planIdx).toBeGreaterThan(interceptIdx)
-    expect(draftIdx).toBeGreaterThan(planIdx)
-    expect(persistIdx).toBeGreaterThan(planIdx)
+    expect(retargetIdx).toBeGreaterThan(planIdx)
     expect(stolenDraft).toBe(-1)
     expect(createIdx).toBe(-1)
     expect(openIdx).toBe(-1)
-    expect(acpIdx).toBeGreaterThan(persistIdx)
+    expect(acpIdx).toBeGreaterThan(retargetIdx)
     expect(canvasSource).toContain("hermesResumeSessionId(")
     expect(canvasSource).toContain("shouldClearHermesResumeSkip(")
     expect(canvasSource).toContain("beginHermesRoleSwitch(")
     expect(canvasSource).toContain("useHermesRoleSwitchSkip(")
     expect(canvasSource).toContain("setExternalId(dbConversationId, null)")
-    const disconnectIdx = Math.max(
-      body.indexOf("handleDisconnect("),
-      body.indexOf("await handleDisconnect(")
-    )
+    expect(canvasSource).not.toContain("isDraft && onAgentTypeChange")
+    expect(canvasSource).toContain("{onAgentTypeChange && (")
+    expect(canvasSource).not.toContain('disabled={conn.status === "connecting"}')
+    expect(canvasSource).toContain("onSelect={handleAgentRowSelect}")
+    expect(canvasSource).not.toContain("onSelect={onAgentTypeChange}")
+    expect(canvasSource).toContain("onFallback={isDraft ? onAgentTypeChange")
+  })
+
+  it("canvas AgentSelector pick tears down the live session before persist", () => {
+    const start = canvasSource.indexOf("const handleAgentRowSelect")
+    expect(start).toBeGreaterThan(-1)
+    const body = canvasSource.slice(start, canvasSource.indexOf("const connStatus"))
+    const disconnectIdx = body.indexOf("await handleDisconnect(")
+    const persistIdx = body.indexOf("updateConversationAgentType(")
     expect(disconnectIdx).toBeGreaterThan(-1)
-    expect(disconnectIdx).toBeLessThan(persistIdx)
+    expect(persistIdx).toBeGreaterThan(disconnectIdx)
+    expect(body).toContain("beginHermesRoleSwitch(")
+    expect(body).toContain("setExternalId(dbConversationId, null)")
+    expect(body).toContain("onAgentTypeChange?.(")
   })
 
   it("no other production parent mounts MessageInput without that intercept", () => {

@@ -131,6 +131,17 @@ beforeEach(() => {
 })
 
 describe("AgentSelector", () => {
+  it("shows a loading placeholder until the agent list is fresh", () => {
+    mockUseAcpAgents.mockReturnValue({
+      agents: [],
+      fresh: false,
+      refresh: async () => {},
+    })
+    renderWithIntl(<AgentSelector onSelect={() => {}} />)
+    expect(screen.queryByText("No enabled agents")).not.toBeInTheDocument()
+    expect(document.querySelector('[data-slot="agent-selector-loading"]')).toBeTruthy()
+  })
+
   it("shows the empty state when no enabled agents are returned", () => {
     mockUseAcpAgents.mockReturnValue({
       agents: [],
@@ -389,7 +400,7 @@ describe("AgentSelector", () => {
     expect(lastCall).toEqual([codex])
   })
 
-  it("renders custom hermes roles next to built-in hermes even if the API listed them last", () => {
+  it("hides custom hermes roles from the session agent row", () => {
     mockUseAcpAgents.mockReturnValue({
       agents: [
         agent("codex"),
@@ -413,8 +424,6 @@ describe("AgentSelector", () => {
       "codex",
       "cline",
       "hermes",
-      "custom:hermes-homeops",
-      "custom:hermes-roleadmin",
       "code_buddy",
       "custom:goose",
     ])

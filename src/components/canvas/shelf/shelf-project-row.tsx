@@ -12,6 +12,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import type { AgentType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { visibleShelfConversations, type ShelfProjectRow } from "./shelf-model"
@@ -36,6 +37,8 @@ interface ShelfProjectRowViewProps {
   onAddConversationToShelf: (conversationId: number) => void
   onNewConversation: () => void | Promise<void>
   onMove: (conversationId: number, toFolderId: number) => void | Promise<void>
+  agentPickIds?: ReadonlySet<number>
+  onPickAgent?: (conversationId: number, agentType: AgentType) => void
   isTransientUnmount?: (conversationId: number) => boolean
 }
 
@@ -52,6 +55,8 @@ export function ShelfProjectRowView({
   onAddConversationToShelf,
   onNewConversation,
   onMove,
+  agentPickIds,
+  onPickAgent,
   isTransientUnmount,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
@@ -178,6 +183,11 @@ export function ShelfProjectRowView({
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
             onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
             onAddToShelf={() => onAddConversationToShelf(conversation.id)}
+            onAgentTypeChange={
+              agentPickIds?.has(conversation.id) && onPickAgent
+                ? (agentType) => onPickAgent(conversation.id, agentType)
+                : undefined
+            }
             isTransientUnmount={
               isTransientUnmount
                 ? () => isTransientUnmount(conversation.id)

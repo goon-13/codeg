@@ -10,6 +10,7 @@ import {
   isActiveShelfConversation,
   mergePersistedShelfOrder,
   moveShelfOrderId,
+  retainVisibleConversationIds,
   visibleShelfConversations,
   isShelfConversation,
   shelfContextKey,
@@ -165,6 +166,67 @@ describe("shelf-model", () => {
     ).toEqual([1, 2, 3, 4])
   })
 
+  it("keeps a conversation that was on the film after it completes", () => {
+    const conversations = [
+      conv(1, { status: "in_progress" }),
+      conv(2, { status: "completed" }),
+      conv(3, { status: "completed" }),
+    ]
+    expect(
+      retainVisibleConversationIds({
+        visibleIds: null,
+        conversations,
+        expandedIds: [],
+        previouslyShownIds: [1, 2],
+      })
+    ).toEqual([1, 2])
+  })
+
+  it("still hides completed conversations that were never on the film", () => {
+    const conversations = [
+      conv(1, { status: "in_progress" }),
+      conv(2, { status: "completed" }),
+    ]
+    expect(
+      retainVisibleConversationIds({
+        visibleIds: null,
+        conversations,
+        expandedIds: [],
+        previouslyShownIds: [],
+      })
+    ).toEqual([1])
+  })
+
+  it("keeps an expanded conversation even if it just completed", () => {
+    const conversations = [
+      conv(1, { status: "in_progress" }),
+      conv(2, { status: "completed" }),
+    ]
+    expect(
+      retainVisibleConversationIds({
+        visibleIds: null,
+        conversations,
+        expandedIds: [2],
+        previouslyShownIds: [],
+      })
+    ).toEqual([1, 2])
+  })
+
+  it("does not override an explicit working set", () => {
+    const conversations = [
+      conv(1, { status: "in_progress" }),
+      conv(2, { status: "completed" }),
+    ]
+    expect(
+      retainVisibleConversationIds({
+        visibleIds: [2],
+        conversations,
+        expandedIds: [1],
+        previouslyShownIds: [1],
+      })
+    ).toEqual([2])
+  })
+
   it("defaultVisibleFolderIds prefers running/waiting then newest", () => {
     const rows = buildShelfRows(
       [folder(1), folder(2), folder(3)],
@@ -209,6 +271,58 @@ describe("applyShelfOrder", () => {
       "2026-10-03T00:00:00Z"
     )
   })
+
+  it("puts a newly created conversation at the front of its row", () => {
+    const first = applyShelfOrder(
+      buildShelfRows(
+        [folder(10)],
+        [
+          conv(1, { folder_id: 10, updated_at: "2026-10-01T00:00:00Z" }),
+          conv(2, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+        ]
+      ),
+      null
+    )
+    expect(first.rows[0].conversations.map((c) => c.id)).toEqual([2, 1])
+
+    const withNew = applyShelfOrder(
+      buildShelfRows(
+        [folder(10)],
+        [
+          conv(1, { folder_id: 10, updated_at: "2026-10-01T00:00:00Z" }),
+          conv(2, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+          conv(3, { folder_id: 10, updated_at: "2026-10-03T00:00:00Z" }),
+        ]
+      ),
+      first.snapshot
+    )
+    expect(withNew.rows[0].conversations.map((c) => c.id)).toEqual([3, 2, 1])
+  })
+
+  it("keeps existing cards still when the new conversation is newer", () => {
+    const first = applyShelfOrder(
+      buildShelfRows(
+        [folder(10)],
+        [
+          conv(1, { folder_id: 10, updated_at: "2026-10-01T00:00:00Z" }),
+          conv(2, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+        ]
+      ),
+      null
+    )
+    const withNew = applyShelfOrder(
+      buildShelfRows(
+        [folder(10)],
+        [
+          conv(1, { folder_id: 10, updated_at: "2026-10-04T00:00:00Z" }),
+          conv(2, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+          conv(3, { folder_id: 10, updated_at: "2026-10-03T00:00:00Z" }),
+        ]
+      ),
+      first.snapshot
+    )
+    expect(withNew.rows[0].conversations.map((c) => c.id)).toEqual([3, 2, 1])
+  })
 })
 
 describe("mergePersistedShelfOrder", () => {
@@ -223,6 +337,20 @@ describe("mergePersistedShelfOrder", () => {
     )
     const merged = mergePersistedShelfOrder(live, [10], null)
     expect(merged.map((r) => r.folder.id)).toEqual([10, 20, 30])
+  })
+
+  it("puts unordered new conversations before the user order, newest first", () => {
+    const live = buildShelfRows(
+      [folder(10)],
+      [
+        conv(1, { folder_id: 10, updated_at: "2026-10-01T00:00:00Z" }),
+        conv(2, { folder_id: 10, updated_at: "2026-10-02T00:00:00Z" }),
+        conv(3, { folder_id: 10, updated_at: "2026-10-04T00:00:00Z" }),
+        conv(4, { folder_id: 10, updated_at: "2026-10-03T00:00:00Z" }),
+      ]
+    )
+    const merged = mergePersistedShelfOrder(live, null, { 10: [1, 2] })
+    expect(merged[0].conversations.map((c) => c.id)).toEqual([3, 4, 1, 2])
   })
 })
 

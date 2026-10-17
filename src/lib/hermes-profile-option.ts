@@ -16,6 +16,11 @@ export function isHermesFamilyAgent(agentType: AgentType): boolean {
   return agentType === "hermes" || agentType.startsWith(CUSTOM_HERMES_PREFIX)
 }
 
+/** Top AgentSelector shows one Hermes. `custom:hermes-*` are Role options. */
+export function isAgentSelectorVisibleType(agentType: AgentType): boolean {
+  return !agentType.startsWith(CUSTOM_HERMES_PREFIX)
+}
+
 function isEnabledHermesProfileAgent(agent: HermesProfileAgentInfo): boolean {
   return agent.enabled && isHermesFamilyAgent(agent.agent_type)
 }

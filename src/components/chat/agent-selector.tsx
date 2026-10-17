@@ -13,6 +13,7 @@ import { MoreHorizontal } from "lucide-react"
 import { useAcpAgents } from "@/hooks/use-acp-agents"
 import { compareAgentType, type AgentType, type AcpAgentInfo } from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
+import { isAgentSelectorVisibleType } from "@/lib/hermes-profile-option"
 import { AgentIcon } from "@/components/agent-icon"
 import { SelectorTooltip } from "@/components/chat/selector-tooltip"
 import {
@@ -20,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 // Matches the local idiom in `use-reference-search.ts` / `suggestion-popup.tsx`:
@@ -77,11 +79,11 @@ export function AgentSelector({
   align = "start",
 }: AgentSelectorProps) {
   const t = useTranslations("Folder.chat.agentSelector")
-  const { agents: rawAgents } = useAcpAgents()
+  const { agents: rawAgents, fresh } = useAcpAgents()
   const agents = useMemo<AcpAgentInfo[]>(
     () =>
       rawAgents
-        .filter((a) => a.enabled)
+        .filter((a) => a.enabled && isAgentSelectorVisibleType(a.agent_type))
         .slice()
         .sort((a, b) => compareAgentType(a.agent_type, b.agent_type)),
     [rawAgents]
@@ -327,6 +329,16 @@ export function AgentSelector({
     },
     []
   )
+
+  if (!fresh && agents.length === 0) {
+    return (
+      <Skeleton
+        data-slot="agent-selector-loading"
+        aria-busy
+        className="h-9 w-full max-w-sm rounded-full"
+      />
+    )
+  }
 
   if (agents.length === 0) {
     return (

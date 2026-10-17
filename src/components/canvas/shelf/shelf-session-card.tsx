@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -24,7 +25,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { formatConversationTitle } from "@/lib/conversation-title"
-import type { ConversationStatus, DbConversationSummary } from "@/lib/types"
+import type {
+  AgentType,
+  ConversationStatus,
+  DbConversationSummary,
+} from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { CanvasConversationSurface } from "../canvas-conversation-surface"
@@ -69,6 +74,21 @@ function useShelfComposerFocus() {
   return useContext(ShelfComposerFocusContext)
 }
 
+export function ShelfClaimComposer({
+  conversationId,
+  onClaimed,
+}: {
+  conversationId: number
+  onClaimed?: () => void
+}) {
+  const { claim } = useShelfComposerFocus()
+  useEffect(() => {
+    claim(shelfContextKey(conversationId))
+    onClaimed?.()
+  }, [conversationId, claim, onClaimed])
+  return null
+}
+
 interface MoveTarget {
   id: number
   name: string
@@ -83,6 +103,7 @@ interface ShelfSessionCardProps {
   onMove: (toFolderId: number) => void
   onHideFromShelf: () => void
   onAddToShelf: () => void
+  onAgentTypeChange?: (agentType: AgentType) => void
   isTransientUnmount?: () => boolean
 }
 
@@ -95,6 +116,7 @@ export function ShelfSessionCard({
   onMove,
   onHideFromShelf,
   onAddToShelf,
+  onAgentTypeChange,
   isTransientUnmount: _isTransientUnmount,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
@@ -248,6 +270,7 @@ export function ShelfSessionCard({
         contextKey={shelfContextKey(conversation.id)}
         conversationId={conversation.id}
         agentType={conversation.agent_type}
+        onAgentTypeChange={onAgentTypeChange}
         isActive={composerActive}
         // Bound conversation: show its own folder and do not move the
         // workspace tab. The chip is display-only (`editable: false`).

@@ -690,9 +690,11 @@ export function MessageInput({
   // the caret at the end of a restored draft rather than before it.
   //
   // Skipped on a coarse pointer, where focusing the editor raises the soft
-  // keyboard over the transcript. Each trigger here is a moment the user is
-  // more likely reading than typing: a session opening, a switch to one, a turn
-  // ending. Tapping the composer still focuses it (natively in the text, the
+  // keyboard over the transcript. Opening a session or switching to one still
+  // lands the caret. A turn ending must not: other live sessions (shelf cards,
+  // background tabs) complete all the time, and re-running this yanked the
+  // caret out of whichever composer the user was actually typing in.
+  // Tapping the composer still focuses it (natively in the text, the
   // chrome-press handler in the padding), so the keyboard comes up on demand.
   // The pointer kind is read when the focus would happen, not subscribed to.
   // Every open tab keeps its composer mounted, so a subscription would cost
@@ -700,7 +702,7 @@ export function MessageInput({
   // dependency here it would also focus an idle composer when the pointer turns
   // fine (a 2-in-1 docking to its mouse).
   useEffect(() => {
-    if (!isActive || !composerReady || isPrompting) return
+    if (!isActive || !composerReady || isPromptingRef.current) return
     if (isPrimaryPointerCoarse()) return
     const raf = requestAnimationFrame(() => {
       editorRef.current?.focus()
@@ -708,7 +710,7 @@ export function MessageInput({
     // Dropped if the tab goes inactive or a turn starts before the frame runs.
     // A tiled group keeps that composer on screen, where it would take the caret.
     return () => cancelAnimationFrame(raf)
-  }, [isActive, composerReady, isPrompting])
+  }, [isActive, composerReady])
 
   // Re-hydrate when the user (re)edits a *different* queue item after the
   // initial mount hydration above. Keyed on the item id (not display text) so

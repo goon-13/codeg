@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import enMessages from "@/i18n/messages/en.json"
@@ -52,17 +52,24 @@ const h = vi.hoisted(() => {
     }
   }
 
+  const seedConversations = [
+    conv(7, 10, "Fix the flaky test", "in_progress", "2026-10-02T00:00:00Z"),
+    conv(8, 10, "Review the patch", "pending_review", "2026-10-01T00:00:00Z"),
+    conv(9, 10, "Ship the shelf", "completed", "2026-09-01T00:00:00Z"),
+  ]
+
   return {
+    conv,
     surfaceRendered: vi.fn(),
     registerLiveSurfaceKeys: vi.fn(),
     createConversation: vi.fn().mockResolvedValue(42),
+    updateConversationAgentType: vi.fn().mockResolvedValue(undefined),
     moveConversation: vi.fn().mockResolvedValue(undefined),
     folders: [folder(10, "Alpha"), folder(20, "Beta")],
-    conversations: [
-      conv(7, 10, "Fix the flaky test", "in_progress", "2026-10-02T00:00:00Z"),
-      conv(8, 10, "Review the patch", "pending_review", "2026-10-01T00:00:00Z"),
-      conv(9, 10, "Ship the shelf", "completed", "2026-09-01T00:00:00Z"),
-    ],
+    conversations: [...seedConversations],
+    resetConversations() {
+      h.conversations = [...seedConversations]
+    },
   }
 })
 
@@ -75,6 +82,7 @@ vi.mock("../canvas-conversation-surface", () => ({
 
 vi.mock("@/lib/api", () => ({
   createConversation: h.createConversation,
+  updateConversationAgentType: h.updateConversationAgentType,
   moveConversation: h.moveConversation,
 }))
 
@@ -93,8 +101,14 @@ vi.mock("@/stores/app-workspace-store", () => ({
     selector: (s: {
       folders: typeof h.folders
       conversations: typeof h.conversations
+      refreshConversations: () => Promise<void>
     }) => unknown
-  ) => selector({ folders: h.folders, conversations: h.conversations }),
+  ) =>
+    selector({
+      folders: h.folders,
+      conversations: h.conversations,
+      refreshConversations: async () => {},
+    }),
 }))
 
 function renderShelf() {
@@ -107,9 +121,12 @@ function renderShelf() {
 
 beforeEach(() => {
   localStorage.clear()
+  h.resetConversations()
   h.surfaceRendered.mockClear()
   h.registerLiveSurfaceKeys.mockClear()
   h.createConversation.mockClear()
+  h.createConversation.mockResolvedValue(42)
+  h.updateConversationAgentType.mockClear()
   h.moveConversation.mockClear()
 })
 
@@ -177,6 +194,88 @@ describe("ShelfView", () => {
     await waitFor(() =>
       expect(h.createConversation).toHaveBeenCalledWith(10, "claude_code")
     )
+  })
+
+  it("expands the new conversation and centers it in the shelf", async () => {
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {})
+    h.createConversation.mockImplementation(async () => {
+      h.conversations = [
+        ...h.conversations,
+        h.conv(42, 10, "Untitled", "in_progress", "2026-10-20T00:00:00Z"),
+      ]
+      return 42
+    })
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }))
+    await waitFor(() =>
+      expect(document.querySelector('[data-shelf-card="42"]')).toBeTruthy()
+    )
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: "center",
+        inline: "center",
+      })
+    )
+    await waitFor(() => {
+      expect(h.surfaceRendered.mock.calls.at(-1)?.[0]).toMatchObject({
+        conversationId: 42,
+        isActive: true,
+        onAgentTypeChange: expect.any(Function),
+      })
+    })
+    const filmIds = [
+      ...document.querySelectorAll(
+        '[data-shelf-folder="10"] [data-shelf-card]'
+      ),
+    ].map((el) => el.getAttribute("data-shelf-card"))
+    expect(filmIds[0]).toBe("42")
+
+    const pick = h.surfaceRendered.mock.calls.at(-1)?.[0]
+      .onAgentTypeChange as (agentType: string) => void
+    act(() => {
+      pick("grok")
+    })
+    await waitFor(() => {
+      expect(
+        h.surfaceRendered.mock.calls.at(-1)?.[0].onAgentTypeChange
+      ).toBeUndefined()
+    })
+    expect(h.updateConversationAgentType).not.toHaveBeenCalled()
+
+    scrollIntoView.mockClear()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    expect(scrollIntoView).not.toHaveBeenCalledWith({
+      block: "center",
+      inline: "center",
+    })
+    scrollIntoView.mockRestore()
+  })
+
+  it("does not re-center the new card when another card expands", async () => {
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {})
+    h.createConversation.mockImplementation(async () => {
+      h.conversations = [
+        ...h.conversations,
+        h.conv(42, 10, "Untitled", "in_progress", "2026-10-20T00:00:00Z"),
+      ]
+      return 42
+    })
+    renderShelf()
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }))
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: "center",
+        inline: "center",
+      })
+    )
+    scrollIntoView.mockClear()
+    fireEvent.click(screen.getByText("Review the patch"))
+    expect(scrollIntoView).not.toHaveBeenCalled()
+    scrollIntoView.mockRestore()
   })
 
   it("adds a hidden project from the outline", () => {
@@ -418,6 +517,38 @@ describe("ShelfView", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: "Jump to top" }))
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" })
+  })
+
+  it("does not drop a sibling card or steal the composer when that sibling completes", () => {
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {})
+    renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
+      conversationId: 7,
+      isActive: true,
+    })
+    scrollIntoView.mockClear()
+    h.conversations = h.conversations.map((item) =>
+      item.id === 8
+        ? { ...item, status: "completed", updated_at: "2026-10-21T00:00:00Z" }
+        : item
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }))
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }))
+    expect(screen.getByText("Review the patch")).toBeTruthy()
+    expect(document.querySelector('[data-shelf-card="8"]')).toBeTruthy()
+    expect(scrollIntoView).not.toHaveBeenCalledWith({
+      block: "center",
+      inline: "center",
+    })
+    const latestById = new Map<number, boolean>()
+    for (const [props] of h.surfaceRendered.mock.calls) {
+      latestById.set(props.conversationId as number, props.isActive as boolean)
+    }
+    expect(latestById.get(7)).toBe(true)
+    scrollIntoView.mockRestore()
   })
 
   it("maps a vertical mouse wheel on the film strip to horizontal scroll", () => {

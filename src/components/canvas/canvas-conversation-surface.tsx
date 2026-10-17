@@ -113,7 +113,7 @@ interface CanvasConversationSurfaceProps {
   /** Persisted conversation, or `null` for a draft that hasn't been sent yet. */
   conversationId: number | null
   agentType: AgentType
-  /** Draft cards let the user switch agents before the first send. */
+  /** When set, the agent row is shown so a new or draft session can pick before sending. */
   onAgentTypeChange?: (agentType: AgentType) => void
   /** Draft cards only — where the conversation will be created. */
   draftTarget?: CanvasDraftTarget
@@ -425,6 +425,48 @@ export function CanvasConversationSurface({
     conversationId: dbConversationId ?? undefined,
     isTransientUnmount,
   })
+  const handleAgentRowSelect = useCallback(
+    (nextAgent: AgentType) => {
+      if (nextAgent === selectedAgent) return
+      if (dbConversationId == null) {
+        setRoleOverride(nextAgent)
+        onAgentTypeChange?.(nextAgent)
+        return
+      }
+      beginHermesRoleSwitch(dbConversationId, nextAgent)
+      setExternalId(dbConversationId, null)
+      setRoleOverride(nextAgent)
+      void (async () => {
+        try {
+          await handleDisconnect()
+          await updateConversationAgentType(dbConversationId, nextAgent)
+          await refreshConversations()
+          refetchDetail(dbConversationId)
+          onAgentTypeChange?.(nextAgent)
+        } catch (err) {
+          clearHermesRoleSwitchSkip(dbConversationId)
+          setRoleOverride(null)
+          notify({
+            level: "error",
+            key: `agent-switch:${contextKey}`,
+            title: tWelcome("createConversationFailed"),
+            description: toErrorMessage(err),
+          })
+        }
+      })()
+    },
+    [
+      contextKey,
+      dbConversationId,
+      handleDisconnect,
+      onAgentTypeChange,
+      refetchDetail,
+      refreshConversations,
+      selectedAgent,
+      setExternalId,
+      tWelcome,
+    ]
+  )
   const handleSetConfigOption = useCallback(
     (configId: string, valueId: string) => {
       const profileAgent = interceptHermesProfileConfigChange(configId, valueId)
@@ -434,47 +476,12 @@ export function CanvasConversationSurface({
           currentAgent: selectedAgent,
         })
         if (plan === "noop") return
-        if (dbConversationId == null) {
-          setRoleOverride(profileAgent)
-          onAgentTypeChange?.(profileAgent)
-          return
-        }
-        beginHermesRoleSwitch(dbConversationId, profileAgent)
-        setExternalId(dbConversationId, null)
-        void (async () => {
-          try {
-            await handleDisconnect()
-            await updateConversationAgentType(dbConversationId, profileAgent)
-            await refreshConversations()
-            refetchDetail(dbConversationId)
-            setRoleOverride(profileAgent)
-            onAgentTypeChange?.(profileAgent)
-          } catch (err) {
-            clearHermesRoleSwitchSkip(dbConversationId)
-            notify({
-              level: "error",
-              key: `hermes-role-switch:${contextKey}`,
-              title: tWelcome("createConversationFailed"),
-              description: toErrorMessage(err),
-            })
-          }
-        })()
+        handleAgentRowSelect(profileAgent)
         return
       }
       lifecycleSetConfigOption(configId, valueId)
     },
-    [
-      contextKey,
-      dbConversationId,
-      handleDisconnect,
-      lifecycleSetConfigOption,
-      onAgentTypeChange,
-      refetchDetail,
-      refreshConversations,
-      selectedAgent,
-      setExternalId,
-      tWelcome,
-    ]
+    [handleAgentRowSelect, lifecycleSetConfigOption, selectedAgent]
   )
   const connStatus = conn.status
   const connSessionId = conn.sessionId
@@ -949,14 +956,13 @@ export function CanvasConversationSurface({
           folderPickerOverride={folderPickerOverride}
           isActive={isActive}
         >
-          {isDraft && onAgentTypeChange && (
+          {onAgentTypeChange && (
             <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
               <AgentSelector
                 align="center"
                 defaultAgentType={selectedAgent}
-                onSelect={onAgentTypeChange}
-                onFallback={onAgentTypeChange}
-                disabled={conn.status === "connecting"}
+                onSelect={handleAgentRowSelect}
+                onFallback={isDraft ? onAgentTypeChange : () => {}}
               />
             </div>
           )}

@@ -37,6 +37,53 @@ export function horizontalWheelDelta(input: {
   return input.deltaY
 }
 
+export const SHELF_NAV_ALIGN: ScrollIntoViewOptions = {
+  block: "nearest",
+  inline: "nearest",
+}
+
+export const SHELF_FOCUS_ALIGN: ScrollIntoViewOptions = {
+  block: "center",
+  inline: "center",
+}
+
+export function scrollShelfTarget(
+  selector: string,
+  align: ScrollIntoViewOptions = SHELF_NAV_ALIGN
+): boolean {
+  const el = document.querySelector(selector)
+  if (!(el instanceof HTMLElement)) return false
+  el.scrollIntoView(align)
+  return true
+}
+
+/** After React paints (and once more if the card was not in the DOM yet). */
+export function scheduleScrollShelfTarget(
+  selector: string,
+  align: ScrollIntoViewOptions = SHELF_NAV_ALIGN,
+  onHit?: () => void
+): () => void {
+  let cancelled = false
+  let innerId = 0
+  const hit = () => {
+    if (cancelled) return false
+    if (!scrollShelfTarget(selector, align)) return false
+    onHit?.()
+    return true
+  }
+  const outerId = requestAnimationFrame(() => {
+    if (hit()) return
+    innerId = requestAnimationFrame(() => {
+      hit()
+    })
+  })
+  return () => {
+    cancelled = true
+    cancelAnimationFrame(outerId)
+    if (innerId) cancelAnimationFrame(innerId)
+  }
+}
+
 export function isNestedVerticalScroller(
   target: EventTarget | null,
   stopAt: HTMLElement

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -15,17 +15,27 @@ import { ShelfOutline } from "./shelf-outline"
 import {
   applyShelfOrder,
   buildShelfRows,
-  defaultVisibleConversationIds,
   defaultVisibleFolderIds,
   mergePersistedShelfOrder,
   moveShelfOrderId,
+  retainVisibleConversationIds,
   shelfLiveSurfaceKeys,
   type ShelfOrderSnapshot,
   type ShelfProjectRow,
 } from "./shelf-model"
 import { ShelfProjectRowView } from "./shelf-project-row"
-import { jumpButtonsFromMetrics, type ShelfJumpButtons } from "./shelf-scroll"
-import { ShelfComposerFocusProvider } from "./shelf-session-card"
+import {
+  jumpButtonsFromMetrics,
+  scheduleScrollShelfTarget,
+  scrollShelfTarget,
+  SHELF_FOCUS_ALIGN,
+  SHELF_NAV_ALIGN,
+  type ShelfJumpButtons,
+} from "./shelf-scroll"
+import {
+  ShelfClaimComposer,
+  ShelfComposerFocusProvider,
+} from "./shelf-session-card"
 import {
   loadShelfCollapsedFolderIds,
   loadShelfConversationOrder,
@@ -51,16 +61,16 @@ function agentForFolder(defaultAgent: AgentType | null): AgentType {
 
 function workingConversationIds(
   rows: ShelfProjectRow[],
-  visibleIds: number[] | null
+  visibleIds: number[] | null,
+  expandedIds: ReadonlySet<number>,
+  previouslyShownIds: readonly number[]
 ): number[] {
-  if (visibleIds != null) return visibleIds
-  return rows.flatMap((row) => defaultVisibleConversationIds(row.conversations))
-}
-
-function scrollShelfTarget(selector: string) {
-  document
-    .querySelector(selector)
-    ?.scrollIntoView({ block: "nearest", inline: "nearest" })
+  return retainVisibleConversationIds({
+    visibleIds,
+    conversations: rows.flatMap((row) => row.conversations),
+    expandedIds,
+    previouslyShownIds,
+  })
 }
 
 const EMPTY_JUMP: ShelfJumpButtons = { showTop: false, showBottom: false }
@@ -103,6 +113,15 @@ export function ShelfView() {
   >(loadShelfVisibleConversationIds)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [jump, setJump] = useState<ShelfJumpButtons>(EMPTY_JUMP)
+  const [focusConversationId, setFocusConversationId] = useState<number | null>(
+    null
+  )
+  const pendingFocusScrollRef = useRef<number | null>(null)
+  const shownConversationIdsRef = useRef<number[]>([])
+  const [agentPickIds, setAgentPickIds] = useState<number[]>([])
+  const clearFocusConversation = useCallback(() => {
+    setFocusConversationId(null)
+  }, [])
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -138,8 +157,11 @@ export function ShelfView() {
   const shownRows = rows.filter((row) => workingIds.includes(row.folder.id))
   const conversationWorkingIds = workingConversationIds(
     rows,
-    visibleConversationIds
+    visibleConversationIds,
+    expanded,
+    shownConversationIdsRef.current
   )
+  shownConversationIdsRef.current = conversationWorkingIds
   const moveTargets = rows.map((row) => ({
     id: row.folder.id,
     name: row.folder.name,
@@ -149,11 +171,27 @@ export function ShelfView() {
     const keys = shelfLiveSurfaceKeys(
       shownRows,
       expanded,
-      visibleConversationIds
+      conversationWorkingIds
     )
     registerLiveSurfaceKeys("shelf", keys)
     return () => registerLiveSurfaceKeys("shelf", new Set())
-  }, [shownRows, expanded, visibleConversationIds, registerLiveSurfaceKeys])
+  }, [shownRows, expanded, conversationWorkingIds, registerLiveSurfaceKeys])
+
+  useLayoutEffect(() => {
+    const id = pendingFocusScrollRef.current
+    if (id == null) return
+    const selector = `[data-shelf-card="${id}"]`
+    const markDone = () => {
+      if (pendingFocusScrollRef.current === id) {
+        pendingFocusScrollRef.current = null
+      }
+    }
+    if (scrollShelfTarget(selector, SHELF_FOCUS_ALIGN)) {
+      markDone()
+      return
+    }
+    return scheduleScrollShelfTarget(selector, SHELF_FOCUS_ALIGN, markDone)
+  }, [focusConversationId, rows, expandedIds])
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current
@@ -187,6 +225,12 @@ export function ShelfView() {
 
   return (
     <ShelfComposerFocusProvider>
+      {focusConversationId != null ? (
+        <ShelfClaimComposer
+          conversationId={focusConversationId}
+          onClaimed={clearFocusConversation}
+        />
+      ) : null}
       <div
         data-testid="shelf-view"
         className="relative flex h-full min-h-0 flex-col bg-background"
@@ -241,9 +285,10 @@ export function ShelfView() {
                   conversationWorkingIds
                 )
               }
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
-              )
+                scheduleScrollShelfTarget(
+                  `[data-shelf-folder="${folderId}"]`,
+                  SHELF_NAV_ALIGN
+                )
             }}
             onJumpConversation={(conversationId, folderId) => {
               const nextFolders = workingIds.includes(folderId)
@@ -263,8 +308,9 @@ export function ShelfView() {
               setExpandedIds((ids) =>
                 ids.includes(conversationId) ? ids : [...ids, conversationId]
               )
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
+              scheduleScrollShelfTarget(
+                `[data-shelf-card="${conversationId}"]`,
+                SHELF_NAV_ALIGN
               )
             }}
           />
@@ -280,7 +326,7 @@ export function ShelfView() {
               row={row}
               collapsed={collapsed.has(row.folder.id)}
               expandedIds={expanded}
-              visibleConversationIds={visibleConversationIds}
+              visibleConversationIds={conversationWorkingIds}
               moveTargets={moveTargets.filter((item) => item.id !== row.folder.id)}
               onToggleCollapsed={() =>
                 setCollapsedFolderIds((ids) => toggleMember(ids, row.folder.id))
@@ -328,11 +374,20 @@ export function ShelfView() {
                   workingIds,
                   conversationWorkingIds.includes(id)
                     ? conversationWorkingIds
-                    : [...conversationWorkingIds, id]
+                    : [id, ...conversationWorkingIds]
                 )
                 setExpandedIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
                 setCollapsedFolderIds((ids) =>
                   ids.filter((item) => item !== row.folder.id)
+                )
+                pendingFocusScrollRef.current = id
+                setFocusConversationId(id)
+                setAgentPickIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
+              }}
+              agentPickIds={new Set(agentPickIds)}
+              onPickAgent={(conversationId) => {
+                setAgentPickIds((ids) =>
+                  ids.filter((item) => item !== conversationId)
                 )
               }}
               onMove={async (conversationId, toFolderId) => {

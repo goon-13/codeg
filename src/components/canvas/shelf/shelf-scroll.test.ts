@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest"
-import { horizontalWheelDelta, jumpButtonsFromMetrics } from "./shelf-scroll"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import {
+  horizontalWheelDelta,
+  jumpButtonsFromMetrics,
+  scheduleScrollShelfTarget,
+  scrollShelfTarget,
+  SHELF_FOCUS_ALIGN,
+} from "./shelf-scroll"
 
 describe("jumpButtonsFromMetrics", () => {
   it("hides both buttons when the shelf fits in one screen", () => {
@@ -100,5 +106,86 @@ describe("horizontalWheelDelta", () => {
         deltaY: 40,
       })
     ).toBeNull()
+  })
+})
+
+describe("scrollShelfTarget", () => {
+  afterEach(() => {
+    document.body.replaceChildren()
+  })
+
+  it("centers a shelf card in both axes", () => {
+    const el = document.createElement("div")
+    el.setAttribute("data-shelf-card", "42")
+    const scrollIntoView = vi.fn()
+    el.scrollIntoView = scrollIntoView
+    document.body.appendChild(el)
+    expect(
+      scrollShelfTarget('[data-shelf-card="42"]', SHELF_FOCUS_ALIGN)
+    ).toBe(true)
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      inline: "center",
+    })
+  })
+
+  it("returns false when the card is not in the document", () => {
+    expect(scrollShelfTarget('[data-shelf-card="42"]', SHELF_FOCUS_ALIGN)).toBe(
+      false
+    )
+  })
+})
+
+describe("scheduleScrollShelfTarget", () => {
+  afterEach(() => {
+    document.body.replaceChildren()
+    vi.unstubAllGlobals()
+  })
+
+  it("retries on the next frame when the card is missing, then centers it", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      frames.push(cb)
+      return frames.length
+    })
+    scheduleScrollShelfTarget('[data-shelf-card="42"]', SHELF_FOCUS_ALIGN)
+    expect(frames).toHaveLength(1)
+    frames[0]!(0)
+    expect(frames).toHaveLength(2)
+
+    const el = document.createElement("div")
+    el.setAttribute("data-shelf-card", "42")
+    const scrollIntoView = vi.fn()
+    el.scrollIntoView = scrollIntoView
+    document.body.appendChild(el)
+    frames[1]!(0)
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      inline: "center",
+    })
+  })
+
+  it("does not scroll after cancel", () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      frames.push(cb)
+      return frames.length
+    })
+    const cancel = vi.fn()
+    vi.stubGlobal("cancelAnimationFrame", cancel)
+    const stop = scheduleScrollShelfTarget(
+      '[data-shelf-card="42"]',
+      SHELF_FOCUS_ALIGN
+    )
+    expect(typeof stop).toBe("function")
+    stop()
+    expect(cancel).toHaveBeenCalled()
+    const el = document.createElement("div")
+    el.setAttribute("data-shelf-card", "42")
+    const scrollIntoView = vi.fn()
+    el.scrollIntoView = scrollIntoView
+    document.body.appendChild(el)
+    for (const frame of frames) frame(0)
+    expect(scrollIntoView).not.toHaveBeenCalled()
   })
 })

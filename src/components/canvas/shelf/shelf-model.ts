@@ -35,6 +35,36 @@ export function visibleShelfConversations(
   return conversations.filter((c) => allowed.has(c.id))
 }
 
+/**
+ * Live-filtering the default working set on status makes a card vanish the
+ * moment its turn ends, which yanks every sibling in the film (and the
+ * composer caret). Keep ids that were already shown, plus anything still
+ * expanded, until the user hides them. An explicit outline set still wins.
+ */
+export function retainVisibleConversationIds(args: {
+  visibleIds: number[] | null
+  conversations: DbConversationSummary[]
+  expandedIds: Iterable<number>
+  previouslyShownIds: readonly number[]
+}): number[] {
+  if (args.visibleIds != null) return args.visibleIds
+  const existing = new Set(
+    args.conversations.filter(isShelfConversation).map((c) => c.id)
+  )
+  const out: number[] = []
+  const seen = new Set<number>()
+  for (const id of [
+    ...defaultVisibleConversationIds(args.conversations),
+    ...args.previouslyShownIds,
+    ...args.expandedIds,
+  ]) {
+    if (!existing.has(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
 export function countShelf(
   conversations: DbConversationSummary[]
 ): ShelfCounts {
@@ -110,23 +140,25 @@ export type ShelfOrderSnapshot = {
 function orderByIds<T>(
   items: T[],
   ids: number[],
-  idOf: (item: T) => number
+  idOf: (item: T) => number,
+  unknownAt: "start" | "end" = "end"
 ): T[] {
   const map = new Map(items.map((item) => [idOf(item), item]))
   const seen = new Set<number>()
-  const out: T[] = []
+  const known: T[] = []
   for (const id of ids) {
     const item = map.get(id)
     if (item) {
-      out.push(item)
+      known.push(item)
       seen.add(id)
     }
   }
+  const unknown: T[] = []
   for (const item of items) {
     const id = idOf(item)
-    if (!seen.has(id)) out.push(item)
+    if (!seen.has(id)) unknown.push(item)
   }
-  return out
+  return unknownAt === "start" ? [...unknown, ...known] : [...known, ...unknown]
 }
 
 function snapshotOf(rows: ShelfProjectRow[]): ShelfOrderSnapshot {
@@ -157,7 +189,8 @@ export function applyShelfOrder(
     conversations: orderByIds(
       row.conversations,
       snapshot.conversationIdsByFolder[row.folder.id] ?? [],
-      (c) => c.id
+      (c) => c.id,
+      "start"
     ),
   }))
   return { rows, snapshot: snapshotOf(rows) }
@@ -178,7 +211,8 @@ export function mergePersistedShelfOrder(
     conversations: orderByIds(
       row.conversations,
       conversationOrderByFolder[row.folder.id] ?? [],
-      (c) => c.id
+      (c) => c.id,
+      "start"
     ),
   }))
 }
