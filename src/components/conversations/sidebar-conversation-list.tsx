@@ -2997,6 +2997,7 @@ export function SidebarConversationList({
           onRename={(id, title) => {
             void renameCluster(id, title)
           }}
+          onRename={renameCluster}
           onDissolve={(id) => {
             void deleteCluster(id)
           }}

@@ -9,12 +9,15 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Plus, X } from "lucide-react"
+import { Pencil, Plus, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { AgentIcon } from "@/components/agent-icon"
 import { ConversationStatusDot } from "@/components/conversations/conversation-status-dot"
+import { InlineTitleEditor } from "@/components/shared/inline-title-editor"
 import { Button } from "@/components/ui/button"
+import { updateConversationTitle } from "@/lib/api"
+import { SESSION_TITLE_MAX_CHARS } from "@/lib/normalize-title"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -133,14 +136,57 @@ export function ShelfSessionCard({
   const live = liveKeys.has(surfaceKey)
   const status = conversation.status as ConversationStatus
   const running = status === "in_progress"
-  const title = conversation.title
+  const [editing, setEditing] = useState(false)
+  const titleText = conversation.title
     ? formatConversationTitle(conversation.title)
     : t("untitled")
+  const showPencil = Number.isFinite(conversation.id) && conversation.id > 0
 
   function expandAndClaim() {
     if (!expanded) claim(surfaceKey)
     onToggleExpand()
   }
+
+  const editor = (
+    <InlineTitleEditor
+      value={conversation.title || ""}
+      restLabel={titleText}
+      maxChars={SESSION_TITLE_MAX_CHARS}
+      editing={editing}
+      onEditingChange={setEditing}
+      restOpensEditor={false}
+      onCommit={async (next) => {
+        try {
+          await updateConversationTitle(conversation.id, next)
+        } catch (err) {
+          console.error("[ShelfSessionCard] rename:", err)
+          throw err
+        }
+      }}
+      className={
+        expanded
+          ? "min-w-0 flex-1 truncate text-left text-sm font-medium"
+          : "mt-1 line-clamp-3 text-[13px] font-medium leading-snug"
+      }
+    />
+  )
+
+  const pencil = showPencil ? (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      className={expanded ? undefined : "absolute right-8 top-1"}
+      data-testid="shelf-card-rename"
+      aria-label={t("renameShelfTitle")}
+      onClick={(event) => {
+        event.stopPropagation()
+        setEditing(true)
+      }}
+    >
+      <Pencil />
+    </Button>
+  ) : null
 
   const moveMenu = (
     <ContextMenuContent>
@@ -180,6 +226,42 @@ export function ShelfSessionCard({
       <div className="relative shrink-0">
       <ContextMenu>
         <ContextMenuTrigger asChild>
+          {editing ? (
+          <div
+            draggable={!running}
+            onDragStart={(event) => {
+              if (running) {
+                event.preventDefault()
+                return
+              }
+              event.dataTransfer.setData(
+                "application/x-codeg-conversation",
+                String(conversation.id)
+              )
+              event.dataTransfer.effectAllowed = "move"
+            }}
+            data-shelf-card={conversation.id}
+            data-testid="shelf-card-title"
+            className={cn(
+              "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
+              "border-foreground/15 hover:border-foreground/30",
+              running && "ring-1 ring-primary/30"
+            )}
+          >
+            <span className="flex items-center gap-1.5">
+              <AgentIcon
+                agentType={conversation.agent_type}
+                className="size-3.5 shrink-0"
+              />
+              <ConversationStatusDot
+                status={status}
+                size="sm"
+                className={cn(running && "motion-safe:animate-pulse")}
+              />
+            </span>
+            {editor}
+          </div>
+          ) : (
           <button
             type="button"
             draggable={!running}
@@ -214,13 +296,13 @@ export function ShelfSessionCard({
                 className={cn(running && "motion-safe:animate-pulse")}
               />
             </span>
-            <span className="mt-1 line-clamp-3 text-[13px] font-medium leading-snug">
-              {title}
-            </span>
+            {editor}
           </button>
+          )}
         </ContextMenuTrigger>
         {moveMenu}
       </ContextMenu>
+        {pencil}
         <Button
           type="button"
           variant="ghost"
@@ -256,13 +338,20 @@ export function ShelfSessionCard({
           size="sm"
           className={cn(running && "motion-safe:animate-pulse")}
         />
-        <button
-          type="button"
-          className="min-w-0 flex-1 truncate text-left text-sm font-medium"
-          onClick={onToggleExpand}
-        >
-          {title}
-        </button>
+        {editing ? (
+          <div className="min-w-0 flex-1">
+            {editor}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 flex-1 truncate text-left text-sm font-medium"
+            onClick={onToggleExpand}
+          >
+            {editor}
+          </button>
+        )}
+        {pencil}
         <Button
           type="button"
           variant="ghost"

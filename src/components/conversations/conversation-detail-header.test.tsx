@@ -1,5 +1,5 @@
 import { type ComponentProps, type ReactElement } from "react"
-import { render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { NextIntlClientProvider } from "next-intl"
 import { describe, expect, it, vi, beforeEach } from "vitest"
@@ -138,5 +138,66 @@ describe("ConversationDetailHeader dialog target snapshot", () => {
       expect(h.updateConversationTitle).toHaveBeenCalledWith(1, "renamed")
     })
     expect(h.updateConversationTitle).not.toHaveBeenCalledWith(2, "renamed")
+  })
+})
+
+describe("ConversationDetailHeader inline title", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("draft header click does not open an input", () => {
+    const draft = { ...A, conversationId: null, title: "" }
+    const { getByTestId, queryByTestId } = render(
+      withIntl(<ConversationDetailHeader {...draft} />)
+    )
+    fireEvent.click(getByTestId("conversation-header-title"))
+    expect(queryByTestId("inline-title-editor-input")).toBeNull()
+  })
+
+  it("persisted title Enter calls updateConversationTitle", async () => {
+    const { getByTestId } = render(
+      withIntl(<ConversationDetailHeader {...A} />)
+    )
+    fireEvent.click(getByTestId("conversation-header-title"))
+    const input = getByTestId("inline-title-editor-input")
+    fireEvent.change(input, { target: { value: "inline-a" } })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" })
+    })
+    expect(h.updateConversationTitle).toHaveBeenCalledWith(1, "inline-a")
+  })
+
+  it("switching tabs while inline editing cancels and commits neither", async () => {
+    const { getByTestId, queryByTestId, rerender } = render(
+      withIntl(<ConversationDetailHeader {...A} />)
+    )
+    fireEvent.click(getByTestId("conversation-header-title"))
+    fireEvent.change(getByTestId("inline-title-editor-input"), {
+      target: { value: "ghost" },
+    })
+    rerender(withIntl(<ConversationDetailHeader {...B} />))
+    expect(queryByTestId("inline-title-editor-input")).toBeNull()
+    expect(h.updateConversationTitle).not.toHaveBeenCalled()
+  })
+
+  it("switching to draft while inline editing cancels", () => {
+    const { getByTestId, queryByTestId, rerender } = render(
+      withIntl(<ConversationDetailHeader {...A} />)
+    )
+    fireEvent.click(getByTestId("conversation-header-title"))
+    expect(getByTestId("inline-title-editor-input")).toBeTruthy()
+    const draft = { ...A, conversationId: null, title: "" }
+    rerender(withIntl(<ConversationDetailHeader {...draft} />))
+    expect(queryByTestId("inline-title-editor-input")).toBeNull()
+    expect(h.updateConversationTitle).not.toHaveBeenCalled()
+  })
+
+  it("F2 on focused header title starts inline", () => {
+    const { getByTestId } = render(withIntl(<ConversationDetailHeader {...A} />))
+    const rest = getByTestId("conversation-header-title")
+    rest.focus()
+    fireEvent.keyDown(rest, { key: "F2" })
+    expect(getByTestId("inline-title-editor-input")).toBeTruthy()
   })
 })

@@ -2247,6 +2247,7 @@
       "restore": "还原",
       "attachToCurrentSession": "添加到会话",
       "rename": "重命名",
+      "editTitle": "重命名标题",
       "status": "状态",
       "delete": "删除",
       "importLocalSessions": "导入本地会话",
@@ -4203,7 +4204,8 @@
       "expand": "展开主题",
       "collapse": "收起主题",
       "cancel": "取消",
-      "save": "保存"
+      "save": "保存",
+      "editTitle": "重命名主题"
     },
     "handoff": {
       "dockLabel": "用另一 agent 接力",
@@ -6927,6 +6929,7 @@
     "showAllProjects": "显示全部项目",
     "showWorkingProjects": "货架项目",
     "hideFromShelf": "从货架拿掉此会话",
+    "renameShelfTitle": "重命名这条会话",
     "childCount": "{count} 个子智能体",
     "regionMenu": "区域选项",
     "rename": "重命名",

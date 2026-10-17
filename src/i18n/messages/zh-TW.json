@@ -2247,6 +2247,7 @@
       "restore": "還原",
       "attachToCurrentSession": "添加到會話",
       "rename": "重新命名",
+      "editTitle": "重新命名標題",
       "status": "狀態",
       "delete": "刪除",
       "importLocalSessions": "匯入本地會話",
@@ -4203,7 +4204,8 @@
       "expand": "Expand theme",
       "collapse": "Collapse theme",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "editTitle": "重新命名主題"
     },
     "handoff": {
       "dockLabel": "Continue with another agent",
@@ -6927,6 +6929,7 @@
     "showAllProjects": "顯示全部專案",
     "showWorkingProjects": "貨架專案",
     "hideFromShelf": "從貨架移除此會話",
+    "renameShelfTitle": "重新命名這則對話",
     "childCount": "{count} 個子智慧體",
     "regionMenu": "區域選項",
     "rename": "重新命名",

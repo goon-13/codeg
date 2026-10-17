@@ -2247,6 +2247,7 @@
       "restore": "Restaurer",
       "attachToCurrentSession": "Ajouter à la session",
       "rename": "Renommer",
+      "editTitle": "Renommer le titre",
       "status": "Statut",
       "delete": "Supprimer",
       "importLocalSessions": "Importer les sessions locales",
@@ -4203,7 +4204,8 @@
       "expand": "Expand theme",
       "collapse": "Collapse theme",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "editTitle": "Renommer le thème"
     },
     "handoff": {
       "dockLabel": "Continue with another agent",
@@ -6926,6 +6928,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "renameShelfTitle": "Renommer cette conversation",
     "waitingCount": "{count} pending review",
     "childCount": "{count} sous-agents",
     "regionMenu": "Options de la région",

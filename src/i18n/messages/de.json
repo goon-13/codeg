@@ -2247,6 +2247,7 @@
       "restore": "Wiederherstellen",
       "attachToCurrentSession": "Zur Sitzung hinzufügen",
       "rename": "Umbenennen",
+      "editTitle": "Titel umbenennen",
       "status": "Zustand",
       "delete": "Löschen",
       "importLocalSessions": "Lokale Sitzungen importieren",
@@ -4203,7 +4204,8 @@
       "expand": "Expand theme",
       "collapse": "Collapse theme",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "editTitle": "Thema umbenennen"
     },
     "handoff": {
       "dockLabel": "Continue with another agent",
@@ -6927,6 +6929,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "renameShelfTitle": "Diese Unterhaltung umbenennen",
     "childCount": "{count} Subagenten",
     "regionMenu": "Regionsoptionen",
     "rename": "Umbenennen",

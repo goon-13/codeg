@@ -2247,6 +2247,7 @@
       "restore": "استعادة",
       "attachToCurrentSession": "إضافة إلى الجلسة",
       "rename": "إعادة تسمية",
+      "editTitle": "إعادة تسمية العنوان",
       "status": "الحالة",
       "delete": "حذف",
       "importLocalSessions": "استيراد الجلسات المحلية",
@@ -4203,7 +4204,8 @@
       "expand": "Expand theme",
       "collapse": "Collapse theme",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "editTitle": "إعادة تسمية الموضوع"
     },
     "handoff": {
       "dockLabel": "Continue with another agent",
@@ -6927,6 +6929,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "renameShelfTitle": "إعادة تسمية هذه المحادثة",
     "childCount": "{count} وكلاء فرعيون",
     "regionMenu": "خيارات المنطقة",
     "rename": "إعادة تسمية",

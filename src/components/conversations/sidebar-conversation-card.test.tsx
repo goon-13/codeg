@@ -874,3 +874,110 @@ describe("SidebarConversationCard side tag", () => {
     expect(container.querySelector("[data-side-row]")).toBeNull()
   })
 })
+
+describe("SidebarConversationCard inline title", () => {
+  beforeEach(() => {
+    onSelect.mockClear()
+    onRename.mockClear()
+  })
+
+  function renderCard(c: DbConversationSummary = conv(1)) {
+    return renderWithIntl(
+      <SidebarConversationCard
+        conversation={c}
+        isSelected={false}
+        isOpenInTab={false}
+        onSelect={onSelect}
+        onDoubleClick={onDoubleClick}
+        onRename={onRename}
+        onDelete={onDelete}
+        onStatusChange={onStatusChange}
+      />
+    )
+  }
+
+  it("click title does not onSelect and opens input", () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(screen.getByTestId("inline-title-editor-input")).toBeTruthy()
+    expect(document.querySelector("button input")).toBeNull()
+  })
+
+  it("click row chrome still onSelect", () => {
+    renderCard()
+    const row = document.querySelector("[data-conversation-id='1']")
+    expect(row).toBeTruthy()
+    fireEvent.click(row as Element)
+    expect(onSelect).toHaveBeenCalled()
+    expect(screen.queryByTestId("inline-title-editor-input")).toBeNull()
+  })
+
+  it("Enter commits via onRename", async () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    const input = screen.getByTestId("inline-title-editor-input")
+    fireEvent.change(input, { target: { value: "renamed" } })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" })
+    })
+    expect(onRename).toHaveBeenCalledWith(1, "renamed")
+  })
+
+  it("Escape does not onRename", () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    const input = screen.getByTestId("inline-title-editor-input")
+    fireEvent.change(input, { target: { value: "nope" } })
+    fireEvent.keyDown(input, { key: "Escape" })
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it("unchanged 100-char stored Enter does not onRename", async () => {
+    const c = { ...conv(1), title: "x".repeat(100) }
+    renderCard(c)
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId("inline-title-editor-input"), {
+        key: "Enter",
+      })
+    })
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it("dialog save with unchanged title does not onRename", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup({
+      pointerEventsCheck: 0,
+    })
+    renderCard()
+    fireEvent.contextMenu(document.querySelector("[data-conversation-id='1']")!)
+    await user.click(screen.getByRole("menuitem", { name: "Rename" }))
+    await user.click(screen.getByRole("button", { name: "Save" }))
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it("keeps data-conversation-id while editing", () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    expect(document.querySelector("[data-conversation-id='1']")).toBeTruthy()
+    expect(
+      document.querySelector("button[data-conversation-id='1']")
+    ).toBeNull()
+  })
+
+  it("F2 on focused row starts inline", () => {
+    renderCard()
+    const row = document.querySelector("[data-conversation-id='1']") as HTMLElement
+    row.focus()
+    fireEvent.keyDown(row, { key: "F2" })
+    expect(screen.getByTestId("inline-title-editor-input")).toBeTruthy()
+  })
+
+  it("F2 while input focused does not retrigger start", async () => {
+    renderCard()
+    fireEvent.click(screen.getByTestId("sidebar-conversation-title"))
+    const input = screen.getByTestId("inline-title-editor-input")
+    fireEvent.keyDown(input, { key: "F2" })
+    expect(screen.getAllByTestId("inline-title-editor-input")).toHaveLength(1)
+  })
+})

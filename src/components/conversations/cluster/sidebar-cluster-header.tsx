@@ -4,6 +4,14 @@ import { memo, useState } from "react"
 import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { AgentIcon } from "@/components/agent-icon"
+import { memo, useRef, useState, type KeyboardEvent } from "react"
+import { ChevronRight, Pencil, Trash2 } from "lucide-react"
+import { useTranslations } from "next-intl"
+import { AgentIcon } from "@/components/agent-icon"
+import {
+  InlineTitleEditor,
+  type InlineTitleEditorHandle,
+} from "@/components/shared/inline-title-editor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -31,6 +39,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useImeGuard } from "@/hooks/use-ime-guard"
+import {
+  CLUSTER_TITLE_MAX_CHARS,
+  normalizeTitle,
+} from "@/lib/normalize-title"
 import { cn } from "@/lib/utils"
 import type { AgentType } from "@/lib/types"
 
@@ -53,6 +65,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
   depth: number
   onToggle: (clusterId: number) => void
   onRename: (clusterId: number, title: string) => void
+  onRename: (clusterId: number, title: string) => void | Promise<unknown>
   onDissolve: (clusterId: number) => void
 }) {
   const t = useTranslations("Folder.cluster")
@@ -60,6 +73,38 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
   const [renameOpen, setRenameOpen] = useState(false)
   const [dissolveOpen, setDissolveOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(title)
+  const [editing, setEditing] = useState(false)
+  const editorRef = useRef<InlineTitleEditorHandle>(null)
+
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "F2") return
+    if (editing) return
+    event.preventDefault()
+    editorRef.current?.start()
+  }
+
+  const handleRenameOpen = () => {
+    editorRef.current?.cancel()
+    setRenameValue(title)
+    setRenameOpen(true)
+  }
+
+  const handleRenameConfirm = async () => {
+    const stored = title
+    if (renameValue === stored || renameValue.trim() === stored.trim()) {
+      setRenameOpen(false)
+      return
+    }
+    const next = normalizeTitle(renameValue, CLUSTER_TITLE_MAX_CHARS)
+    if (next === null) {
+      setRenameOpen(false)
+      return
+    }
+    await onRename(clusterId, next)
+    setRenameOpen(false)
+  }
+
+  const RowChrome = editing ? "div" : "button"
 
   return (
     <>
@@ -76,6 +121,10 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
             <button
               type="button"
               onClick={() => onToggle(clusterId)}
+            <RowChrome
+              type={editing ? undefined : "button"}
+              onClick={() => onToggle(clusterId)}
+              onKeyDown={handleTitleKeyDown}
               className={cn(
                 "relative flex h-[1.9375rem] w-full items-center rounded-full text-left text-[0.75rem] text-sidebar-foreground outline-none transition-colors duration-[120ms] hover:bg-[color-mix(in_oklab,var(--sidebar-accent),var(--sidebar-foreground)_2%)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               )}
@@ -88,6 +137,11 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
               <span
                 aria-hidden
                 className="pointer-events-none absolute top-1/2 flex items-center justify-center"
+              aria-expanded={editing ? undefined : expanded}
+            >
+              <span
+                aria-label={expanded ? t("collapse") : t("expand")}
+                className="pointer-events-auto absolute top-1/2 flex items-center justify-center"
                 style={{
                   left: "var(--conv-rail-axis, 0.875rem)",
                   width: "0.875rem",
@@ -96,6 +150,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
                 }}
               >
                 <ChevronRight
+                  aria-hidden
                   className={cn(
                     "h-[0.75rem] w-[0.75rem] transition-transform",
                     expanded && "rotate-90"
@@ -105,6 +160,19 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
               <span className="min-w-0 flex-1 truncate font-medium">
                 {title || t("untitled")}
               </span>
+              <InlineTitleEditor
+                ref={editorRef}
+                value={title}
+                restLabel={title || t("untitled")}
+                maxChars={CLUSTER_TITLE_MAX_CHARS}
+                editing={editing}
+                onEditingChange={setEditing}
+                restOpensEditor
+                onCommit={(next) => onRename(clusterId, next)}
+                className="max-w-max flex-1 truncate font-medium"
+                aria-label={t("editTitle")}
+                data-testid="cluster-header-title"
+              />
               <span className="ml-1 shrink-0 text-muted-foreground/80">
                 {t("memberCount", { count: memberCount })}
               </span>
@@ -127,6 +195,11 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
               setRenameOpen(true)
             }}
           >
+            </RowChrome>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onSelect={handleRenameOpen}>
             <Pencil className="h-4 w-4" />
             {t("rename")}
           </ContextMenuItem>
@@ -156,6 +229,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
                 onRename(clusterId, renameValue.trim())
                 setRenameOpen(false)
               }
+              if (e.key === "Enter") void handleRenameConfirm()
             }}
             autoFocus
           />
@@ -172,6 +246,7 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
             >
               {t("save")}
             </Button>
+            <Button onClick={() => void handleRenameConfirm()}>{t("save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
