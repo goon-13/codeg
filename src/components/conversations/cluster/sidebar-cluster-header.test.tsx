@@ -1,6 +1,3 @@
-import { describe, expect, it, vi } from "vitest"
-import { render } from "@testing-library/react"
-import { NextIntlClientProvider } from "next-intl"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { describe, expect, it, vi } from "vitest"
@@ -31,23 +28,6 @@ const messages = {
   },
 }
 
-describe("SidebarClusterHeader", () => {
-  it("exposes data attributes and member count", () => {
-    render(
-      <NextIntlClientProvider locale="en" messages={messages}>
-        <SidebarClusterHeader
-          clusterId={7}
-          title="货架新建"
-          memberCount={2}
-          agentTypes={["cursor", "grok"]}
-          expanded
-          depth={0}
-          onToggle={vi.fn()}
-          onRename={vi.fn()}
-          onDissolve={vi.fn()}
-        />
-      </NextIntlClientProvider>
-    )
 function renderHeader(
   overrides: Partial<Parameters<typeof SidebarClusterHeader>[0]> = {}
 ) {
