@@ -68,6 +68,9 @@ interface ConversationMessageNavProps {
    *  is loading, or failed to (offering `onRetryEarlier`). */
   earlier?: "loading" | "error" | null
   onRetryEarlier?: () => void
+  /** Loaded assistant row for a user `threadIndex`. Missing = no「看回复」. */
+  assistantByUserIndex?: Record<number, number | null>
+  onJumpAssistant?: (threadIndex: number) => void
 }
 
 /**
@@ -93,11 +96,19 @@ export const ConversationMessageNav = memo(function ConversationMessageNav({
   revealingTurnId = null,
   earlier = null,
   onRetryEarlier,
+  assistantByUserIndex,
+  onJumpAssistant,
 }: ConversationMessageNavProps) {
   const t = useTranslations("Folder.chat.messageNav")
   const { openSessionFileDiff } = useWorkspaceActions()
   const { activeFolder: folder } = useActiveFolder()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [filter, setFilter] = useState("")
+  const visibleEntries = filter.trim()
+    ? entries.filter((entry) =>
+        entry.label.toLowerCase().includes(filter.trim().toLowerCase())
+      )
+    : entries
 
   const handleFileClick = useCallback(
     (
@@ -152,6 +163,16 @@ export const ConversationMessageNav = memo(function ConversationMessageNav({
           </Button>
         </div>
 
+        <div className="border-b px-2 py-1.5">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder={t("filterPlaceholder")}
+            aria-label={t("filterPlaceholder")}
+            className="h-7 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
+
         <div className="max-h-96 space-y-1.5 overflow-y-auto p-2">
           {earlier === "loading" && (
             <div className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted-foreground">
@@ -169,9 +190,13 @@ export const ConversationMessageNav = memo(function ConversationMessageNav({
               <span className="min-w-0 truncate">{t("loadEarlier")}</span>
             </button>
           )}
-          {entries.map((entry) => {
+          {visibleEntries.map((entry) => {
             const isOpen = openGroups[entry.turnId] ?? false
             const isRevealing = revealingTurnId === entry.turnId
+            const assistantIndex =
+              entry.threadIndex != null
+                ? assistantByUserIndex?.[entry.threadIndex]
+                : null
             const uniqueFileCount = new Set(
               entry.files.map((file) => normalizeSlashPath(file.path))
             ).size
@@ -220,6 +245,17 @@ export const ConversationMessageNav = memo(function ConversationMessageNav({
                       )}
                     </span>
                   </button>
+
+                  {typeof assistantIndex === "number" && onJumpAssistant ? (
+                    <button
+                      type="button"
+                      aria-label={t("viewReply")}
+                      onClick={() => onJumpAssistant(assistantIndex)}
+                      className="flex shrink-0 items-center border-l border-border px-1.5 text-3xs text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                    >
+                      {t("viewReply")}
+                    </button>
+                  ) : null}
 
                   {entry.hasChanges && (
                     <button

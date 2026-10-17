@@ -1,4 +1,5 @@
-import { memo, useMemo, useState, type ReactNode } from "react"
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useRunReveal } from "@/components/session-dashboard/run-reveal-context"
 import type { AdaptedContentPart } from "@/lib/adapters/ai-elements-adapter"
 import {
   classifyToolKind,
@@ -76,7 +77,15 @@ export const ToolGroupPart = memo(function ToolGroupPart({
   renderItem: (item: AdaptedToolCallPart, key: string) => ReactNode
 }) {
   const t = useTranslations("Folder.chat.contentParts.toolGroup")
-  const [open, setOpen] = useState(false)
+  const reveal = useRunReveal()
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
+  useEffect(() => {
+    setUserOpen(null)
+  }, [reveal.toolsExpanded, reveal.focusToolCallId])
+  const focused = part.items.some(
+    (item) => item.toolCallId && item.toolCallId === reveal.focusToolCallId
+  )
+  const open = userOpen ?? (reveal.toolsExpanded || focused)
 
   const { phrases, errorPhrase } = useMemo(() => {
     const counts = TOOL_KIND_ORDER.reduce(
@@ -112,7 +121,12 @@ export const ToolGroupPart = memo(function ToolGroupPart({
   const titleText = phrases.join(joiner)
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="w-full">
+    <Collapsible
+      open={open}
+      onOpenChange={setUserOpen}
+      className="w-full"
+      data-tool-group=""
+    >
       <CollapsibleTrigger
         className={cn(
           "group inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted/60 px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ws-msg-chip"

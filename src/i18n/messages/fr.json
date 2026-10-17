@@ -3767,7 +3767,9 @@
         "collapsedSummary": "Messages {count}",
         "fileCount": "{count, plural, one {# fichier} other {# fichiers}}",
         "remove": "Retirer",
-        "noDiffDataAvailable": "Aucune donnée de diff disponible pour {filePath}"
+        "noDiffDataAvailable": "Aucune donnée de diff disponible pour {filePath}",
+        "filterPlaceholder": "Filter titles",
+        "viewReply": "See reply"
       },
       "replyArtifacts": {
         "title": "Fichiers modifiés",
@@ -3944,6 +3946,26 @@
       "proposedPlan": {
         "title": "Plan proposé",
         "planning": "Planification…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Sortie des outils",
+        "thinkingToggle": "Raisonnement"
       }
     },
     "diffPreview": {

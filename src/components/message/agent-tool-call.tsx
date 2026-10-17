@@ -42,6 +42,7 @@ import {
   isAsyncLaunchAckText,
   parseBackgroundTaskMarker,
 } from "@/lib/background-agent"
+import { useRunReveal } from "@/components/session-dashboard/run-reveal-context"
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
@@ -275,6 +276,7 @@ export const AgentToolCallPart = memo(function AgentToolCallPart({
   const t = useTranslations("Folder.chat.contentParts")
   const tTool = useTranslations("Folder.chat.tool")
   const tBg = useTranslations("Folder.chat.backgroundTasks")
+  const { thinkingHidden } = useRunReveal()
 
   const isRunning =
     part.state === "input-available" || part.state === "input-streaming"
@@ -510,6 +512,7 @@ export const AgentToolCallPart = memo(function AgentToolCallPart({
     }
     const { entry, at } = segment.value
     if (entry.type === "thinking") {
+      if (thinkingHidden) return null
       return entry.text.trim() ? (
         // Folded like the main thread's thinking (same contract as
         // <ReasoningPart>): a subagent's reasoning is reference

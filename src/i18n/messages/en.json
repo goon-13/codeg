@@ -3492,6 +3492,26 @@
         "outputSpeedAria": "Estimated output speed",
         "outputSpeedTooltip": "Estimated output speed (text + thinking)"
       },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
+      },
       "jsonTree": {
         "viewRaw": "Show raw JSON",
         "viewTree": "Show tree",
@@ -3767,7 +3787,9 @@
         "collapsedSummary": "Messages {count}",
         "fileCount": "{count, plural, one {# file} other {# files}}",
         "remove": "Remove",
-        "noDiffDataAvailable": "No diff data available for {filePath}"
+        "noDiffDataAvailable": "No diff data available for {filePath}",
+        "filterPlaceholder": "Filter titles",
+        "viewReply": "See reply"
       },
       "replyArtifacts": {
         "title": "Files changed",

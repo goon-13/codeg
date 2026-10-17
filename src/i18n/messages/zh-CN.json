@@ -3492,6 +3492,26 @@
         "outputSpeedAria": "估算输出速度",
         "outputSpeedTooltip": "估算输出速度（正文 + 思考）"
       },
+      "sessionDashboard": {
+        "stripAria": "活动时间线",
+        "barAria": "上下文窗口",
+        "legendRead": "读取",
+        "legendWrite": "写入",
+        "legendSearch": "搜索",
+        "legendCommand": "命令",
+        "legendFetch": "网络",
+        "legendThink": "思考",
+        "legendTodo": "待办",
+        "legendTask": "任务",
+        "legendError": "错误",
+        "legendText": "文本",
+        "legendOther": "其它",
+        "peekJumpUser": "去你的话",
+        "peekJumpReply": "看回复",
+        "stickyAria": "当前回合",
+        "toolsToggle": "工具输出",
+        "thinkingToggle": "思考"
+      },
       "jsonTree": {
         "viewRaw": "查看原始 JSON",
         "viewTree": "查看树状视图",
@@ -3767,7 +3787,9 @@
         "collapsedSummary": "消息 {count}",
         "fileCount": "{count} 个文件",
         "remove": "移除",
-        "noDiffDataAvailable": "未找到 {filePath} 的差异数据"
+        "noDiffDataAvailable": "未找到 {filePath} 的差异数据",
+        "filterPlaceholder": "滤标题",
+        "viewReply": "看回复"
       },
       "replyArtifacts": {
         "title": "改动文件",

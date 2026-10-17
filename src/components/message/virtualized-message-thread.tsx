@@ -103,6 +103,8 @@ interface VirtualizedMessageThreadProps<T> {
    */
   prependEpoch?: number
   prependScopeKey?: string | number
+  /** Viewport offset in px. Does not change load-older crossing. */
+  onViewportOffset?: (offset: number) => void
 }
 
 /**
@@ -136,6 +138,7 @@ function VirtualizedMessageThreadImpl<T>({
   loadingOlderLabel,
   prependEpoch = 0,
   prependScopeKey,
+  onViewportOffset,
 }: VirtualizedMessageThreadProps<T>) {
   const { scrollRef, stopScroll } = useStickToBottomContext()
   const virtualizerHandleRef = useRef<VirtualizerHandle>(null)
@@ -225,14 +228,17 @@ function VirtualizedMessageThreadImpl<T>({
   // post-commit so the scroll handler stays referentially stable across
   // streaming re-renders; scroll events only fire after commit.
   const loadOlderStateRef = useRef({ hasOlder, isLoadingOlder, onLoadOlder })
+  const onViewportOffsetRef = useRef(onViewportOffset)
   useEffect(() => {
     rowOffsetRef.current = rowOffset
     loadOlderStateRef.current = { hasOlder, isLoadingOlder, onLoadOlder }
+    onViewportOffsetRef.current = onViewportOffset
   })
   const prevScrollOffsetRef = useRef<number | null>(null)
   const handleScroll = useCallback((offset: number) => {
     const prev = prevScrollOffsetRef.current
     prevScrollOffsetRef.current = offset
+    onViewportOffsetRef.current?.(offset)
     const s = loadOlderStateRef.current
     if (!s.hasOlder || s.isLoadingOlder || !s.onLoadOlder) return
     if (

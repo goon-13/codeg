@@ -241,6 +241,28 @@ describe("ConversationMessageNav", () => {
     expect(screen.getByText("first message")).toBeInTheDocument()
   })
 
+  it("filters titles and jumps to the assistant reply", () => {
+    const onJumpAssistant = vi.fn()
+    render(
+      <ConversationMessageNav
+        count={entries.length}
+        expanded
+        onToggle={vi.fn()}
+        entries={entries}
+        onSelect={vi.fn()}
+        assistantByUserIndex={{ 3: 4 }}
+        onJumpAssistant={onJumpAssistant}
+      />
+    )
+    fireEvent.change(screen.getByLabelText("filterPlaceholder"), {
+      target: { value: "edit" },
+    })
+    expect(screen.getByText("edit something")).toBeInTheDocument()
+    expect(screen.queryByText("first message")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "viewReply" }))
+    expect(onJumpAssistant).toHaveBeenCalledWith(4)
+  })
+
   it("opens a file diff when a changed file is clicked", () => {
     render(
       <ConversationMessageNav

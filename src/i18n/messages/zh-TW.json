@@ -3767,7 +3767,9 @@
         "collapsedSummary": "訊息 {count}",
         "fileCount": "{count} 個檔案",
         "remove": "移除",
-        "noDiffDataAvailable": "找不到 {filePath} 的差異資料"
+        "noDiffDataAvailable": "找不到 {filePath} 的差異資料",
+        "filterPlaceholder": "濾標題",
+        "viewReply": "看回覆"
       },
       "replyArtifacts": {
         "title": "變更檔案",
@@ -3944,6 +3946,26 @@
       "proposedPlan": {
         "title": "計劃提案",
         "planning": "規劃中…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "去你的話",
+        "peekJumpReply": "看回覆",
+        "stickyAria": "目前回合",
+        "toolsToggle": "工具輸出",
+        "thinkingToggle": "思考"
       }
     },
     "diffPreview": {

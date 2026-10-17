@@ -98,6 +98,20 @@ import { unescapeComposerText } from "@/lib/composer-copy-text"
 import { useStickToBottomContext } from "use-stick-to-bottom"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { MarkdownImageProvider } from "@/components/ai-elements/markdown-local-image"
+import { SessionDashboardHost } from "@/components/session-dashboard/session-dashboard-host"
+import {
+  RunRevealProvider,
+  RunRevealSurface,
+} from "@/components/session-dashboard/run-reveal-context"
+import { SessionRoundSticky } from "@/components/session-dashboard/session-round-sticky"
+import { blocksFromThreadItems } from "@/components/session-dashboard/blocks-from-thread"
+import { mergeDashboardSegs } from "@/components/session-dashboard/dashboard-model"
+import {
+  activeRoundIndex,
+  assistantByUserThreadIndex,
+  roundsFromThread,
+  type RoundMapItem,
+} from "@/components/session-dashboard/round-map-model"
 
 interface MessageListViewProps {
   conversationId: number
@@ -1403,6 +1417,45 @@ export function MessageListView({
   ])
   const { threadItems, nonStreamingAdapted, lastAssistantRunning } = threadState
 
+  const dashboardSegs = useMemo(
+    () => mergeDashboardSegs(blocksFromThreadItems(threadItems)),
+    [threadItems]
+  )
+  const dashboardRounds = useMemo(() => {
+    const items: RoundMapItem[] = []
+    threadItems.forEach((item, threadIndex) => {
+      if (item.kind !== "turn") return
+      const role = item.group.role
+      if (role !== "user" && role !== "assistant") return
+      const label =
+        role === "user"
+          ? extractTextFromParts(item.group.parts).trim().slice(0, 160)
+          : ""
+      items.push({ role, threadIndex, label })
+    })
+    return roundsFromThread(items, dashboardSegs)
+  }, [threadItems, dashboardSegs])
+  const assistantByUserIndex = useMemo(
+    () => assistantByUserThreadIndex(dashboardRounds),
+    [dashboardRounds]
+  )
+  const dashboardActiveFirst =
+    connStatus === "prompting"
+      ? dashboardSegs[dashboardSegs.length - 1]?.first
+      : undefined
+  const [threadOffset, setThreadOffset] = useState(0)
+  const stickyRoundIndex = activeRoundIndex(
+    dashboardRounds,
+    dashboardActiveFirst ?? null
+  )
+  const stickyRound =
+    stickyRoundIndex != null
+      ? dashboardRounds[stickyRoundIndex]
+      : dashboardRounds.filter((r) => r.ordinal != null).slice(-1)[0]
+  const userRoundTotal = dashboardRounds.filter((r) => r.ordinal != null).length
+  const showRoundSticky =
+    threadOffset > 48 && stickyRound?.ordinal != null && userRoundTotal > 0
+
   // See `ReplyFoldState`. Derived during render rather than in an effect so a
   // send and the fold it causes land in the same commit — an effect would paint
   // one frame of the previous reply still expanded under the new message.
@@ -1718,10 +1771,47 @@ export function MessageListView({
     // the virtualizer instead of sitting inside it — and it covers the
     // top-right SubAgentOverlay's rows too.
     <SessionViewerHost>
-      <div
+      <RunRevealProvider>
+      <RunRevealSurface
         ref={selectionBoxRef}
         className="chat-motion-scope relative flex h-full min-h-0 flex-col"
       >
+        <SessionDashboardHost
+          conversationId={conversationId}
+          segs={dashboardSegs}
+          rounds={dashboardRounds}
+          activeFirst={dashboardActiveFirst}
+          onJump={(first) =>
+            scrollApiRef.current?.scrollToIndex(first, {
+              align: "start",
+              smooth: true,
+            })
+          }
+          onJumpUser={(first) =>
+            scrollApiRef.current?.scrollToIndex(first, {
+              align: "start",
+              smooth: true,
+            })
+          }
+        />
+        {showRoundSticky && stickyRound?.ordinal != null ? (
+          <SessionRoundSticky
+            label={stickyRound.userLabel}
+            ordinal={stickyRound.ordinal}
+            total={userRoundTotal}
+            onJump={() => {
+              if (stickyRound.userThreadIndex != null) {
+                scrollApiRef.current?.scrollToIndex(
+                  stickyRound.userThreadIndex,
+                  { align: "start", smooth: true }
+                )
+              }
+            }}
+          />
+        ) : null}
+        {/* Nav / plan / sub-agent chips pin to the transcript, not the
+            dashboard strip — otherwise they eat clicks on the first squares. */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
         <MessageThread
           className="flex-1 min-h-0"
           resize={
@@ -1746,6 +1836,7 @@ export function MessageListView({
             loadingOlderLabel={t("loadingEarlier")}
             prependEpoch={session?.olderTurnsPrependEpoch ?? 0}
             prependScopeKey={conversationId}
+            onViewportOffset={setThreadOffset}
           />
           {/* Stacked, not overlapping: both pin to the thread's bottom centre,
           so the scroll button steps up while the pill is showing. */}
@@ -1802,6 +1893,13 @@ export function MessageListView({
                   : null
               }
               onRetryEarlier={earlierOutline.retry}
+              assistantByUserIndex={assistantByUserIndex}
+              onJumpAssistant={(threadIndex) =>
+                scrollApiRef.current?.scrollToIndex(threadIndex, {
+                  align: "center",
+                  smooth: true,
+                })
+              }
             />
           )}
           <AgentPlanOverlay
@@ -1824,7 +1922,9 @@ export function MessageListView({
           onAsk={onAskSelection}
           onSaveAsNote={onSaveNoteSelection}
         />
-      </div>
+        </div>
+      </RunRevealSurface>
+      </RunRevealProvider>
     </SessionViewerHost>
   )
 

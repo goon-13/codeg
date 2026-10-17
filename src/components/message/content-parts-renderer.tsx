@@ -1,4 +1,5 @@
-import { memo, useMemo, useState, type ReactNode } from "react"
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useRunReveal } from "@/components/session-dashboard/run-reveal-context"
 import type { AdaptedContentPart } from "@/lib/adapters/ai-elements-adapter"
 import type { MessageRole, PlanEntryInfo } from "@/lib/types"
 import {
@@ -2351,7 +2352,12 @@ const ToolCallPart = memo(function ToolCallPart({
   part: Extract<AdaptedContentPart, { type: "tool-call" }>
 }) {
   const t = useTranslations("Folder.chat.contentParts")
+  const reveal = useRunReveal()
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const [manualOpen, setManualOpen] = useState(false)
+  useEffect(() => {
+    setUserOpen(null)
+  }, [reveal.toolsExpanded, reveal.focusToolCallId])
   const normalizedToolName = useMemo(
     () => normalizeToolName(part.toolName),
     [part.toolName]
@@ -2711,6 +2717,8 @@ const ToolCallPart = memo(function ToolCallPart({
     toolNameLower === "read file" ||
     toolNameLower === "write" ||
     toolNameLower === "notebookedit"
+  const revealThisCard =
+    reveal.toolsExpanded || reveal.focusToolCallId === part.toolCallId
   const shouldHideDuplicateResult =
     (toolNameLower === "edit" ||
       toolNameLower === "apply_patch" ||
@@ -2719,7 +2727,8 @@ const ToolCallPart = memo(function ToolCallPart({
       toolNameLower === "exitplanmode" ||
       toolNameLower === "plan_review" ||
       isFileTool) &&
-    !part.errorText
+    !part.errorText &&
+    !revealThisCard
   // codex-acp #288: the context-compaction lifecycle is a `tool_call` tagged
   // with `_meta.contextCompaction` (not addressed by tool name) → a subtle
   // status card instead of the generic tool shell.
@@ -2949,10 +2958,23 @@ const ToolCallPart = memo(function ToolCallPart({
     )
   }
 
-  const open = (isRunning && (isCommandTool || hasLiveOutput)) || manualOpen
+  const focused = reveal.focusToolCallId === part.toolCallId
+  const open =
+    userOpen ??
+    ((isRunning && (isCommandTool || hasLiveOutput)) ||
+      reveal.toolsExpanded ||
+      focused ||
+      manualOpen)
 
   return (
-    <Tool open={open} onOpenChange={setManualOpen}>
+    <Tool
+      open={open}
+      data-tool-call-id={part.toolCallId}
+      onOpenChange={(next) => {
+        setUserOpen(next)
+        setManualOpen(next)
+      }}
+    >
       <ToolHeader
         type="dynamic-tool"
         state={part.state}
@@ -3052,8 +3074,10 @@ const ReasoningPart = memo(function ReasoningPart({
 }: {
   part: Extract<AdaptedContentPart, { type: "reasoning" }>
 }) {
+  const { thinkingHidden } = useRunReveal()
   const hasContent = part.content.trim().length > 0
   const expandable = hasContent || part.isStreaming
+  if (thinkingHidden) return null
   return (
     <Reasoning isStreaming={part.isStreaming} expandable={expandable}>
       <ReasoningTrigger />

@@ -3767,7 +3767,9 @@
         "collapsedSummary": "الرسائل {count}",
         "fileCount": "{count, plural, one {# ملف} other {# ملفات}}",
         "remove": "إزالة",
-        "noDiffDataAvailable": "لا توجد بيانات diff متاحة لـ {filePath}"
+        "noDiffDataAvailable": "لا توجد بيانات diff متاحة لـ {filePath}",
+        "filterPlaceholder": "Filter titles",
+        "viewReply": "See reply"
       },
       "replyArtifacts": {
         "title": "الملفات المتغيرة",
@@ -3944,6 +3946,26 @@
       "proposedPlan": {
         "title": "الخطة المقترحة",
         "planning": "جارٍ التخطيط…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "مخرجات الأداة",
+        "thinkingToggle": "التفكير"
       }
     },
     "diffPreview": {

@@ -3767,7 +3767,9 @@
         "collapsedSummary": "メッセージ {count}",
         "fileCount": "{count, plural, one {# 個のファイル} other {# 個のファイル}}",
         "remove": "削除",
-        "noDiffDataAvailable": "{filePath} の差分データがありません"
+        "noDiffDataAvailable": "{filePath} の差分データがありません",
+        "filterPlaceholder": "Filter titles",
+        "viewReply": "See reply"
       },
       "replyArtifacts": {
         "title": "変更されたファイル",
@@ -3944,6 +3946,26 @@
       "proposedPlan": {
         "title": "提案された計画",
         "planning": "計画中…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "ツール出力",
+        "thinkingToggle": "思考"
       }
     },
     "diffPreview": {

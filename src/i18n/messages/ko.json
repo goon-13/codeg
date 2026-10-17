@@ -3767,7 +3767,9 @@
         "collapsedSummary": "메시지 {count}",
         "fileCount": "{count, plural, one {#개 파일} other {#개 파일}}",
         "remove": "제거",
-        "noDiffDataAvailable": "{filePath}에 대한 diff 데이터가 없습니다"
+        "noDiffDataAvailable": "{filePath}에 대한 diff 데이터가 없습니다",
+        "filterPlaceholder": "Filter titles",
+        "viewReply": "See reply"
       },
       "replyArtifacts": {
         "title": "변경된 파일",
@@ -3944,6 +3946,26 @@
       "proposedPlan": {
         "title": "제안된 계획",
         "planning": "계획 중…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "도구 출력",
+        "thinkingToggle": "생각"
       }
     },
     "diffPreview": {
