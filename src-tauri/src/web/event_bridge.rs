@@ -351,6 +351,8 @@ pub enum AssistantChange {
     /// Rows changed without a per-row broadcast (a config snapshot applied
     /// here): re-fetch the whole list.
     Resync,
+}
+
 /// Global side-channel for theme-cluster DEFINITIONS (title, folder). Which
 /// cluster a conversation sits in travels on [`CONVERSATION_CHANGED_EVENT`]
 /// inside the summary's `cluster_id`.

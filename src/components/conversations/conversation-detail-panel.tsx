@@ -100,7 +100,6 @@ import {
   getFolderConversation,
   openSettingsWindow,
   openSideConversation,
-  updateConversationAgentType,
 } from "@/lib/api"
 import { isWindowedDetail } from "@/lib/turn-window"
 import {
@@ -118,20 +117,6 @@ import {
   toLocalizedErrorMessage,
   type AppErrorTranslator,
 } from "@/lib/app-error"
-import {
-  beginHermesRoleSwitch,
-  clearHermesRoleSwitchSkip,
-  hermesCachedConfigOptions,
-  hermesComposerConfigOptions,
-  hermesComposerSelectorsPending,
-  hermesLiveOrCachedConfigOptions,
-  hermesResumeSessionId,
-  hermesRoleListReady,
-  interceptHermesProfileConfigChange,
-  planHermesRoleSwitch,
-  shouldClearHermesResumeSkip,
-  useHermesRoleSwitchSkip,
-} from "@/lib/hermes-profile-option"
 import { notify } from "@/lib/notify"
 import {
   claimRuntimeSession,
@@ -774,11 +759,6 @@ const ConversationTabView = memo(function ConversationTabView({
   // selectors (empty until it connects).
   const connIsForOtherAgent =
     conn.agentType != null && conn.agentType !== selectedAgent
-  const hermesLiveSelectorsReady = !connIsForOtherAgent && conn.selectorsReady
-  const cachedHermesConfig = hermesCachedConfigOptions(
-    selectedAgent,
-    getCachedSelectors
-  )
   const effectiveModes = connIsForOtherAgent
     ? (getCachedSelectors(selectedAgent)?.modes ?? null)
     : conn.modes

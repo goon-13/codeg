@@ -65,7 +65,7 @@ describe("SidebarClusterHeader", () => {
 
   it("click title does not toggle and commits rename", async () => {
     const onToggle = vi.fn()
-    const onRename = vi.fn(async () => {})
+    const onRename = vi.fn(async (_id: number, _title: string) => {})
     renderHeader({ onToggle, onRename })
     fireEvent.click(screen.getByTestId("cluster-header-title"))
     expect(onToggle).not.toHaveBeenCalled()
@@ -85,7 +85,7 @@ describe("SidebarClusterHeader", () => {
   })
 
   it("paste 80 scalars commits 64", async () => {
-    const onRename = vi.fn(async () => {})
+    const onRename = vi.fn(async (_id: number, _title: string) => {})
     renderHeader({ onRename })
     fireEvent.click(screen.getByTestId("cluster-header-title"))
     fireEvent.change(screen.getByTestId("inline-title-editor-input"), {
@@ -101,7 +101,7 @@ describe("SidebarClusterHeader", () => {
   })
 
   it("empty does not onRename", async () => {
-    const onRename = vi.fn(async () => {})
+    const onRename = vi.fn(async (_id: number, _title: string) => {})
     renderHeader({ onRename })
     fireEvent.click(screen.getByTestId("cluster-header-title"))
     fireEvent.change(screen.getByTestId("inline-title-editor-input"), {
@@ -119,7 +119,7 @@ describe("SidebarClusterHeader", () => {
     const user = (await import("@testing-library/user-event")).default.setup({
       pointerEventsCheck: 0,
     })
-    const onRename = vi.fn(async () => {})
+    const onRename = vi.fn(async (_id: number, _title: string) => {})
     renderHeader({ onRename })
     fireEvent.contextMenu(document.querySelector("[data-conversation-cluster]")!)
     await user.click(screen.getByRole("menuitem", { name: "Rename" }))

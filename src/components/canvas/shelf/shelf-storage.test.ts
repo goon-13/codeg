@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   CANVAS_LAYOUT_EVENT,
   loadCanvasLayoutMode,
+  loadShelfConversationOrder,
+  loadShelfFolderOrder,
   loadShelfCollapsedFolderIds,
   loadShelfExpandedConversationIds,
   loadShelfShowAll,
@@ -15,6 +17,8 @@ import {
   saveShelfSessionRailOpen,
   saveShelfShowAll,
   saveShelfShowAllConversationFolderIds,
+  saveShelfConversationOrder,
+  saveShelfFolderOrder,
   saveShelfVisibleConversationIds,
   saveShelfVisibleFolderIds,
   setCanvasLayoutMode,

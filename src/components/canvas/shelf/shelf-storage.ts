@@ -7,6 +7,8 @@ const VISIBLE_FOLDERS_KEY = "workspace:shelf-visible-folders"
 const SHOW_ALL_KEY = "workspace:shelf-show-all"
 const VISIBLE_CONVERSATIONS_KEY = "workspace:shelf-visible-conversations"
 const SHOW_ALL_CONVERSATIONS_KEY = "workspace:shelf-show-all-conversations"
+const FOLDER_ORDER_KEY = "workspace:shelf-folder-order"
+const CONVERSATION_ORDER_KEY = "workspace:shelf-conversation-order"
 
 export type CanvasLayoutMode = "shelf" | "board"
 

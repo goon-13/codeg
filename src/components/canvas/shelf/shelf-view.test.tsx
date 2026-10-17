@@ -385,7 +385,7 @@ describe("ShelfView", () => {
     await waitFor(() => {
       expect(h.registerLiveSurfaceKeys).toHaveBeenCalled()
     })
-    const last = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+    const last = h.registerLiveSurfaceKeys.mock.calls[h.registerLiveSurfaceKeys.mock.calls.length - 1]
     expect(last?.[0]).toBe("shelf")
     expect([...(last?.[1] ?? [])].sort()).toEqual(["shelf:7"])
   })
@@ -423,11 +423,11 @@ describe("ShelfView", () => {
     await waitFor(() => {
       expect(h.registerLiveSurfaceKeys).toHaveBeenCalled()
     })
-    const restored = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+    const restored = h.registerLiveSurfaceKeys.mock.calls[h.registerLiveSurfaceKeys.mock.calls.length - 1]
     expect([...(restored?.[1] ?? [])]).not.toContain("shelf:8")
     clickShelfCard(7)
     await waitFor(() => {
-      const last = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+      const last = h.registerLiveSurfaceKeys.mock.calls[h.registerLiveSurfaceKeys.mock.calls.length - 1]
       expect([...(last?.[1] ?? [])].sort()).toEqual(["shelf:7"])
     })
   })
@@ -681,10 +681,10 @@ function clickShelfCard(id: number) {
 }
 
 function readActive(key: string) {
-  return h.surfaceRendered.mock.calls
+  const rendered = h.surfaceRendered.mock.calls
     .map((call) => call[0] as { contextKey: string; isActive?: boolean })
     .filter((props) => props.contextKey === key)
-    .at(-1)?.isActive
+  return rendered[rendered.length - 1]?.isActive
 }
 
 function setScrollerMetrics(

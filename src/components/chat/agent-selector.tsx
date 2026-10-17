@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Check, ChevronDown } from "lucide-react"
 import { useAcpAgents } from "@/hooks/use-acp-agents"
-import type { AgentType, AcpAgentInfo } from "@/lib/types"
+import { compareAgentType, type AgentType, type AcpAgentInfo } from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
 import { AgentIcon } from "@/components/agent-icon"
 import {
@@ -48,7 +48,11 @@ export function AgentSelector({
   const t = useTranslations("Folder.chat.agentSelector")
   const { agents: rawAgents } = useAcpAgents()
   const agents = useMemo<AcpAgentInfo[]>(
-    () => rawAgents.filter((a) => a.enabled),
+    () =>
+      rawAgents
+        .filter((a) => a.enabled)
+        .slice()
+        .sort((a, b) => compareAgentType(a.agent_type, b.agent_type)),
     [rawAgents]
   )
   const onSelectRef = useRef(onSelect)
@@ -176,9 +180,6 @@ export function AgentSelector({
             const label = getAgentLabel(agent.agent_type)
             return (
               <button
-                ref={setItemRef(agent.agent_type)}
-                data-slot="agent-pill"
-                aria-pressed={isSelected}
                 key={agent.agent_type}
                 type="button"
                 role="option"

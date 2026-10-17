@@ -80,6 +80,24 @@ import {
   buildSessionSettings,
   type SessionSettingTarget,
 } from "@/lib/session-settings"
+  InlineSessionConfigSelector,
+  InlineSessionConfigToggle,
+} from "@/components/chat/session-config-selector"
+import { ModelOptionPicker } from "@/components/chat/model-option-picker"
+import { SelectorTooltip } from "@/components/chat/selector-tooltip"
+import {
+  SessionSelectorsPanel,
+  type SessionSelectorGroup,
+  type SessionSelectorSetting,
+} from "@/components/chat/session-selectors-panel"
+import { HandoffAgentDock, type HandoffSource } from "@/components/conversations/cluster/handoff-agent-dock"
+import {
+  deriveModelGroups,
+  isModelConfigOption,
+  modelListGroups,
+  MODEL_LIST_VIRTUALIZE_THRESHOLD,
+  type ModelOptionGroup,
+} from "@/lib/model-config-groups"
 import { useAgentSkills } from "@/hooks/use-agent-skills"
 import { isPrimaryPointerCoarse } from "@/hooks/use-is-coarse-pointer"
 import { useAgentVocabulary } from "@/hooks/use-agent-vocabulary"

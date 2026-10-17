@@ -4,9 +4,7 @@ import type { ThreadRenderItem } from "@/components/message/message-list-view"
 
 function assistantItem(
   id: string,
-  parts: ThreadRenderItem extends { kind: "turn" }
-    ? ThreadRenderItem["group"]["parts"]
-    : never
+  parts: Extract<ThreadRenderItem, { kind: "turn" }>["group"]["parts"]
 ): ThreadRenderItem {
   return {
     key: `persisted-${id}`,

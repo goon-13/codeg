@@ -34,8 +34,20 @@ describe("shouldDisconnectOnUnmount", () => {
         status: "connected",
         isViewer: false,
         backgroundOutstanding: 0,
+        sessionId: "sess-1",
       })
     ).toBe(true)
+  })
+
+  it("keeps a sessionless connected owner alive (first-send handshake)", () => {
+    expect(
+      shouldDisconnectOnUnmount({
+        status: "connected",
+        isViewer: false,
+        backgroundOutstanding: 0,
+        sessionId: null,
+      })
+    ).toBe(false)
   })
 
   it("always tears down viewers — their disconnect only detaches", () => {
@@ -79,6 +91,7 @@ describe("shouldDisconnectOnUnmount", () => {
         status: "connected",
         isViewer: false,
         backgroundOutstanding: 0,
+        sessionId: "sess-1",
         transientUnmount: false,
       })
     ).toBe(true)

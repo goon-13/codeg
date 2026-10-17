@@ -32,7 +32,6 @@ import {
   createConversation,
   createChatDir,
   openSideConversation,
-  updateConversationAgentType,
 } from "@/lib/api"
 import {
   toErrorMessage,
@@ -241,7 +240,7 @@ export function CanvasConversationSurface({
   const tAsyncTasks = useTranslations("Folder.chat.asyncTasks")
   const tComposer = useTranslations("Folder.chat.messageInput")
   const tSide = useTranslations("Folder.side")
-  const { agents: acpAgents, fresh: acpAgentsFresh } = useAcpAgents()
+  const { agents: acpAgents } = useAcpAgents()
   const acpActions = useAcpActions()
   const {
     appendOptimisticTurn,
@@ -336,6 +335,7 @@ export function CanvasConversationSurface({
     () => setComposerHandBacks((pending) => pending.slice(1)),
     []
   )
+  const selectedAgent = agentType
   const [sendSignal, setSendSignal] = useState(0)
   const creatingRef = useRef(false)
   // Mirrors `creatingRef` as state, purely so the card can refuse to be thrown
@@ -456,6 +456,7 @@ export function CanvasConversationSurface({
     // another surface (a workspace tab, another window), join that connection
     // instead of spawning a second agent for the same session.
     conversationId: dbConversationId ?? undefined,
+    isTransientUnmount,
   })
   const connStatus = conn.status
   const connSessionId = conn.sessionId
@@ -1063,7 +1064,6 @@ export function CanvasConversationSurface({
                 }
               : null
           }
-          status={connStatus}
           promptCapabilities={conn.promptCapabilities}
           defaultPath={workingDir}
           agentName={getAgentLabel(agentType)}
@@ -1104,7 +1104,7 @@ export function CanvasConversationSurface({
           injectContent={composerHandBacks[0] ?? null}
           onInjectConsumed={handleComposerHandBackConsumed}
           agentType={selectedAgent}
-          availableCommands={conn.availableCommands ?? []}
+          availableCommands={connectionCommands ?? []}
           draftStorageKey={surfaceComposerDraftStorageKey({
             conversationId: dbConversationId,
             contextKey,

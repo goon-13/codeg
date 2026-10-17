@@ -28,8 +28,6 @@ const withNextIntl = createNextIntlPlugin({
 })
 
 const nextConfig: NextConfig = {
-  typescript: { ignoreBuildErrors: true }, // integrate 2026-10-17: concat leftover tsc; see auto-merge-report
-
   output: "export",
   // The build type-checks tsconfig.json minus the test files; that file says
   // why.

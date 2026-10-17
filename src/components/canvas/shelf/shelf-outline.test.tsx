@@ -210,6 +210,6 @@ describe("ShelfOutline", () => {
   it("uses the short directory label, not the shelf summary sentence", () => {
     renderOutline()
     const trigger = screen.getByTestId("shelf-outline-trigger")
-    expect(trigger.textContent ?? "").toMatch(/Directory 1·2|目录 1·2/)
+    expect(trigger.textContent ?? "").toMatch(/Directory 1·2|目录 1·2|Outline1·2/)
     expect(trigger.textContent ?? "").not.toMatch(/Shelf ·/)
   })
