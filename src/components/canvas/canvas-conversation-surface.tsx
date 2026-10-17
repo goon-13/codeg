@@ -32,6 +32,7 @@ import {
   createConversation,
   createChatDir,
   openSideConversation,
+  updateConversationAgentType,
 } from "@/lib/api"
 import {
   toErrorMessage,
@@ -39,6 +40,20 @@ import {
   type AppErrorTranslator,
 } from "@/lib/app-error"
 import { notify } from "@/lib/notify"
+import {
+  beginHermesRoleSwitch,
+  clearHermesRoleSwitchSkip,
+  hermesCachedConfigOptions,
+  hermesComposerConfigOptions,
+  hermesComposerSelectorsPending,
+  hermesLiveOrCachedConfigOptions,
+  hermesResumeSessionId,
+  hermesRoleListReady,
+  interceptHermesProfileConfigChange,
+  planHermesRoleSwitch,
+  shouldClearHermesResumeSkip,
+  useHermesRoleSwitchSkip,
+} from "@/lib/hermes-profile-option"
 import {
   adoptCanvasDraftToConversation,
   adoptLegacyShelfConversationDraft,
@@ -240,7 +255,9 @@ export function CanvasConversationSurface({
   const tAsyncTasks = useTranslations("Folder.chat.asyncTasks")
   const tComposer = useTranslations("Folder.chat.messageInput")
   const tSide = useTranslations("Folder.side")
-  const { agents: acpAgents } = useAcpAgents()
+  const tCmp = useTranslations("Folder.chat.messageInput")
+  const tWelcome = useTranslations("Folder.chat.welcomeInputPanel")
+  const { agents: acpAgents, fresh: acpAgentsFresh } = useAcpAgents()
   const acpActions = useAcpActions()
   const {
     appendOptimisticTurn,
@@ -335,7 +352,14 @@ export function CanvasConversationSurface({
     () => setComposerHandBacks((pending) => pending.slice(1)),
     []
   )
-  const selectedAgent = agentType
+  const [roleOverride, setRoleOverride] = useState<AgentType | null>(null)
+  const skipHermesResumeForAgent = useHermesRoleSwitchSkip(dbConversationId)
+  const selectedAgent = roleOverride ?? agentType
+  useEffect(() => {
+    if (roleOverride != null && roleOverride === agentType) {
+      setRoleOverride(null)
+    }
+  }, [agentType, roleOverride])
   const [sendSignal, setSendSignal] = useState(0)
   const creatingRef = useRef(false)
   // Mirrors `creatingRef` as state, purely so the card can refuse to be thrown
@@ -434,12 +458,13 @@ export function CanvasConversationSurface({
     selectorsLoading,
     handleFocus,
     handleSend: lifecycleSend,
-    handleSetConfigOption,
+    handleSetConfigOption: lifecycleSetConfigOption,
+    handleDisconnect,
     handleCancel,
     handleRespondPermission,
   } = useConnectionLifecycle({
     contextKey,
-    agentType,
+    agentType: selectedAgent,
     // Without a cwd there is nothing to connect to yet (a chat draft before its
     // scratch dir lands); auto-connect would fire with an undefined dir.
     isActive: isActive && workingDir != null && !awaitingHistoricalSessionId,
@@ -448,18 +473,92 @@ export function CanvasConversationSurface({
     // cwd wait has nothing to report: a dormant draft card isn't opening).
     preparing: isActive && awaitingHistoricalSessionId,
     workingDir,
-    sessionId:
-      dbConversationId != null && agentType !== "cline"
-        ? externalId
-        : undefined,
+    sessionId: hermesResumeSessionId({
+      skipForAgent: skipHermesResumeForAgent,
+      persistedSessionId:
+        dbConversationId != null && selectedAgent !== "cline"
+          ? externalId
+          : undefined,
+    }),
     // Cross-surface viewer attach: when this conversation is already live on
     // another surface (a workspace tab, another window), join that connection
     // instead of spawning a second agent for the same session.
     conversationId: dbConversationId ?? undefined,
     isTransientUnmount,
   })
+  const handleSetConfigOption = useCallback(
+    (configId: string, valueId: string) => {
+      const profileAgent = interceptHermesProfileConfigChange(configId, valueId)
+      if (profileAgent != null) {
+        const plan = planHermesRoleSwitch({
+          nextAgent: profileAgent,
+          currentAgent: selectedAgent,
+        })
+        if (plan === "noop") return
+        if (dbConversationId == null) {
+          setRoleOverride(profileAgent)
+          onAgentTypeChange?.(profileAgent)
+          return
+        }
+        beginHermesRoleSwitch(dbConversationId, profileAgent)
+        setExternalId(dbConversationId, null)
+        void (async () => {
+          try {
+            await handleDisconnect()
+            await updateConversationAgentType(dbConversationId, profileAgent)
+            await refreshConversations()
+            refetchDetail(dbConversationId)
+            setRoleOverride(profileAgent)
+            onAgentTypeChange?.(profileAgent)
+          } catch (err) {
+            clearHermesRoleSwitchSkip(dbConversationId)
+            notify({
+              level: "error",
+              key: `hermes-role-switch:${contextKey}`,
+              title: tWelcome("createConversationFailed"),
+              description: toErrorMessage(err),
+            })
+          }
+        })()
+        return
+      }
+      lifecycleSetConfigOption(configId, valueId)
+    },
+    [
+      contextKey,
+      dbConversationId,
+      handleDisconnect,
+      lifecycleSetConfigOption,
+      onAgentTypeChange,
+      refetchDetail,
+      refreshConversations,
+      selectedAgent,
+      setExternalId,
+      tWelcome,
+    ]
+  )
   const connStatus = conn.status
   const connSessionId = conn.sessionId
+  useEffect(() => {
+    if (dbConversationId == null) return
+    if (
+      !shouldClearHermesResumeSkip({
+        skipForAgent: skipHermesResumeForAgent,
+        liveAgent: conn.agentType,
+        liveStatus: connStatus,
+        liveSessionId: connSessionId,
+      })
+    ) {
+      return
+    }
+    clearHermesRoleSwitchSkip(dbConversationId)
+  }, [
+    conn.agentType,
+    connSessionId,
+    connStatus,
+    dbConversationId,
+    skipHermesResumeForAgent,
+  ])
 
   // A draft card can switch agents, and `connect()` tears the previous agent's
   // connection down only once the new pick gets past its preflight. Until then
@@ -470,16 +569,16 @@ export function CanvasConversationSurface({
   // while the conversation row is filed under the one they picked. Same rule as
   // the tab view's `connIsForOtherAgent` (conversation-detail-panel.tsx).
   const connIsForOtherAgent =
-    conn.agentType != null && conn.agentType !== agentType
+    conn.agentType != null && conn.agentType !== selectedAgent
   // Enabled and platform-available, yet nothing installed: the preflight
   // refuses such an agent before it tears anything down, so a switch to one
   // never gets past the old connection.
   const selectedAgentNotInstalled = useMemo(() => {
-    const info = acpAgents.find((a) => a.agent_type === agentType)
+    const info = acpAgents.find((a) => a.agent_type === selectedAgent)
     return (
       info != null && info.enabled && info.available && !info.installed_version
     )
-  }, [acpAgents, agentType])
+  }, [acpAgents, selectedAgent])
   // What the composer shows. Only ever differs from `connStatus` while the
   // connection belongs to another agent: still `connecting` while the switch
   // can complete, `disconnected` when the selected agent can't connect at all.
@@ -488,12 +587,25 @@ export function CanvasConversationSurface({
       ? "disconnected"
       : "connecting"
     : connStatus
+  const hermesLiveSelectorsReady =
+    !connIsForOtherAgent && conn.selectorsReady
+  const cachedHermesConfig = hermesCachedConfigOptions(
+    selectedAgent,
+    getCachedSelectors
+  )
   const effectiveModes = connIsForOtherAgent
-    ? (getCachedSelectors(agentType)?.modes ?? null)
+    ? (getCachedSelectors(selectedAgent)?.modes ?? null)
     : conn.modes
-  const effectiveConfigOptions = connIsForOtherAgent
-    ? (getCachedSelectors(agentType)?.configOptions ?? null)
-    : conn.configOptions
+  const effectiveConfigOptions = hermesLiveOrCachedConfigOptions({
+    currentAgent: selectedAgent,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+    liveConfigOptions: connIsForOtherAgent
+      ? (cachedHermesConfig ??
+        getCachedSelectors(selectedAgent)?.configOptions ??
+        null)
+      : conn.configOptions,
+    cachedConfigOptions: cachedHermesConfig,
+  })
   const connectionCommands = connIsForOtherAgent ? null : conn.availableCommands
 
   /**
@@ -1010,10 +1122,34 @@ export function CanvasConversationSurface({
     () => effectiveModes?.available_modes ?? [],
     [effectiveModes]
   )
+  const hermesAgentsReady = hermesRoleListReady(acpAgents, acpAgentsFresh)
+  const hermesSelectorsPending = hermesComposerSelectorsPending({
+    currentAgent: selectedAgent,
+    acpConfigOptions: effectiveConfigOptions,
+    agentsReady: hermesAgentsReady,
+    liveSelectorsReady: hermesLiveSelectorsReady,
+  })
   const connectionConfigOptions = useMemo(
-    () => effectiveConfigOptions ?? [],
-    [effectiveConfigOptions]
+    () =>
+      hermesComposerConfigOptions({
+        currentAgent: selectedAgent,
+        acpConfigOptions: effectiveConfigOptions,
+        agents: acpAgents,
+        agentsReady: hermesAgentsReady,
+        liveSelectorsReady: hermesLiveSelectorsReady,
+        label: tCmp("hermesRoleLabel"),
+      }),
+    [
+      acpAgents,
+      effectiveConfigOptions,
+      hermesAgentsReady,
+      hermesLiveSelectorsReady,
+      selectedAgent,
+      tCmp,
+    ]
   )
+  const composerModes = hermesSelectorsPending ? [] : connectionModes
+  const composerConfigLoading = configOptionsLoading || hermesSelectorsPending
   const selectedModeId = useMemo(() => {
     if (connectionModes.length === 0) return null
     if (modeId && connectionModes.some((mode) => mode.id === modeId)) {
@@ -1089,10 +1225,10 @@ export function CanvasConversationSurface({
           onAnswerQuestion={handleAnswerQuestion}
           onAnswerAskQuestion={handleAnswerAskQuestion}
           onAnswerPlanApproval={handleAnswerPlanApproval}
-          modes={connectionModes}
+          modes={composerModes}
           configOptions={connectionConfigOptions}
           modeLoading={modeLoading}
-          configOptionsLoading={configOptionsLoading}
+          configOptionsLoading={composerConfigLoading}
           selectorsLoading={selectorsLoading}
           selectedModeId={selectedModeId}
           onModeChange={handleModeChange}

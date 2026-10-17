@@ -224,7 +224,7 @@ describe("composer parents intercept the synthetic role id", () => {
     "utf8"
   )
 
-  it.skip("conversation-detail-panel retargets draft and persisted in place, never ACP [slice 15]", () => {
+  it("conversation-detail-panel retargets draft and persisted in place, never ACP [slice 15]", () => {
     const body = handleSetConfigOptionBody(
       panelSource,
       "conversation-detail-panel.tsx"
@@ -260,7 +260,7 @@ describe("composer parents intercept the synthetic role id", () => {
     expect(disconnectIdx).toBeLessThan(persistIdx)
   })
 
-  it.skip("canvas-conversation-surface retargets the current card in place, never ACP [slice 15]", () => {
+  it("canvas-conversation-surface retargets the current card in place, never ACP [slice 15]", () => {
     const body = handleSetConfigOptionBody(
       canvasSource,
       "canvas-conversation-surface.tsx"

@@ -1864,6 +1864,7 @@ mod tauri_app {
                 conversations::create_chat_dir,
                 conversations::update_conversation_status,
                 conversations::update_conversation_title,
+                conversations::update_conversation_agent_type,
                 conversations::update_conversation_pinned,
                 assistant_commands::assistant_list,
                 assistant_commands::assistant_create,

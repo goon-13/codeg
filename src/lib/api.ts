@@ -3924,6 +3924,16 @@ export async function updateConversationTitle(
   })
 }
 
+export async function updateConversationAgentType(
+  conversationId: number,
+  agentType: AgentType
+): Promise<void> {
+  return getTransport().call("update_conversation_agent_type", {
+    conversationId,
+    agentType,
+  })
+}
+
 export async function updateConversationPinned(
   conversationId: number,
   pinned: boolean

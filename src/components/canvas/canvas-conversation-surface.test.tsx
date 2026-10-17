@@ -82,6 +82,7 @@ vi.mock("@/hooks/use-connection-lifecycle", () => ({
     handleFocus: vi.fn(),
     handleSend: lifecycle.handleSend,
     handleSetConfigOption: lifecycle.handleSetConfigOption,
+    handleDisconnect: vi.fn(async () => {}),
     handleCancel: vi.fn(),
     handleRespondPermission: vi.fn(),
   }),
@@ -247,8 +248,14 @@ describe("a draft card whose connection still belongs to the previous agent", ()
     // Codex's own list, not Claude's. An edit to it is kept off Claude's
     // connection by the lifecycle hook (use-connection-lifecycle.agent-switch).
     expect(shell.props?.configOptions).toEqual(CODEX_CONFIG)
-    expect(shell.props?.onConfigOptionChange).toBe(
-      lifecycle.handleSetConfigOption
+    lifecycle.handleSetConfigOption.mockClear()
+    const onChange = shell.props?.onConfigOptionChange as
+      | ((configId: string, valueId: string) => void)
+      | undefined
+    onChange?.("model", "gpt-5.4")
+    expect(lifecycle.handleSetConfigOption).toHaveBeenCalledWith(
+      "model",
+      "gpt-5.4"
     )
     expect(shell.props?.selectedModeId).toBe("auto")
     expect(shell.props?.availableCommands).toEqual([])

@@ -299,6 +299,31 @@ pub async fn update_title(
     Ok(())
 }
 
+/// In-place Hermes role switch: the conversation row keeps its id and
+/// transcript, but `agent_type` becomes the next profile and `external_id`
+/// is cleared so the next connect is `session/new`. Hermes sessions live
+/// per `HERMES_HOME`; loading the previous id into the new profile fails.
+pub async fn update_agent_type(
+    conn: &DatabaseConnection,
+    conversation_id: i32,
+    agent_type: AgentType,
+) -> Result<(), DbError> {
+    let at_str = serde_json::to_value(agent_type)
+        .ok()
+        .and_then(|v| v.as_str().map(String::from))
+        .unwrap_or_else(|| agent_type.as_wire().into_owned());
+    let conv = conversation::Entity::find_by_id(conversation_id)
+        .one(conn)
+        .await?
+        .ok_or_else(|| DbError::Migration(format!("Conversation not found: {conversation_id}")))?;
+    let mut active: conversation::ActiveModel = conv.into();
+    active.agent_type = Set(at_str);
+    active.external_id = Set(None);
+    active.updated_at = Set(Utc::now());
+    active.update(conn).await?;
+    Ok(())
+}
+
 /// Auto-derive counterpart to [`update_title`]: write `title` ONLY when the row
 /// is not user-locked and the value actually changed. Never sets `title_locked`
 /// (the title stays eligible for future auto-refreshes, e.g. when an agent like
@@ -2178,6 +2203,28 @@ mod tests {
         assert!(summary.title_locked, "manual rename must lock the title");
     }
 
+    #[tokio::test]
+    async fn update_agent_type_retargets_and_clears_external_id() {
+        let db = fresh_in_memory_db().await;
+        let folder = seed_folder(&db, "/tmp/codeg-hermes-role").await;
+        let row = create(&db.conn, folder, AgentType::Hermes, None, None)
+            .await
+            .expect("create");
+        bind_external_id(&db.conn, row.id, "hermes-sess-1", &[])
+            .await
+            .expect("bind");
+        let next = AgentType::custom("hermes-homeops").expect("custom hermes");
+        update_agent_type(&db.conn, row.id, next)
+            .await
+            .expect("update");
+        let after = raw_row(&db.conn, row.id).await;
+        assert_eq!(after.agent_type, "custom:hermes-homeops");
+        assert!(
+            after.external_id.is_none(),
+            "role switch must drop the previous Hermes session id"
+        );
+    }
+
     /// Read a row straight from the table — `get_by_id` returns a summary and
     /// filters deleted rows, but these tests assert on raw persisted columns.
     async fn raw_row(conn: &DatabaseConnection, id: i32) -> conversation::Model {
@@ -3864,6 +3911,7 @@ mod tests {
                 parent_conversation_id: child,
                 parent_tool_use_id: "tu-g".into(),
                 delegation_call_id: "call-g".into(),
+            assistant: None,
             }),
         )
         .await

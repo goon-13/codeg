@@ -98,6 +98,7 @@ import {
   MODEL_LIST_VIRTUALIZE_THRESHOLD,
   type ModelOptionGroup,
 } from "@/lib/model-config-groups"
+import { HERMES_PROFILE_CONFIG_ID } from "@/lib/hermes-profile-option"
 import { useAgentSkills } from "@/hooks/use-agent-skills"
 import { isPrimaryPointerCoarse } from "@/hooks/use-is-coarse-pointer"
 import { useAgentVocabulary } from "@/hooks/use-agent-vocabulary"
@@ -973,8 +974,13 @@ export function MessageInput({
     }
     return availableModes[0]?.id ?? null
   }, [hasModes, selectedModeId, availableModes])
+  const keepHermesModeSelector = availableConfigOptions.some(
+    (option) => option.id === HERMES_PROFILE_CONFIG_ID
+  )
   const showModeSelector =
-    hasModes && Boolean(effectiveModeId) && !hasConfigOptions
+    hasModes &&
+    Boolean(effectiveModeId) &&
+    (!hasConfigOptions || keepHermesModeSelector)
   const showModeLoading = modeLoading && !hasConfigOptions && !showModeSelector
   const showConfigLoading = configOptionsLoading && !hasConfigOptions
   const showSelectorsLoading = showConfigLoading || showModeLoading

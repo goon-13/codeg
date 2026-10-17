@@ -85,6 +85,7 @@ export interface UseConnectionLifecycleReturn {
     }
   ) => void
   handleSetConfigOption: (configId: string, valueId: string) => void
+  handleDisconnect: () => Promise<void>
   handleCancel: () => void
   handleRespondPermission: (requestId: string, optionId: string) => void
 }
@@ -542,6 +543,10 @@ export function useConnectionLifecycle({
     [connSetMode, sendPrompt, contextKey, touchActivity, t]
   )
 
+  const handleDisconnect = useCallback(() => {
+    return connDisconnect()
+  }, [connDisconnect])
+
   const handleCancel = useCallback(() => {
     connCancel().catch((e: unknown) =>
       console.error("[ConnLifecycle] cancel:", e)
@@ -584,6 +589,7 @@ export function useConnectionLifecycle({
     handleFocus,
     handleSend,
     handleSetConfigOption,
+    handleDisconnect,
     handleCancel,
     handleRespondPermission,
   }
