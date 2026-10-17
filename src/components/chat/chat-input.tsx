@@ -18,6 +18,7 @@ import {
   MessageInput,
   type ComposerInjectContent,
 } from "@/components/chat/message-input"
+import type { HandoffSource } from "@/components/conversations/cluster/handoff-agent-dock"
 import { MessageQueueDisplay } from "@/components/chat/message-queue-display"
 import { cn } from "@/lib/utils"
 
@@ -98,6 +99,7 @@ interface ChatInputProps {
    *  (new-conversation) composer, which sits in a roomy empty state; active and
    *  historical conversations keep the compact default. */
   tall?: boolean
+  handoffSource?: HandoffSource | null
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -145,6 +147,7 @@ export const ChatInput = memo(function ChatInput({
   onInjectConsumed,
   flush = false,
   tall = false,
+  handoffSource = null,
 }: ChatInputProps) {
   const t = useTranslations("Folder.chat.chatInput")
   const isConnected = status === "connected"
@@ -252,6 +255,7 @@ export const ChatInput = memo(function ChatInput({
         // and its editable area carry two halves of the same number, and only
         // MessageInput knows the action row that divides them.
         tall={tall}
+        handoffSource={handoffSource}
         className="max-h-60"
       />
     </div>

@@ -1047,12 +1047,25 @@ export interface SubsessionLoadingRow {
   recent?: true
 }
 
+export interface ClusterHeaderRow {
+  kind: "cluster"
+  clusterId: number
+  folderId: number
+  title: string
+  memberCount: number
+  agentTypes: string[]
+  depth: number
+  expanded: boolean
+  recent?: true
+}
+
 export type SidebarRow =
   | SectionHeaderRow
   | FolderGroupHeaderRow
   | GroupEmptyRow
   | FolderHeaderRow
   | RootGroupHeaderRow
+  | ClusterHeaderRow
   | ConversationRow
   | EmptyHintRow
   | ChatsEmptyRow
@@ -1080,6 +1093,9 @@ const EMPTY_CONVERSATIONS: readonly DbConversationSummary[] = []
 // No group is collapsed by default (absent key = expanded), matching
 // `folderExpanded`. Shared so the group-free path allocates nothing.
 const EMPTY_GROUP_EXPANDED: Record<number, boolean> = {}
+const EMPTY_CLUSTERS: ReadonlyMap<number, { id: number; title: string }> =
+  new Map()
+const EMPTY_CLUSTER_EXPANDED: Readonly<Record<number, boolean>> = {}
 
 /**
  * Merge a freshly-fetched children snapshot with child summaries already applied
@@ -1206,6 +1222,54 @@ function pushConversationRow(
  *   `recent` because they intentionally duplicate rows already emitted by
  *   Folders / Chat (see {@link ConversationRow.recent}).
  */
+
+export type NestedBucketItem =
+  | { kind: "loose"; conversation: DbConversationSummary }
+  | {
+      kind: "cluster"
+      clusterId: number
+      title: string
+      members: DbConversationSummary[]
+    }
+
+/**
+ * Fold a folder's already-sorted conversation bucket into loose rows and
+ * cluster blocks. A cluster block is emitted at the first member's position;
+ * later members of the same cluster are skipped. Unknown / non-regular
+ * cluster_ids stay loose so a stale id never hides a row.
+ */
+export function nestFolderBucketByCluster(
+  bucket: readonly DbConversationSummary[],
+  clustersById: ReadonlyMap<number, { id: number; title: string }>,
+  _clusterExpanded?: Readonly<Record<number, boolean>>
+): NestedBucketItem[] {
+  const seen = new Set<number>()
+  const out: NestedBucketItem[] = []
+  for (const conv of bucket) {
+    const cid = conv.cluster_id
+    if (
+      conv.kind !== "regular" ||
+      cid == null ||
+      !clustersById.has(cid)
+    ) {
+      out.push({ kind: "loose", conversation: conv })
+      continue
+    }
+    if (seen.has(cid)) continue
+    seen.add(cid)
+    const members = bucket.filter(
+      (c) => c.kind === "regular" && c.cluster_id === cid
+    )
+    out.push({
+      kind: "cluster",
+      clusterId: cid,
+      title: clustersById.get(cid)!.title,
+      members,
+    })
+  }
+  return out
+}
+
 export function buildRows(args: {
   pinned: readonly DbConversationSummary[]
   pinnedExpanded: boolean
@@ -1285,6 +1349,10 @@ export function buildRows(args: {
    * omitted keeps every folder, as before.
    */
   hideEmptyFolders?: boolean
+  /** Cluster definitions keyed by id. Omitted = no clustering (existing tests). */
+  clustersById?: ReadonlyMap<number, { id: number; title: string }>
+  /** Absent key = expanded. Omitted = all expanded. */
+  clusterExpanded?: Readonly<Record<number, boolean>>
 }): SidebarRow[] {
   const {
     pinned,
@@ -1309,6 +1377,8 @@ export function buildRows(args: {
     layout,
     groupExpanded = EMPTY_GROUP_EXPANDED,
     hideEmptyFolders = false,
+    clustersById = EMPTY_CLUSTERS,
+    clusterExpanded = EMPTY_CLUSTER_EXPANDED,
   } = args
   const rows: SidebarRow[] = []
 
@@ -1360,15 +1430,49 @@ export function buildRows(args: {
       })
       return
     }
-    for (const conv of convs) {
-      pushConversationRow(
-        rows,
-        conv,
-        baseDepth,
-        conversationExpanded,
-        childrenByParent,
-        childrenLoading
-      )
+    const nested = nestFolderBucketByCluster(
+      convs,
+      clustersById,
+      clusterExpanded
+    )
+    for (const item of nested) {
+      if (item.kind === "loose") {
+        pushConversationRow(
+          rows,
+          item.conversation,
+          baseDepth,
+          conversationExpanded,
+          childrenByParent,
+          childrenLoading
+        )
+        continue
+      }
+      const expanded = clusterExpanded[item.clusterId] !== false
+      const agentTypes: string[] = []
+      for (const m of item.members) {
+        if (!agentTypes.includes(m.agent_type)) agentTypes.push(m.agent_type)
+      }
+      rows.push({
+        kind: "cluster",
+        clusterId: item.clusterId,
+        folderId,
+        title: item.title,
+        memberCount: item.members.length,
+        agentTypes: agentTypes.slice(0, 4),
+        depth: baseDepth,
+        expanded,
+      })
+      if (!expanded) continue
+      for (const member of item.members) {
+        pushConversationRow(
+          rows,
+          member,
+          baseDepth + 1,
+          conversationExpanded,
+          childrenByParent,
+          childrenLoading
+        )
+      }
     }
   }
 
@@ -1575,6 +1679,32 @@ export function flatIndexOfConversation(
     }
   }
   return recentMatch
+}
+
+/**
+ * Scroll target for `(id, agentType)`. A member whose row carries `cluster_id`
+ * lands on the nearest preceding cluster header with that id; otherwise on the
+ * conversation row itself. Null when {@link flatIndexOfConversation} misses.
+ */
+export function clusterScrollTarget(
+  rows: readonly SidebarRow[],
+  conversationId: number,
+  agentType: string
+): { index: number; kind: "cluster" | "conversation" } | null {
+  const index = flatIndexOfConversation(rows, conversationId, agentType)
+  if (index < 0) return null
+  const row = rows[index]
+  const clusterId =
+    row.kind === "conversation" ? row.conversation.cluster_id : null
+  if (clusterId != null) {
+    for (let i = index - 1; i >= 0; i--) {
+      const prev = rows[i]
+      if (prev.kind === "cluster" && prev.clusterId === clusterId) {
+        return { index: i, kind: "cluster" }
+      }
+    }
+  }
+  return { index, kind: "conversation" }
 }
 
 // ── Folder drag index math (Phase 2 custom pointer reorder) ──────────────────

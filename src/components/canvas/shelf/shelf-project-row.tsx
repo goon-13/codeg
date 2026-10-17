@@ -30,6 +30,8 @@ interface ShelfProjectRowViewProps {
   expandedIds: ReadonlySet<number>
   visibleConversationIds: number[] | null
   showAllConversations: boolean
+  surfaceByCard: Record<number, number>
+  onBackToSource: (cardId: number) => void
   moveTargets: MoveTarget[]
   onToggleCollapsed: () => void
   onToggleExpand: (conversationId: number) => void
@@ -47,6 +49,8 @@ export function ShelfProjectRowView({
   expandedIds,
   visibleConversationIds,
   showAllConversations,
+  surfaceByCard,
+  onBackToSource,
   moveTargets,
   onToggleCollapsed,
   onToggleExpand,
@@ -170,6 +174,13 @@ export function ShelfProjectRowView({
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
             onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
             onAddToShelf={() => onAddConversationToShelf(conversation.id)}
+            surfaceId={surfaceByCard[conversation.id]}
+            onBackToSource={() => onBackToSource(conversation.id)}
+            isTransientUnmount={
+              isTransientUnmount
+                ? () => isTransientUnmount(conversation.id)
+                : undefined
+            }
           />
         ))}
         {shown.length === 0 ? (

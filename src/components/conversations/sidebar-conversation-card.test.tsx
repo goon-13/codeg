@@ -791,6 +791,13 @@ describe("SidebarConversationCard — assistant sub-sessions", () => {
         conversation={c}
         isSelected={false}
         timeLabel=""
+describe("SidebarConversationCard side tag", () => {
+  it("marks a side row and shows the Side tag", () => {
+    const { container } = renderWithIntl(
+      <SidebarConversationCard
+        conversation={{ ...conv(9), kind: "side", parent_id: 1 }}
+        isSelected={false}
+        timeLabel="5m"
         onSelect={onSelect}
         onDoubleClick={onDoubleClick}
         onRename={onRename}
@@ -845,5 +852,25 @@ describe("SidebarConversationCard — assistant sub-sessions", () => {
     expect(avatar?.querySelector("svg")).not.toBeNull()
     // Still not the agent's icon: the row ran as an assistant.
     expect(probe.agentIconRenders).toBe(before)
+    const row = container.querySelector("[data-side-row]")
+    expect(row).toBeTruthy()
+    expect(row?.textContent).toContain("Side")
+    expect(container.querySelector("[data-side-row]")?.tagName).toBe("BUTTON")
+  })
+
+  it("does not mark a regular row", () => {
+    const { container } = renderWithIntl(
+      <SidebarConversationCard
+        conversation={conv(8)}
+        isSelected={false}
+        timeLabel="5m"
+        onSelect={onSelect}
+        onDoubleClick={onDoubleClick}
+        onRename={onRename}
+        onDelete={onDelete}
+        onStatusChange={onStatusChange}
+      />
+    )
+    expect(container.querySelector("[data-side-row]")).toBeNull()
   })
 })

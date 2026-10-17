@@ -510,6 +510,8 @@ async fn import_one(
         origin_cwd: Set(None),
         assistant_id: Set(None),
         assistant_snapshot: Set(None),
+        cluster_id: Set(None),
+        handoff_from_id: Set(None),
     };
     conv.insert(conn).await?;
     Ok(ImportOutcome::Imported)
@@ -959,6 +961,8 @@ mod tests {
             origin_cwd: Set(None),
             assistant_id: Set(None),
             assistant_snapshot: Set(None),
+            cluster_id: Set(None),
+            handoff_from_id: Set(None),
         }
         .insert(&db.conn)
         .await
@@ -1248,6 +1252,8 @@ mod tests {
             origin_cwd: Set(None),
             assistant_id: Set(None),
             assistant_snapshot: Set(None),
+            cluster_id: Set(None),
+            handoff_from_id: Set(None),
         }
         .insert(&db.conn)
         .await

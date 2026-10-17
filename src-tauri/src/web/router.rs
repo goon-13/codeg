@@ -395,6 +395,34 @@ pub fn build_router(
             post(handlers::conversation_tags::update_conversation_branch_tag),
         )
         .route(
+            "/list_conversation_clusters",
+            post(handlers::conversation_clusters::list_conversation_clusters),
+        )
+        .route(
+            "/create_conversation_cluster",
+            post(handlers::conversation_clusters::create_conversation_cluster),
+        )
+        .route(
+            "/update_conversation_cluster",
+            post(handlers::conversation_clusters::update_conversation_cluster),
+        )
+        .route(
+            "/delete_conversation_cluster",
+            post(handlers::conversation_clusters::delete_conversation_cluster),
+        )
+        .route(
+            "/set_conversation_cluster",
+            post(handlers::conversation_clusters::set_conversation_cluster),
+        )
+        .route(
+            "/handoff_conversation",
+            post(handlers::conversation_clusters::handoff_conversation),
+        )
+        .route(
+            "/open_side_conversation",
+            post(handlers::conversation_clusters::open_side_conversation),
+        )
+        .route(
             "/update_folder_color",
             post(handlers::folders::update_folder_color),
         )

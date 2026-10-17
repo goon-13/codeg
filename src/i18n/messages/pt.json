@@ -1328,7 +1328,7 @@
         "defaultAgent": "Agente padrão",
         "defaultAgentHint": "Com qual agente principal uma nova sessão abre. Vazio ou desconhecido volta para build.",
         "share": "Compartilhamento",
-        "shareHint": "Se uma sessão pode ser publicada como link compartilhado. O OpenCode descontinuou o compartilhamento de sessões na versão 1.19.1, então esta configuração não tem efeito a partir dessa versão.",
+        "shareHint": "Se uma sessão pode ser publicada como link compartilhado.",
         "shareManual": "Manual (somente quando pedido)",
         "shareAuto": "Automático (toda sessão nova)",
         "shareDisabled": "Desativado",
@@ -1857,7 +1857,7 @@
   "GeneralSettings": {
     "loading": "Carregando...",
     "sectionTitle": "Geral",
-    "sectionDescription": "Preferências centralizadas para o terminal padrão, aceleração de renderização, painel de menções @, comportamento ao fechar a janela, notificações e sons.",
+    "sectionDescription": "Preferências centralizadas para o terminal padrão, aceleração de renderização, comportamento ao fechar a janela, notificações e sons.",
     "terminalTitle": "Terminal padrão",
     "terminalDescription": "Escolha o shell que o codeg inicia para novas abas de terminal e para linhas de comando inteiras que um agente pede para executar. Agentes com shell próprio (Codex, Claude Code) executam os comandos dentro do próprio processo, então esta configuração não os alcança.",
     "terminalSystemDefault": "Padrão do sistema",
@@ -3339,7 +3339,8 @@
         "mentionGroupSession": "Sessões",
         "mentionGroupCommit": "Commits",
         "mentionGroupSkill": "Habilidades",
-        "mentionGroupAssistant": "Assistentes"
+        "mentionGroupAssistant": "Assistentes",
+        "hermesRoleLabel": "Função"
       },
       "messageQueue": {
         "addToQueue": "Adicionar à fila",
@@ -3475,7 +3476,8 @@
         "noEnabledAgents": "Nenhum agente habilitado",
         "openAgentsSettings": "Abrir configurações de agentes",
         "notInstalled": "Não instalado",
-        "moreAgents": "Mais agentes ({count})"
+        "moreAgents": "Mais agentes ({count})",
+        "openMenu": "Agentes"
       },
       "subAgentOverlay": {
         "title": "Subagentes",
@@ -3924,7 +3926,12 @@
         "collapsedSummary": "Mensagens {count}",
         "fileCount": "{count, plural, one {# arquivo} other {# arquivos}}",
         "remove": "Remover",
-        "noDiffDataAvailable": "Nenhum dado de diff disponível para {filePath}"
+        "noDiffDataAvailable": "Nenhum dado de diff disponível para {filePath}",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "Arquivos alterados",
@@ -4102,6 +4109,26 @@
       "proposedPlan": {
         "title": "Plano proposto",
         "planning": "A planear…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4163,6 +4190,37 @@
     },
     "toasts": {
       "cloneFailed": "Falha ao clonar o repositório"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "Continuar com {agent}",
+      "currentSession": "Esta sessão"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -4971,43 +5029,43 @@
   "RemoteWorkspace": {
     "openLocalWorkspace": "Abrir espaço de trabalho local",
     "openLocalFailed": "Não foi possível abrir o espaço de trabalho local",
-    "openRemoteWorkspace": "Abrir espaço de trabalho remoto",
-    "manage": "Gerenciar espaço de trabalho remoto",
-    "manageTitle": "Conexões com espaços de trabalho remotos",
-    "empty": "Nenhuma conexão remota",
+    "openRemoteWorkspace": "Open remote workspace",
+    "manage": "Manage remote workspace",
+    "manageTitle": "Remote Workspace connections",
+    "empty": "No remote connections",
     "noMatches": "Nenhuma conexão remota correspondente",
-    "searchPlaceholder": "Pesquisar espaços de trabalho remotos",
-    "orderFailed": "Não foi possível salvar a ordem dos espaços de trabalho remotos",
-    "dragSort": "Arraste para reordenar",
-    "dragSortConnection": "Arraste para reordenar {name}",
-    "newConnection": "Nova conexão",
-    "loading": "Carregando",
-    "loadingConnection": "Carregando a conexão remota",
-    "name": "Nome",
-    "baseUrl": "URL do serviço",
-    "token": "Token de acesso",
+    "searchPlaceholder": "Search remote workspaces",
+    "orderFailed": "Failed to save remote workspace order",
+    "dragSort": "Drag to sort",
+    "dragSortConnection": "Drag to sort {name}",
+    "newConnection": "New connection",
+    "loading": "Loading",
+    "loadingConnection": "Loading remote connection",
+    "name": "Name",
+    "baseUrl": "Service URL",
+    "token": "Access token",
     "customHeaders": "Cabeçalhos personalizados",
     "customHeaderName": "Nome do cabeçalho",
     "customHeaderValue": "Valor do cabeçalho",
     "addCustomHeader": "Adicionar cabeçalho",
     "removeCustomHeader": "Remover cabeçalho",
-    "save": "Salvar",
-    "delete": "Excluir",
+    "save": "Save",
+    "delete": "Delete",
     "confirmDelete": {
-      "title": "Excluir a conexão remota?",
-      "message": "Isso removerá \"{name}\" deste dispositivo. Esta ação não pode ser desfeita.",
-      "cancel": "Cancelar",
-      "confirm": "Excluir"
+      "title": "Delete remote connection?",
+      "message": "This will remove \"{name}\" from this device. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     },
-    "saved": "Conexão remota salva.",
-    "deleted": "Conexão remota excluída.",
-    "loadFailed": "Não foi possível carregar as conexões remotas",
-    "saveFailed": "Não foi possível salvar a conexão remota",
-    "deleteFailed": "Não foi possível excluir a conexão remota",
-    "openFailed": "Não foi possível abrir o espaço de trabalho remoto",
+    "saved": "Remote connection saved.",
+    "deleted": "Remote connection deleted.",
+    "loadFailed": "Failed to load remote connections",
+    "saveFailed": "Failed to save remote connection",
+    "deleteFailed": "Failed to delete remote connection",
+    "openFailed": "Failed to open remote workspace",
     "restoreFailed": "Não foi possível reabrir o espaço de trabalho remoto \"{name}\"",
-    "connectionLoadFailed": "Não foi possível carregar a conexão remota: {message}",
-    "connectionExpired": "A conexão remota \"{name}\" expirou. Atualize o token dela e recarregue esta janela."
+    "connectionLoadFailed": "Failed to load remote connection: {message}",
+    "connectionExpired": "Remote connection \"{name}\" is expired. Update its token and reload this window."
   },
   "ServerFileBrowser": {
     "title": "Selecionar arquivo do servidor",
@@ -5382,7 +5440,7 @@
     "hideBody": "Ocultar o conteúdo",
     "hideBodyHint": "Mostra uma linha genérica no lugar da saída do agente. A central de notificações guarda o conteúdo fora do app, mesmo depois de fechar a conversa. O título continua nomeando a pasta, para você saber a qual janela voltar.",
     "eventsTitle": "Eventos",
-    "eventsHint": "Desligue os eventos que não devem interromper você. Repetições do mesmo evento em poucos segundos são agrupadas em uma notificação. Solicitações de permissão incluem aprovações de plano.",
+    "eventsHint": "Desligue os eventos que não devem interromper você. Repetições do mesmo evento em poucos segundos são agrupadas em uma notificação.",
     "eventBackgroundTask": "Tarefa em segundo plano",
     "eventWorkTask": "Tarefa de trabalho"
   },
@@ -6747,9 +6805,9 @@
     "viewExisting": "Ver a tarefa existente",
     "scenarioLabel": "Como tratar",
     "scenarioFix": "Corrigir / implementar",
-    "scenarioFixHint": "O agente primeiro avalia se o relato se sustenta e só então corrige; se não se sustentar (não reproduz, funciona como projetado, já corrigido…), não mexe em nada, encerra cedo e devolve a conclusão para você decidir.",
+    "scenarioFixHint": "O agente primeiro confirma que o problema é real no worktree e só então corrige; se não conseguir confirmar, relata isso em vez de mexer no código.",
     "scenarioPlanFirst": "Planejar primeiro",
-    "scenarioPlanFirstHint": "O agente primeiro avalia se o relato se sustenta; se sim, entrega um plano de implementação e para, e se não, encerra cedo sem plano e devolve a conclusão. Aprove um plano devolvendo a tarefa para a implementação.",
+    "scenarioPlanFirstHint": "O agente confirma que o problema é real, entrega um plano de implementação e para — aprove devolvendo a tarefa para a implementação.",
     "scenarioReviewFix": "Revisar e corrigir",
     "scenarioReviewFixHint": "O agente primeiro avalia se a abordagem em si se sustenta e só então corrige os problemas em cima; se não se sustentar, não faz nenhum commit e devolve a revisão para você decidir. Ao aceitar, as correções voltam para o branch.",
     "scenarioReviewOnly": "Apenas revisar",
@@ -6986,7 +7044,20 @@
     "moveRunningBlocked": "Cannot move a conversation while its agent is running",
     "hideProjectFromShelf": "Remove this project from the shelf",
     "addToShelf": "Add this conversation to the shelf",
-    "showShelfConversations": "Shelf conversations"
+    "showShelfConversations": "Shelf conversations",
+    "scrollToTop": "Jump to top",
+    "scrollToBottom": "Jump to bottom",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7290,6 +7361,21 @@
         "bypassed": "O mecanismo do navegador deste computador envia alguns endereços por fora do túnel, então as páginas do host remoto não abrem para não serem carregadas deste computador.",
         "probeFailed": "O navegador integrado não conseguiu confirmar que alcança o host remoto pelo túnel. Tente novamente em instantes."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

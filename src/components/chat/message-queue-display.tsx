@@ -6,6 +6,7 @@ import { Clock, GripVertical, Pencil, X, Zap } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { draftRidesBlocks } from "@/lib/prompt-draft"
+import { isSideSeedText } from "@/lib/side-seed"
 import type { QueuedMessage } from "@/hooks/use-message-queue"
 
 interface MessageQueueDisplayProps {
@@ -177,18 +178,27 @@ export function MessageQueueDisplay({
     [onSteerItem]
   )
 
-  if (queue.length === 0) return null
+  // The side seed is a real queued prompt (it has to send first) but it
+  // is not a user-visible row. Keep it at the front of any reorder so the
+  // flush order stays seed, then question.
+  const hidden = queue.filter((item) =>
+    isSideSeedText(item.draft.displayText.trim())
+  )
+  const visible = queue.filter(
+    (item) => !isSideSeedText(item.draft.displayText.trim())
+  )
+  if (visible.length === 0) return null
 
   return (
     <div className="max-h-28 overflow-y-auto pb-1">
       <Reorder.Group
         as="div"
         axis="y"
-        values={queue}
-        onReorder={onReorder}
+        values={visible}
+        onReorder={(next) => onReorder([...hidden, ...next])}
         className="flex flex-col gap-0.5"
       >
-        {queue.map((item, index) => (
+        {visible.map((item, index) => (
           <QueueItem
             key={item.id}
             item={item}

@@ -20,8 +20,9 @@ pub enum ConversationStatus {
 /// flat "Chat" section; `loop` belongs to the Loop Engineering workbench and is
 /// excluded from the sidebar list entirely (no write path yet — reserved for
 /// the loop engine); `delegate` is a delegation child nested under its
-/// parent's tool-call view. Invariant: `kind == Delegate` ⟺ `parent_id IS NOT
-/// NULL`. Written once at insert, never updated.
+/// parent's tool-call view; `side` is a side-chat child of one regular source
+/// (1:N, no delegation columns). Invariant: `parent_id` set ⟺ `Delegate` or
+/// `Side`. Written once at insert, never updated.
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[serde(rename_all = "snake_case")]
@@ -34,6 +35,8 @@ pub enum ConversationKind {
     Loop,
     #[sea_orm(string_value = "delegate")]
     Delegate,
+    #[sea_orm(string_value = "side")]
+    Side,
 }
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
@@ -81,6 +84,11 @@ pub struct Model {
     /// instructions as they were when the delegation started. A resume replays
     /// this, never the assistant's current row.
     pub assistant_snapshot: Option<String>,
+    /// Exclusive theme bag. NULL = ungrouped. See `conversation_cluster`.
+    pub cluster_id: Option<i32>,
+    /// The conversation this one was created to continue, when it was a
+    /// cross-CLI handoff. NULL otherwise. Not `parent_id` (that is delegate).
+    pub handoff_from_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

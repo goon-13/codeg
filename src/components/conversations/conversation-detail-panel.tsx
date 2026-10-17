@@ -31,6 +31,7 @@ import { useTabActions, useTabStore } from "@/contexts/tab-context"
 import {
   groupOfTab,
   isReparentUnmount,
+  makeConversationTabId,
   reparentedViewRuntimeConversationId,
   trackConversationView,
 } from "@/stores/tab-store"
@@ -62,7 +63,7 @@ import { useFeedbackEnabled } from "@/hooks/use-feedback-enabled"
 import { useSessionFeedback } from "@/hooks/use-session-feedback"
 import { AgentSelector } from "@/components/chat/agent-selector"
 import { ChatInput } from "@/components/chat/chat-input"
-import { WelcomeHero, WelcomeTip } from "@/components/chat/welcome-hero"
+import { WelcomeTip } from "@/components/chat/welcome-hero"
 import { QuickActions } from "@/components/chat/quick-actions"
 import type { ComposerInjectContent } from "@/components/chat/message-input"
 import { TileScrollContainer } from "@/components/conversations/tile-scroll-container"
@@ -89,6 +90,8 @@ import {
   createConversation,
   getFolderConversation,
   openSettingsWindow,
+  openSideConversation,
+  updateConversationAgentType,
 } from "@/lib/api"
 import { isWindowedDetail } from "@/lib/turn-window"
 import {
@@ -104,6 +107,25 @@ import {
 import { TurnBusyError } from "@/lib/turn-busy"
 import { deliverQueuedSteer } from "@/lib/queued-steer"
 import { toErrorMessage } from "@/lib/app-error"
+import {
+  toErrorMessage,
+  toLocalizedErrorMessage,
+  type AppErrorTranslator,
+} from "@/lib/app-error"
+import {
+  beginHermesRoleSwitch,
+  clearHermesRoleSwitchSkip,
+  hermesCachedConfigOptions,
+  hermesComposerConfigOptions,
+  hermesComposerSelectorsPending,
+  hermesLiveOrCachedConfigOptions,
+  hermesResumeSessionId,
+  hermesRoleListReady,
+  interceptHermesProfileConfigChange,
+  planHermesRoleSwitch,
+  shouldClearHermesResumeSkip,
+  useHermesRoleSwitchSkip,
+} from "@/lib/hermes-profile-option"
 import { notify } from "@/lib/notify"
 import {
   claimRuntimeSession,
@@ -139,6 +161,19 @@ import {
   type SessionFailureAction,
 } from "@/lib/session-failures"
 import { userPromptHistory } from "@/lib/composer-history"
+import {
+  buildSideSeed,
+  planSideIntercept,
+  sideSeedSourceTurns,
+} from "@/lib/side-seed"
+import {
+  SIDE_OPEN_PARKED_EVENT,
+  consumeSideOpen,
+  parkSideOpen,
+  sideOpenDrafts,
+  type SideOpenParkedDetail,
+} from "@/lib/side-open-handoff"
+import { emitAppendTextToSession } from "@/lib/session-attachment-events"
 import { contentBlocksFromUserMessage } from "@/lib/user-message-blocks"
 import { getAgentLabel } from "@/lib/custom-agents"
 import {
@@ -278,6 +313,7 @@ const ConversationTabView = memo(function ConversationTabView({
   const sharedT = useTranslations("Folder.chat.shared")
   const tMessageList = useTranslations("Folder.chat.messageList")
   const tAsyncTasks = useTranslations("Folder.chat.asyncTasks")
+  const tSide = useTranslations("Folder.side")
   const refreshConversations = useAppWorkspaceStore(
     (s) => s.refreshConversations
   )
@@ -289,6 +325,7 @@ const ConversationTabView = memo(function ConversationTabView({
   const ownTab = useTabStore(
     (s) => s.tabs.find((tab) => tab.id === tabId) ?? null
   )
+  const openTab = useTabStore((s) => s.openTab)
   // Resolve this panel's folder from ITS OWN tab, not the global active folder.
   // A keep-alive panel for a background tab must NOT re-render when the active
   // tab switches to a different folder. For the active tab this equals the old
@@ -353,6 +390,11 @@ const ConversationTabView = memo(function ConversationTabView({
     number | null
   >(null)
   const dbConversationId = conversationId ?? createdConversationId
+  const handoffSummary = useAppWorkspaceStore((s) =>
+    dbConversationId == null
+      ? null
+      : (s.conversations.find((c) => c.id === dbConversationId) ?? null)
+  )
   const [draftAgentType, setDraftAgentType] = useState<AgentType>(agentType)
   const selectedAgent = conversationId != null ? agentType : draftAgentType
   // Seed from localStorage so the React state reflects the user's saved
@@ -729,6 +771,11 @@ const ConversationTabView = memo(function ConversationTabView({
   // selectors (empty until it connects).
   const connIsForOtherAgent =
     conn.agentType != null && conn.agentType !== selectedAgent
+  const hermesLiveSelectorsReady = !connIsForOtherAgent && conn.selectorsReady
+  const cachedHermesConfig = hermesCachedConfigOptions(
+    selectedAgent,
+    getCachedSelectors
+  )
   const effectiveModes = connIsForOtherAgent
     ? (getCachedSelectors(selectedAgent)?.modes ?? null)
     : conn.modes
@@ -1152,6 +1199,78 @@ const ConversationTabView = memo(function ConversationTabView({
       // is live and the prompt is delivered inline — never parked in the queue.
       const sendOwnTab = ownTab
 
+      // `/side` and `/btw` open a new side row. Do not prompt this session.
+      // The new tab drains a parked packet: hidden seed, then the question.
+      // Both ride that tab's queue, so they session/prompt once connected.
+      if (handoffSummary?.kind === "regular" && dbConversationId != null) {
+        const text = getPromptDraftDisplayText(
+          draft,
+          sharedT("attachedResources")
+        )
+        const planned = planSideIntercept({
+          kind: handoffSummary.kind,
+          hasDbId: true,
+          text,
+        })
+        if (planned) {
+          const sourceId = dbConversationId
+          const sourceFolderId = handoffSummary.folder_id
+          const agent = selectedAgent
+          const question = planned.question
+          const title = question
+            ? Array.from(question).slice(0, 64).join("")
+            : tSide("tag")
+          const seed = buildSideSeed(
+            sideSeedSourceTurns(
+              getTimelineTurns(effectiveConversationId).map(
+                (entry) => entry.turn
+              )
+            )
+          )
+          void (async () => {
+            try {
+              const result = await openSideConversation({
+                sourceId,
+                title,
+              })
+              const newTabId = makeConversationTabId(
+                sourceFolderId,
+                agent,
+                result.conversationId
+              )
+              // Park before openTab so a sync mount still finds the packet.
+              parkSideOpen(newTabId, { seed, question })
+              openTab(
+                sourceFolderId,
+                result.conversationId,
+                agent,
+                false,
+                title
+              )
+              window.dispatchEvent(
+                new CustomEvent("codeg:expand-conversation-tree", {
+                  detail: { id: sourceId },
+                })
+              )
+            } catch (err) {
+              toast.error(
+                toLocalizedErrorMessage(err, ((key: string) => {
+                  if (key === "ConversationSide.errors.notRegular") {
+                    return tSide("errors.notRegular")
+                  }
+                  if (key === "ConversationSide.errors.notFound") {
+                    return tSide("errors.notFound")
+                  }
+                  throw new Error(key)
+                }) as AppErrorTranslator)
+              )
+              emitAppendTextToSession({ tabId, text })
+            }
+          })()
+          return
+        }
+      }
+
       if (!hasPersistedConversation && !canAutoConnect) {
         setAgentConnectError(tWelcome("enableAgentFirstPlaceholder"))
         return
@@ -1392,6 +1511,10 @@ const ConversationTabView = memo(function ConversationTabView({
       effectiveConversationId,
       folderId,
       hasPersistedConversation,
+      handoffSummary,
+      dbConversationId,
+      openTab,
+      tSide,
       lifecycleSend,
       pinTab,
       refreshConversations,
@@ -1885,6 +2008,33 @@ const ConversationTabView = memo(function ConversationTabView({
       window.removeEventListener(ASK_SELECTION_PARKED_EVENT, onParked)
   }, [folderId, mqEnqueue, selectedAgent, tabId])
 
+  // Receiving end of `/side`. Timeout, not the effect body: Strict Mode runs
+  // the effect twice and a sync consume would drop the packet on the discarded
+  // mount. The queue flush sends seed, then the question, once connected.
+  useEffect(() => {
+    let cancelled = false
+    const take = () => {
+      if (cancelled) return
+      const packet = consumeSideOpen(tabId)
+      if (!packet) return
+      for (const draft of sideOpenDrafts(packet)) {
+        mqEnqueue(draft, null, { adoptSendTimeMode: true })
+      }
+    }
+    const timer = window.setTimeout(take, 0)
+    const onParked = (event: Event) => {
+      const detail = (event as CustomEvent<SideOpenParkedDetail>).detail
+      if (detail?.tabId !== tabId) return
+      take()
+    }
+    window.addEventListener(SIDE_OPEN_PARKED_EVENT, onParked)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      window.removeEventListener(SIDE_OPEN_PARKED_EVENT, onParked)
+    }
+  }, [mqEnqueue, tabId])
+
   const canShowDetailErrorActions =
     hasPersistedConversation && dbConversationId != null && !!folder
   const handleReloadDetail = useCallback(() => {
@@ -2287,6 +2437,19 @@ const ConversationTabView = memo(function ConversationTabView({
     <ConversationShell
       resizableWidth
       getSentHistory={getSentHistory}
+      handoffSource={
+        handoffSummary &&
+        handoffSummary.kind === "regular" &&
+        dbConversationId != null
+          ? {
+              id: dbConversationId,
+              folderId: handoffSummary.folder_id,
+              agentType: selectedAgent,
+              title: handoffSummary.title,
+              summary: handoffSummary,
+            }
+          : null
+      }
       topBanner={
         <>
           <SessionConfigStaleBanner contextKey={tabId} />
@@ -2402,8 +2565,7 @@ const ConversationTabView = memo(function ConversationTabView({
         >
           <div className="flex min-h-full flex-col">
             <div className="flex-1" />
-            <div className="mx-auto flex w-full chat-content-w shrink-0 flex-col gap-6 px-4 py-4">
-              <WelcomeHero />
+            <div className="mx-auto flex w-full chat-content-w shrink-0 flex-col gap-4 px-4 py-4">
               <QuickActions
                 onSelect={handleQuickAction}
                 agentType={selectedAgent}

@@ -204,6 +204,7 @@ interface SidebarConversationCardProps {
   expanded?: boolean
   /** Toggle this conversation's sub-session subtree (lazily loads on expand). */
   onToggleExpand?: (id: number) => void
+  onLeaveCluster?: (id: number) => void
 }
 
 export const SidebarConversationCard = memo(function SidebarConversationCard({
@@ -222,12 +223,15 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
   hasChildren = false,
   expanded = false,
   onToggleExpand,
+  onLeaveCluster,
 }: SidebarConversationCardProps) {
   const t = useTranslations("Folder.conversationCard")
   const ime = useImeGuard()
   const tSidebar = useTranslations("Folder.sidebar")
   const tStatus = useTranslations("Folder.statusLabels")
   const tDetails = useTranslations("Folder.sessionDetails")
+  const tCluster = useTranslations("Folder.cluster")
+  const tSide = useTranslations("Folder.side")
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -377,6 +381,9 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                 >
                   <button
                     data-conversation-id={conversation.id}
+                    data-side-row={
+                      conversation.kind === "side" ? "" : undefined
+                    }
                     onClick={handleClick}
                     onDoubleClick={handleDblClick}
                     className={cn(
@@ -462,6 +469,11 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                       {formatConversationTitle(conversation.title) ||
                         t("untitledConversation")}
                     </span>
+                    {conversation.kind === "side" ? (
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-border px-1.5 text-xs leading-none text-muted-foreground">
+                        {tSide("tag")}
+                      </span>
+                    ) : null}
                     {/* Inline, inside the row's fixed 2rem height: the list's
                     virtualizer and rail geometry assume one line per row. The
                     full set of tags is in the hover bubble. Capped so the
@@ -748,6 +760,11 @@ export const SidebarConversationCard = memo(function SidebarConversationCard({
                 )}
               </ContextMenuSubContent>
             </ContextMenuSub>
+            {onLeaveCluster && conversation.cluster_id != null && !isSubsession ? (
+              <ContextMenuItem onSelect={() => onLeaveCluster(conversation.id)}>
+                {tCluster("leave")}
+              </ContextMenuItem>
+            ) : null}
             <ContextMenuSeparator />
             <ContextMenuItem
               variant="destructive"

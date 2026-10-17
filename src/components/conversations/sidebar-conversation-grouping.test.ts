@@ -5,6 +5,7 @@ import {
   buildOwnerHeaderIndex,
   buildRows,
   computeStickyState,
+  clusterScrollTarget,
   flatIndexOfConversation,
   folderHeaderFlatIndices,
   formatRelative,
@@ -21,6 +22,7 @@ import {
   selectRecentConversationsWithReuse,
   worktreeChildrenByParent,
   worktreeHeaderAlias,
+  nestFolderBucketByCluster,
   type SidebarRow,
 } from "./sidebar-conversation-grouping"
 
@@ -1893,5 +1895,192 @@ describe("buildRows under a tag filter (hideEmptyFolders)", () => {
         })
       )
     ).toEqual(["section:folders:1", "folder-group:1", "folder:20", "conv:7"])
+  })
+})
+
+
+describe("nestFolderBucketByCluster", () => {
+  const clusters = new Map([
+    [10, { id: 10, title: "货架新建" }],
+  ])
+
+  it("keeps ungrouped rows loose", () => {
+    const bucket = [conv(1, 1), conv(2, 1)]
+    expect(nestFolderBucketByCluster(bucket, clusters)).toEqual([
+      { kind: "loose", conversation: bucket[0] },
+      { kind: "loose", conversation: bucket[1] },
+    ])
+  })
+
+  it("emits a cluster header block at the first member", () => {
+    const a = conv(1, 1, { cluster_id: 10, agent_type: "cursor" })
+    const b = conv(2, 1, { cluster_id: 10, agent_type: "grok" })
+    const c = conv(3, 1)
+    const nested = nestFolderBucketByCluster([a, b, c], clusters)
+    expect(nested).toHaveLength(2)
+    expect(nested[0]).toMatchObject({
+      kind: "cluster",
+      clusterId: 10,
+      title: "货架新建",
+    })
+    if (nested[0].kind !== "cluster") throw new Error("expected cluster")
+    expect(nested[0].members.map((m) => m.id)).toEqual([1, 2])
+    expect(nested[1]).toEqual({ kind: "loose", conversation: c })
+  })
+
+  it("does not wrap a stale cluster_id", () => {
+    const a = conv(1, 1, { cluster_id: 99 })
+    expect(nestFolderBucketByCluster([a], clusters)).toEqual([
+      { kind: "loose", conversation: a },
+    ])
+  })
+
+  it("keeps kind=side out of cluster members even with cluster_id", () => {
+    const regular = conv(1, 1, { cluster_id: 10 })
+    const side = conv(2, 1, {
+      cluster_id: 10,
+      kind: "side",
+      parent_id: 1,
+    })
+    const nested = nestFolderBucketByCluster([regular, side], clusters)
+    const cluster = nested.find((item) => item.kind === "cluster")
+    if (!cluster || cluster.kind !== "cluster") {
+      throw new Error("expected cluster")
+    }
+    expect(cluster.members.map((m) => m.id)).toEqual([1])
+    expect(
+      nested.some(
+        (item) => item.kind === "loose" && item.conversation.id === 2
+      )
+    ).toBe(true)
+  })
+
+  it("nests a side child under its parent row", () => {
+    const parent = conv(1, 1, { child_count: 1 })
+    const side = conv(2, 1, { kind: "side", parent_id: 1, cluster_id: 10 })
+    const rows = buildRows({
+      pinned: [],
+      pinnedExpanded: true,
+      orderedFolderIds: [1],
+      byFolder: new Map([[1, [parent]]]),
+      folderExpanded: { 1: true },
+      folderTotalCounts: new Map([[1, 1]]),
+      foldersExpanded: true,
+      chatConversations: [],
+      chatsExpanded: true,
+      conversationExpanded: new Set([1]),
+      childrenByParent: new Map([[1, [side]]]),
+      clustersById: clusters,
+    })
+    const convRows = rows.filter((r) => r.kind === "conversation")
+    expect(
+      convRows.map((r) => (r.kind === "conversation" ? r.conversation.id : 0))
+    ).toEqual([1, 2])
+    const child = convRows[1]
+    if (child.kind !== "conversation") throw new Error("child")
+    expect(child.depth).toBe(1)
+    expect(child.conversation.kind).toBe("side")
+  })
+
+  it("buildRows nests members under a cluster header", () => {
+    const a = conv(1, 1, { cluster_id: 10, agent_type: "cursor" })
+    const b = conv(2, 1, { cluster_id: 10, agent_type: "grok" })
+    const rows = buildRows({
+      pinned: [],
+      pinnedExpanded: true,
+      orderedFolderIds: [1],
+      byFolder: new Map([[1, [a, b]]]),
+      folderExpanded: { 1: true },
+      folderTotalCounts: new Map([[1, 2]]),
+      foldersExpanded: true,
+      chatConversations: [],
+      chatsExpanded: true,
+      clustersById: clusters,
+    })
+    const kinds = rows.map((r) => r.kind)
+    expect(kinds).toContain("cluster")
+    const cluster = rows.find((r) => r.kind === "cluster")
+    expect(cluster).toMatchObject({
+      kind: "cluster",
+      clusterId: 10,
+      memberCount: 2,
+      expanded: true,
+    })
+    const convRows = rows.filter((r) => r.kind === "conversation")
+    expect(convRows).toHaveLength(2)
+    expect(convRows[0]).toMatchObject({ depth: 1 })
+  })
+
+  it("collapsed cluster emits only the header", () => {
+    const a = conv(1, 1, { cluster_id: 10 })
+    const b = conv(2, 1, { cluster_id: 10 })
+    const rows = buildRows({
+      pinned: [],
+      pinnedExpanded: true,
+      orderedFolderIds: [1],
+      byFolder: new Map([[1, [a, b]]]),
+      folderExpanded: { 1: true },
+      folderTotalCounts: new Map([[1, 2]]),
+      foldersExpanded: true,
+      chatConversations: [],
+      chatsExpanded: true,
+      clustersById: clusters,
+      clusterExpanded: { 10: false },
+    })
+    expect(rows.filter((r) => r.kind === "conversation")).toHaveLength(0)
+    expect(rows.find((r) => r.kind === "cluster")).toMatchObject({
+      expanded: false,
+    })
+  })
+
+  it("clusterScrollTarget points a member at the cluster header", () => {
+    const a = conv(1, 1, { cluster_id: 10, agent_type: "cursor" })
+    const b = conv(2, 1, { cluster_id: 10, agent_type: "grok" })
+    const rows = buildRows({
+      pinned: [],
+      pinnedExpanded: true,
+      orderedFolderIds: [1],
+      byFolder: new Map([[1, [a, b]]]),
+      folderExpanded: { 1: true },
+      folderTotalCounts: new Map([[1, 2]]),
+      foldersExpanded: true,
+      chatConversations: [],
+      chatsExpanded: true,
+      clustersById: clusters,
+    })
+    const header = rows.findIndex((r) => r.kind === "cluster")
+    expect(header).toBeGreaterThanOrEqual(0)
+    expect(clusterScrollTarget(rows, 1, "cursor")).toEqual({
+      index: header,
+      kind: "cluster",
+    })
+    expect(clusterScrollTarget(rows, 2, "grok")).toEqual({
+      index: header,
+      kind: "cluster",
+    })
+  })
+
+  it("clusterScrollTarget points an unclustered row at itself", () => {
+    const loose = conv(3, 1)
+    const rows = buildRows({
+      pinned: [],
+      pinnedExpanded: true,
+      orderedFolderIds: [1],
+      byFolder: new Map([[1, [loose]]]),
+      folderExpanded: { 1: true },
+      folderTotalCounts: new Map([[1, 1]]),
+      foldersExpanded: true,
+      chatConversations: [],
+      chatsExpanded: true,
+      clustersById: clusters,
+    })
+    const index = rows.findIndex(
+      (r) => r.kind === "conversation" && r.conversation.id === 3
+    )
+    expect(clusterScrollTarget(rows, 3, "claude_code")).toEqual({
+      index,
+      kind: "conversation",
+    })
+    expect(clusterScrollTarget(rows, 99, "claude_code")).toBeNull()
   })
 })

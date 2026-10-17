@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import {
   isLiveTurnId,
   selectTimelineTurns,
@@ -43,6 +43,7 @@ import { AgentPlanOverlay } from "@/components/chat/agent-plan-overlay"
 import { SubAgentOverlay } from "@/components/chat/sub-agent-overlay"
 import { SessionViewerHost } from "@/components/message/session-viewer-host"
 import { normalizeToolName } from "@/lib/tool-call-normalization"
+import { isSideSeedText } from "@/lib/side-seed"
 import { parseResumeTaskId } from "@/lib/codeg-mcp-tool"
 import {
   isDelegateToAgentToolName,
@@ -80,12 +81,13 @@ import type {
   ConnectionStatus,
   MessageTurn,
 } from "@/lib/types"
-import { copyTextToClipboard } from "@/lib/utils"
+import { cn, copyTextToClipboard } from "@/lib/utils"
 import { VirtualizedMessageThread } from "@/components/message/virtualized-message-thread"
 import { SelectionActionBubble } from "@/components/message/selection-action-bubble"
 import {
   ConversationMessageNav,
   type MessageNavEntry,
+  type PromptTickItem,
 } from "@/components/message/conversation-message-nav"
 import type { MessageScrollContextValue } from "@/components/message/message-scroll-context"
 import { buildMessageNavEntries } from "@/components/message/message-nav-entries"
@@ -98,6 +100,14 @@ import { unescapeComposerText } from "@/lib/composer-copy-text"
 import { useStickToBottomContext } from "use-stick-to-bottom"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { MarkdownImageProvider } from "@/components/ai-elements/markdown-local-image"
+import { SessionDashboardHost } from "@/components/session-dashboard/session-dashboard-host"
+import { RunRevealProvider } from "@/components/session-dashboard/run-reveal-context"
+import { blocksFromThreadItems } from "@/components/session-dashboard/blocks-from-thread"
+import { mergeDashboardSegs } from "@/components/session-dashboard/dashboard-model"
+import {
+  roundsFromThread,
+  type RoundMapItem,
+} from "@/components/session-dashboard/round-map-model"
 
 interface MessageListViewProps {
   conversationId: number
@@ -951,6 +961,30 @@ export function isForkPointUnnamed(
   return forkPoint.source_turn_id == null && isLiveTurnId(forkPoint.id)
 }
 
+function isSideSeedUserGroup(group: ResolvedMessageGroup): boolean {
+  if (group.role !== "user") return false
+  if (group.images.length > 0 || group.resources.length > 0) return false
+  let sawText = false
+  for (const part of group.parts) {
+    if (part.type !== "text") return false
+    if (!isSideSeedText(part.text.trim())) return false
+    sawText = true
+  }
+  return sawText
+}
+
+
+function clipPromptLabel(parts: AdaptedContentPart[]): string {
+  for (const part of parts) {
+    if (part.type === "text" && part.text) {
+      const text = part.text.trim()
+      if (text.length > 80) return `${text.slice(0, 77)}...`
+      return text
+    }
+  }
+  return "User message"
+}
+
 const HistoricalMessageGroup = memo(function HistoricalMessageGroup({
   group,
   dimmed = false,
@@ -1402,6 +1436,28 @@ export function MessageListView({
     mergedRunCache,
   ])
   const { threadItems, nonStreamingAdapted, lastAssistantRunning } = threadState
+  const dashboardSegs = useMemo(
+    () => mergeDashboardSegs(blocksFromThreadItems(threadItems)),
+    [threadItems]
+  )
+  const dashboardRounds = useMemo(() => {
+    const items: RoundMapItem[] = []
+    threadItems.forEach((item, threadIndex) => {
+      if (item.kind !== "turn") return
+      const role = item.group.role
+      if (role !== "user" && role !== "assistant") return
+      const label =
+        role === "user"
+          ? extractTextFromParts(item.group.parts).trim().slice(0, 160)
+          : ""
+      items.push({ role, threadIndex, label })
+    })
+    return roundsFromThread(items, dashboardSegs)
+  }, [threadItems, dashboardSegs])
+  const dashboardActiveFirst =
+    connStatus === "prompting"
+      ? dashboardSegs[dashboardSegs.length - 1]?.first
+      : undefined
 
   // See `ReplyFoldState`. Derived during render rather than in an effect so a
   // send and the fold it causes land in the same commit — an effect would paint
@@ -1445,6 +1501,7 @@ export function MessageListView({
     (item: ThreadRenderItem) => {
       switch (item.kind) {
         case "turn": {
+          if (isSideSeedUserGroup(item.group)) return null
           const pt = item.isRoleTransition ? 16 : 0
           const phaseLabel =
             item.group.role === "user" && userTurnHeader
@@ -1579,7 +1636,11 @@ export function MessageListView({
     if (!showMessageNav) return { count, threadIndexByTurnId }
     for (let i = 0; i < threadItems.length; i++) {
       const item = threadItems[i]
-      if (item.kind === "turn" && item.group.role === "user") {
+      if (
+        item.kind === "turn" &&
+        item.group.role === "user" &&
+        !isSideSeedUserGroup(item.group)
+      ) {
         count += 1
         threadIndexByTurnId.set(item.group.id, i)
       }
@@ -1638,6 +1699,99 @@ export function MessageListView({
     smooth: chatAnimations,
     loadOlderTurnsThrough,
   })
+
+
+  const promptTicks = useMemo(() => {
+    if (!showMessageNav) return [] as PromptTickItem[]
+    const out: PromptTickItem[] = []
+    let loaded = 0
+    for (let i = 0; i < threadItems.length; i++) {
+      const item = threadItems[i]
+      if (
+        item.kind === "turn" &&
+        item.group.role === "user" &&
+        !isSideSeedUserGroup(item.group)
+      ) {
+        loaded += 1
+        out.push({
+          turnId: item.group.id,
+          ordinal: earlierUserCount + loaded,
+          threadIndex: i,
+          turnIndex: null,
+          label: clipPromptLabel(item.group.parts),
+        })
+      }
+    }
+    return out
+  }, [showMessageNav, threadItems, earlierUserCount])
+
+  const [trackHeightPx, setTrackHeightPx] = useState(0)
+  const [activeOrdinal, setActiveOrdinal] = useState<number | null>(null)
+  const trackRoRef = useRef<ResizeObserver | null>(null)
+  const setSelectionBoxNode = useCallback((node: HTMLDivElement | null) => {
+    selectionBoxRef.current = node
+    trackRoRef.current?.disconnect()
+    trackRoRef.current = null
+    if (!node) {
+      setTrackHeightPx(0)
+      return
+    }
+    const update = () => setTrackHeightPx(node.clientHeight)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(node)
+    trackRoRef.current = ro
+  }, [])
+
+  const handleSelectNav = useCallback(
+    (entry: MessageNavEntry) => {
+      navJump.select(entry)
+      setActiveOrdinal(entry.ordinal)
+    },
+    [navJump]
+  )
+
+  const handleTranscriptNavKey = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!event.altKey) return
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return
+      const target = event.target as HTMLElement
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable ||
+        target.closest("input, textarea, [contenteditable='true']")
+      ) {
+        return
+      }
+      if (promptTicks.length === 0) return
+      event.preventDefault()
+      let idx = promptTicks.findIndex((p) => p.ordinal === activeOrdinal)
+      if (event.key === "ArrowDown") {
+        idx = idx < 0 ? 0 : Math.min(promptTicks.length - 1, idx + 1)
+      } else {
+        idx = idx < 0 ? promptTicks.length - 1 : Math.max(0, idx - 1)
+      }
+      const prompt = promptTicks[idx]
+      if (!prompt) return
+      const entry =
+        navEntries.find((e) => e.ordinal === prompt.ordinal) ??
+        ({
+          threadIndex: prompt.threadIndex,
+          turnIndex: prompt.turnIndex,
+          turnId: prompt.turnId,
+          ordinal: prompt.ordinal,
+          label: prompt.label,
+          additions: 0,
+          deletions: 0,
+          files: [],
+          hasChanges: false,
+        } satisfies MessageNavEntry)
+      navJump.select(entry)
+      setActiveOrdinal(prompt.ordinal)
+    },
+    [activeOrdinal, navEntries, navJump, promptTicks]
+  )
 
   const hasRenderableContent = threadItems.length > 0 || Boolean(liveMessage)
 
@@ -1719,9 +1873,44 @@ export function MessageListView({
     // top-right SubAgentOverlay's rows too.
     <SessionViewerHost>
       <div
-        ref={selectionBoxRef}
-        className="chat-motion-scope relative flex h-full min-h-0 flex-col"
+        ref={setSelectionBoxNode}
+        tabIndex={-1}
+        onMouseDown={(event) => {
+          const target = event.target as HTMLElement
+          if (target.closest("input, textarea, [contenteditable='true']")) {
+            return
+          }
+          selectionBoxRef.current?.focus({ preventScroll: true })
+        }}
+        onKeyDown={handleTranscriptNavKey}
+        className="chat-motion-scope relative flex h-full min-h-0 flex-col outline-none"
       >
+        <RunRevealProvider>
+        <div
+          className={cn(
+            "mx-auto w-full shrink-0 chat-content-w px-4",
+            showMessageNav && userMessageCount >= 2 && "ps-6"
+          )}
+        >
+          <SessionDashboardHost
+            conversationId={conversationId}
+            segs={dashboardSegs}
+            rounds={dashboardRounds}
+            activeFirst={dashboardActiveFirst}
+            onJump={(first) =>
+              scrollApiRef.current?.scrollToIndex(first, {
+                align: "start",
+                smooth: chatAnimations,
+              })
+            }
+            onJumpUser={(first) =>
+              scrollApiRef.current?.scrollToIndex(first, {
+                align: "start",
+                smooth: chatAnimations,
+              })
+            }
+          />
+        </div>
         <MessageThread
           className="flex-1 min-h-0"
           resize={
@@ -1738,6 +1927,9 @@ export function MessageListView({
             getItemKey={getThreadItemKey}
             renderItem={renderThreadItem}
             emptyState={emptyState}
+            className={
+              showMessageNav && userMessageCount >= 2 ? "ps-6" : undefined
+            }
             scrollApiRef={scrollApiRef}
             hasOlder={hasOlderTurns}
             isLoadingOlder={loadingOlderTurns}
@@ -1777,33 +1969,40 @@ export function MessageListView({
             isStreaming={connStatus === "prompting"}
           />
         )}
-        {/* Shared overlay stack pinned to the inline-start edge (top-left in LTR,
-        top-right in RTL). A flex column keeps the order stable regardless of
-        each panel's expand/collapse height: the message navigator first, then
-        the plan panel, then the sub-agent panel. Empty panels render null and
-        collapse out. Positioning lives here (not in the child overlays); the
-        chips are "bullets" — flat on the start side (flush to the pinned
-        edge), rounded on the end side — that expand toward the inline-end on
-        hover. Logical `start-0` + `items-start` keep the anchor and the bullet
-        on the same side, so the whole stack mirrors cleanly in RTL. */}
-        <div className="pointer-events-none absolute start-0 top-4 z-20 flex max-w-[min(22rem,calc(100%-2rem))] flex-col items-start gap-2">
-          {showMessageNav && userMessageCount > 0 && (
-            <ConversationMessageNav
-              count={userMessageCount}
-              expanded={navExpanded}
-              onToggle={setNavExpanded}
-              entries={navEntries}
-              onSelect={navJump.select}
-              revealingTurnId={navJump.revealingTurnId}
-              earlier={
-                earlierOutlineState.status === "loading" ||
-                earlierOutlineState.status === "error"
-                  ? earlierOutlineState.status
-                  : null
-              }
-              onRetryEarlier={earlierOutline.retry}
-            />
+        {/* Prompt-tick rail: full-height, attached to chat-content-w so it
+        sits on the column start — not the panel start (which hugs the
+        cluster sidebar on a wide screen). Plan / sub-agent chips stay in the
+        top-4 stack and shift start-6 when the rail is present. */}
+        <div className="pointer-events-none absolute inset-0 z-30 flex justify-center">
+          <div className="relative mx-auto h-full w-full chat-content-w">
+            {showMessageNav && userMessageCount >= 2 && (
+              <ConversationMessageNav
+                count={userMessageCount}
+                expanded={navExpanded}
+                onToggle={setNavExpanded}
+                entries={navEntries}
+                onSelect={handleSelectNav}
+                revealingTurnId={navJump.revealingTurnId}
+                earlier={
+                  earlierOutlineState.status === "loading" ||
+                  earlierOutlineState.status === "error"
+                    ? earlierOutlineState.status
+                    : null
+                }
+                onRetryEarlier={earlierOutline.retry}
+                prompts={promptTicks}
+                trackHeightPx={trackHeightPx}
+                activeOrdinal={activeOrdinal}
+              />
+            )}
+          </div>
+        </div>
+        <div
+          className={cn(
+            "pointer-events-none absolute top-4 z-20 flex max-w-[min(22rem,calc(100%-2rem))] flex-col items-start gap-2",
+            userMessageCount >= 2 ? "start-6" : "start-0"
           )}
+        >
           <AgentPlanOverlay
             key={agentPlanOverlayKey}
             message={liveMessage ?? null}
@@ -1824,6 +2023,7 @@ export function MessageListView({
           onAsk={onAskSelection}
           onSaveAsNote={onSaveNoteSelection}
         />
+        </RunRevealProvider>
       </div>
     </SessionViewerHost>
   )

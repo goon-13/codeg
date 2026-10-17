@@ -2864,7 +2864,25 @@ pub async fn delete_conversation_with_cleanup_core(
         .ok();
     let folder_id = pre.as_ref().map(|c| c.folder_id);
     let parent_id = pre.as_ref().and_then(|c| c.parent_id);
+    let cluster_id = pre.as_ref().and_then(|c| c.cluster_id);
     delete_conversation_core(conn, conversation_id).await?;
+    if let Some(cluster_id) = cluster_id {
+        match crate::db::service::conversation_cluster_service::delete_cluster_if_empty(
+            conn, cluster_id,
+        )
+        .await
+        {
+            Ok(true) => emit_event(
+                emitter,
+                crate::web::event_bridge::CONVERSATION_CLUSTER_CHANGED_EVENT,
+                crate::web::event_bridge::ConversationClusterChange::Deleted { id: cluster_id },
+            ),
+            Ok(false) => {}
+            Err(e) => tracing::error!(
+                "[conversations] empty-cluster cleanup failed (cluster {cluster_id}): {e}"
+            ),
+        }
+    }
     emit_conversation_deleted(emitter, conversation_id);
     // A removed delegation child drops its parent's child_count (→ 0 hides the
     // chevron). Re-emit the parent from the authoritative aggregate so every
@@ -2988,6 +3006,8 @@ mod tests {
             assistant_id: None,
             assistant_name: None,
             tag_ids: Vec::new(),
+            cluster_id: None,
+            handoff_from_id: None,
         }
     }
 
@@ -6910,6 +6930,8 @@ mod tests {
                 assistant_id: None,
                 assistant_name: None,
                 tag_ids: Vec::new(),
+            cluster_id: None,
+            handoff_from_id: None,
             },
             turns,
             session_stats: None,

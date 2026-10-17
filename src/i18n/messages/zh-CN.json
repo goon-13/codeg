@@ -1328,7 +1328,7 @@
         "defaultAgent": "默认智能体",
         "defaultAgentHint": "新会话使用哪个主智能体。留空或填了无效名称时回落到 build。",
         "share": "会话分享",
-        "shareHint": "会话是否可以发布成分享链接。OpenCode 已在 1.19.1 停止会话分享，从该版本起此项不再生效。",
+        "shareHint": "会话是否可以发布成分享链接。",
         "shareManual": "手动（需要时才分享）",
         "shareAuto": "自动（每个新会话都分享）",
         "shareDisabled": "禁用",
@@ -1857,7 +1857,7 @@
   "GeneralSettings": {
     "loading": "加载中...",
     "sectionTitle": "常规",
-    "sectionDescription": "集中管理默认终端、渲染加速、@ 提及面板、关闭行为、通知与提示音等通用偏好。",
+    "sectionDescription": "集中管理默认终端、渲染加速、关闭行为、通知与提示音等通用偏好。",
     "terminalTitle": "默认终端",
     "terminalDescription": "选择 codeg 打开新终端标签页、以及代智能体执行整条命令行时使用的 Shell。自带 Shell 的智能体（如 Codex、Claude Code）在自己进程内执行命令，不受此设置影响。",
     "terminalSystemDefault": "系统默认",
@@ -3339,7 +3339,8 @@
         "mentionGroupSession": "会话",
         "mentionGroupCommit": "提交",
         "mentionGroupSkill": "技能",
-        "mentionGroupAssistant": "助手"
+        "mentionGroupAssistant": "助手",
+        "hermesRoleLabel": "角色"
       },
       "messageQueue": {
         "addToQueue": "加入队列",
@@ -3475,7 +3476,8 @@
         "noEnabledAgents": "暂无已启用的 Agent",
         "openAgentsSettings": "打开 Agents 设置",
         "notInstalled": "未安装",
-        "moreAgents": "更多 Agent（{count}）"
+        "moreAgents": "更多 Agent（{count}）",
+        "openMenu": "选择 Agent"
       },
       "subAgentOverlay": {
         "title": "子智能体",
@@ -3924,7 +3926,12 @@
         "collapsedSummary": "消息 {count}",
         "fileCount": "{count} 个文件",
         "remove": "移除",
-        "noDiffDataAvailable": "未找到 {filePath} 的差异数据"
+        "noDiffDataAvailable": "未找到 {filePath} 的差异数据",
+        "tickRail": "用户句刻度",
+        "jumpTo": "跳到第 {n} 句：{label}",
+        "openDirectory": "全部 {count} 句",
+        "filterPlaceholder": "过滤用户句",
+        "filterAria": "按原文过滤用户句"
       },
       "replyArtifacts": {
         "title": "改动文件",
@@ -4102,6 +4109,26 @@
       "proposedPlan": {
         "title": "计划提案",
         "planning": "规划中…"
+      },
+      "sessionDashboard": {
+        "stripAria": "活动时间线",
+        "barAria": "上下文窗口",
+        "legendRead": "读取",
+        "legendWrite": "写入",
+        "legendSearch": "搜索",
+        "legendCommand": "命令",
+        "legendFetch": "网络",
+        "legendThink": "思考",
+        "legendTodo": "待办",
+        "legendTask": "任务",
+        "legendError": "错误",
+        "legendText": "文本",
+        "legendOther": "其它",
+        "peekJumpUser": "去你的话",
+        "peekJumpReply": "看回复",
+        "stickyAria": "当前回合",
+        "toolsToggle": "工具输出",
+        "thinkingToggle": "思考"
       }
     },
     "diffPreview": {
@@ -4163,6 +4190,37 @@
     },
     "toasts": {
       "cloneFailed": "克隆仓库失败"
+    },
+    "cluster": {
+      "rename": "重命名主题",
+      "renameTitle": "重命名主题",
+      "dissolve": "解散主题",
+      "dissolveTitle": "解散这个主题？",
+      "dissolveDescription": "「{title}」会拆成平铺的会话，会话本身不删。",
+      "leave": "移出主题",
+      "untitled": "主题",
+      "memberCount": "{count}",
+      "expand": "展开主题",
+      "collapse": "收起主题",
+      "cancel": "取消",
+      "save": "保存"
+    },
+    "handoff": {
+      "dockLabel": "用另一 agent 接力",
+      "goalTitle": "用 {agent} 接力",
+      "goalPlaceholder": "下一刀要做什么",
+      "emptyGoal": "先写下一刀目标。",
+      "confirm": "接力",
+      "cancel": "取消",
+      "handoffTo": "接到 {agent}",
+      "currentSession": "当前会话"
+    },
+    "side": {
+      "tag": "旁问",
+      "errors": {
+        "notRegular": "源不是普通会话",
+        "notFound": "找不到会话"
+      }
     }
   },
   "ProjectBoot": {
@@ -5382,7 +5440,7 @@
     "hideBody": "隐藏通知内容",
     "hideBodyHint": "用一句通用文案代替智能体输出。通知中心会把内容保留在应用之外，会话关掉了也还在。标题仍会显示文件夹名，好让你知道该回到哪个窗口。",
     "eventsTitle": "事件",
-    "eventsHint": "关掉不想被打断的事件。同一事件在数秒内重复触发时只通知一次。权限请求包含计划审批。",
+    "eventsHint": "关掉不想被打断的事件。同一事件在数秒内重复触发时只通知一次。",
     "eventBackgroundTask": "后台任务",
     "eventWorkTask": "待办任务"
   },
@@ -6747,9 +6805,9 @@
     "viewExisting": "查看既有任务",
     "scenarioLabel": "处理方式",
     "scenarioFix": "直接修复 / 实现",
-    "scenarioFixHint": "智能体先判断报告是否属实，属实才动手修复；不属实（复现不了、按设计如此、已修复……）就提前终止、不改任何代码，带着结论回来等你处理。",
+    "scenarioFixHint": "智能体先在工作树里确认问题真实存在，再动手修复；确认不了就如实回报，不会硬改代码。",
     "scenarioPlanFirst": "先出方案",
-    "scenarioPlanFirstHint": "智能体先判断报告是否属实，属实才产出实施方案并停下；不属实就提前终止、不出方案，带着结论回来等你处理。方案确认后退回任务，在同一工作树里实施。",
+    "scenarioPlanFirstHint": "先确认问题真实存在，再产出实施方案就停——你确认后退回任务，在同一工作树里实施。",
     "scenarioReviewFix": "评审并修复",
     "scenarioReviewFixHint": "智能体先判断方案本身是否合理，合理才在其上修复问题；不合理就不提交任何代码，带着评审回来等你处理。验收后修复提交推回原分支。",
     "scenarioReviewOnly": "仅评审",
@@ -6986,7 +7044,20 @@
     "moveRunningBlocked": "进行中的会话不可移动，请先停止智能体",
     "hideProjectFromShelf": "从货架拿掉此项目",
     "addToShelf": "将此会话放到货架",
-    "showShelfConversations": "货架会话"
+    "showShelfConversations": "货架会话",
+    "scrollToTop": "回到最上",
+    "scrollToBottom": "回到最下",
+    "shelfOutline": "货架",
+    "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
+    "shelfOutlineShort": "目录 {projects}·{sessions}",
+    "shelfOutlineTitle": "编辑货架",
+    "shelfOutlineEmpty": "没有匹配的项目或会话",
+    "shelfMoveUp": "上移",
+    "shelfMoveDown": "下移",
+    "shelfSessionRail": "会话",
+    "shelfSessionRailExpand": "展开会话树",
+    "shelfSessionRailCollapse": "收起会话树",
+    "shelfBackToSource": "回本线"
   },
   "Browser": {
     "toolbar": {
@@ -7290,6 +7361,21 @@
         "bypassed": "这台电脑的浏览器引擎会让部分地址绕过隧道，为避免从这台电脑加载，远端主机的页面不会打开。",
         "probeFailed": "内置浏览器无法确认它能通过隧道访问远端主机。请稍后重试。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "主题名不能空",
+      "notRegular": "只有项目会话能进主题",
+      "sameAgent": "请选另一个 agent",
+      "folderMismatch": "这个主题属于另一个文件夹",
+      "notFound": "主题已经不在了"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "源不是普通会话",
+      "notFound": "找不到会话"
     }
   }
 }

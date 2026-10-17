@@ -351,6 +351,19 @@ pub enum AssistantChange {
     /// Rows changed without a per-row broadcast (a config snapshot applied
     /// here): re-fetch the whole list.
     Resync,
+/// Global side-channel for theme-cluster DEFINITIONS (title, folder). Which
+/// cluster a conversation sits in travels on [`CONVERSATION_CHANGED_EVENT`]
+/// inside the summary's `cluster_id`.
+pub const CONVERSATION_CLUSTER_CHANGED_EVENT: &str = "conversation-cluster://changed";
+
+/// Payload for [`CONVERSATION_CLUSTER_CHANGED_EVENT`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ConversationClusterChange {
+    Upsert {
+        cluster: crate::models::ConversationClusterDetail,
+    },
+    Deleted { id: i32 },
 }
 
 /// Per-agent progress of the import picker's local-session scan. Emitted by

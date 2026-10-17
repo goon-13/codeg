@@ -102,6 +102,9 @@ import type {
   FolderGroupDetail,
   ConversationBranchTag,
   ConversationTagDetail,
+  ConversationClusterDetail,
+  HandoffConversationResult,
+  OpenSideConversationResult,
   SidebarLayoutEntry,
   FolderLinkDetail,
   FolderLinkPlan,
@@ -2434,6 +2437,61 @@ export async function updateConversationTags(args: {
     conversationId: args.conversationId,
     add: args.add ?? [],
     remove: args.remove ?? [],
+  })
+}
+
+export async function listConversationClusters(): Promise<
+  ConversationClusterDetail[]
+> {
+  return getTransport().call("list_conversation_clusters", {})
+}
+
+export async function createConversationCluster(args: {
+  folderId: number
+  title: string
+}): Promise<ConversationClusterDetail> {
+  return getTransport().call("create_conversation_cluster", args)
+}
+
+export async function updateConversationCluster(
+  clusterId: number,
+  title: string
+): Promise<ConversationClusterDetail> {
+  return getTransport().call("update_conversation_cluster", { clusterId, title })
+}
+
+export async function deleteConversationCluster(
+  clusterId: number
+): Promise<void> {
+  return getTransport().call("delete_conversation_cluster", { clusterId })
+}
+
+export async function setConversationCluster(args: {
+  conversationId: number
+  clusterId: number | null
+}): Promise<DbConversationSummary> {
+  return getTransport().call("set_conversation_cluster", args)
+}
+
+export async function handoffConversation(args: {
+  sourceId: number
+  agentType: AgentType
+  title?: string
+}): Promise<HandoffConversationResult> {
+  return getTransport().call("handoff_conversation", {
+    sourceId: args.sourceId,
+    agentType: args.agentType,
+    title: args.title ?? null,
+  })
+}
+
+export async function openSideConversation(args: {
+  sourceId: number
+  title?: string
+}): Promise<OpenSideConversationResult> {
+  return getTransport().call("open_side_conversation", {
+    sourceId: args.sourceId,
+    title: args.title ?? null,
   })
 }
 

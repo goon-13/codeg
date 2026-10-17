@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, ConnectionTrait, DatabaseConnection,
+    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection,
     EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait,
 };
 
@@ -33,6 +33,9 @@ pub async fn create(
         git_branch,
         None,
         ConversationKind::Regular,
+        None,
+        None,
+        None,
     )
     .await
 }
@@ -56,6 +59,9 @@ pub async fn create_chat(
         git_branch,
         None,
         ConversationKind::Chat,
+        None,
+        None,
+        None,
     )
     .await
 }
@@ -64,8 +70,9 @@ pub async fn create_chat(
 /// multi-agent broker when spawning a child sub-session — populates
 /// `parent_id` / `parent_tool_use_id` / `delegation_call_id` so the lifecycle
 /// subscriber and frontend can rebuild the parent ↔ child binding without
-/// inspecting the live broker state. `kind` follows the invariant
-/// `delegate ⟺ parent_id set`.
+/// inspecting the live broker state. A delegation link sets `kind = Delegate`
+/// and `parent_id`. Side chats set `parent_id` through [`create_side`] with
+/// no delegation columns. Invariant: `parent_id` set ⟺ Delegate or Side.
 pub async fn create_with_delegation(
     conn: &DatabaseConnection,
     folder_id: i32,
@@ -80,7 +87,91 @@ pub async fn create_with_delegation(
         ConversationKind::Regular
     };
     create_inner(
-        conn, folder_id, agent_type, title, git_branch, delegation, kind,
+        conn,
+        folder_id,
+        agent_type,
+        title,
+        git_branch,
+        delegation,
+        kind,
+        None,
+        None,
+        None,
+    )
+    .await
+}
+
+/// Like [`create`] but stamps a cluster / handoff link. Used by cross-CLI
+/// handoff so the new row is in the bag from insert, not a follow-up UPDATE.
+pub async fn create_handoff(
+    conn: &DatabaseConnection,
+    folder_id: i32,
+    agent_type: AgentType,
+    title: Option<String>,
+    git_branch: Option<String>,
+    cluster_id: i32,
+    handoff_from_id: i32,
+) -> Result<conversation::Model, DbError> {
+    create_inner(
+        conn,
+        folder_id,
+        agent_type,
+        title,
+        git_branch,
+        None,
+        ConversationKind::Regular,
+        Some(cluster_id),
+        Some(handoff_from_id),
+        None,
+    )
+    .await
+}
+
+const SIDE_TITLE_CHARS: usize = 64;
+const SIDE_TITLE_FALLBACK: &str = "旁问";
+
+fn side_title(title: Option<String>) -> String {
+    let trimmed = title.unwrap_or_default();
+    let trimmed = trimmed.trim();
+    if trimmed.is_empty() {
+        return SIDE_TITLE_FALLBACK.to_string();
+    }
+    if trimmed.chars().count() <= SIDE_TITLE_CHARS {
+        return trimmed.to_string();
+    }
+    trimmed.chars().take(SIDE_TITLE_CHARS).collect()
+}
+
+/// Insert a side chat under a live regular source. Always a new row (1:N).
+/// Copies folder, agent, git branch, and cluster. No handoff link and no
+/// delegation columns. `deleted` → [`DbError::NotFound`]. Any other kind →
+/// [`DbError::Validation`] `"notRegular"`.
+pub async fn create_side(
+    conn: &DatabaseConnection,
+    source: &conversation::Model,
+    title: Option<String>,
+) -> Result<conversation::Model, DbError> {
+    if source.deleted_at.is_some() {
+        return Err(DbError::NotFound(format!(
+            "Conversation not found: {}",
+            source.id
+        )));
+    }
+    if source.kind != ConversationKind::Regular {
+        return Err(DbError::Validation("notRegular".into()));
+    }
+    let agent_type = parse_agent_type(&source.agent_type);
+    create_inner(
+        conn,
+        source.folder_id,
+        agent_type,
+        Some(side_title(title)),
+        source.git_branch.clone(),
+        None,
+        ConversationKind::Side,
+        source.cluster_id,
+        None,
+        Some(source.id),
     )
     .await
 }
@@ -93,6 +184,9 @@ async fn create_inner(
     git_branch: Option<String>,
     delegation: Option<crate::acp::delegation::spawner::DelegationLink>,
     kind: ConversationKind,
+    cluster_id: Option<i32>,
+    handoff_from_id: Option<i32>,
+    side_parent_id: Option<i32>,
 ) -> Result<conversation::Model, DbError> {
     let at_str = serde_json::to_value(agent_type)
         .ok()
@@ -106,7 +200,7 @@ async fn create_inner(
             Some(link.delegation_call_id),
             link.assistant,
         ),
-        None => (None, None, None, None),
+        None => (side_parent_id, None, None, None),
     };
     let (assistant_id, assistant_snapshot) = match assistant {
         Some(a) => (
@@ -140,6 +234,8 @@ async fn create_inner(
         origin_cwd: Set(None),
         assistant_id: Set(assistant_id),
         assistant_snapshot: Set(assistant_snapshot),
+        cluster_id: Set(cluster_id),
+        handoff_from_id: Set(handoff_from_id),
     };
     Ok(model.insert(conn).await?)
 }
@@ -927,6 +1023,8 @@ struct CarriedOverRow {
     origin_cwd: Option<String>,
     assistant_id: Option<i32>,
     assistant_snapshot: Option<String>,
+    cluster_id: Option<i32>,
+    handoff_from_id: Option<i32>,
 }
 
 impl CarriedOverRow {
@@ -951,9 +1049,9 @@ impl CarriedOverRow {
             kind: row.kind.clone(),
             model: row.model.clone(),
             git_branch: row.git_branch.clone(),
-            // Carried so the `kind == Delegate ⟺ parent_id IS NOT NULL`
-            // invariant survives, and so a preserved child stays inside its
-            // parent's sub-session subtree instead of surfacing as a root.
+            // Carried so `parent_id` set ⟺ Delegate or Side survives, and so a
+            // preserved child stays inside its parent's subtree instead of
+            // surfacing as a root.
             parent_id: row.parent_id,
             message_count: row.message_count,
             // Copied, not stamped `now`: the preserving row IS the old
@@ -969,6 +1067,8 @@ impl CarriedOverRow {
             // so it keeps drawing as it.
             assistant_id: row.assistant_id,
             assistant_snapshot: row.assistant_snapshot.clone(),
+            cluster_id: row.cluster_id,
+            handoff_from_id: row.handoff_from_id,
         }
     }
 
@@ -1000,6 +1100,8 @@ impl CarriedOverRow {
             origin_cwd: Set(self.origin_cwd),
             assistant_id: Set(self.assistant_id),
             assistant_snapshot: Set(self.assistant_snapshot),
+            cluster_id: Set(self.cluster_id),
+            handoff_from_id: Set(self.handoff_from_id),
         }
     }
 }
@@ -1089,7 +1191,7 @@ pub async fn move_conversation(
         ConversationKind::Chat | ConversationKind::Loop => {
             return Err(DbError::Validation(MOVE_CONVERSATION_WRONG_KIND.into()));
         }
-        ConversationKind::Regular | ConversationKind::Delegate => {}
+        ConversationKind::Regular | ConversationKind::Delegate | ConversationKind::Side => {}
     }
 
     let old_folder_id = conv.folder_id;
@@ -1314,6 +1416,8 @@ fn conv_to_summary(r: conversation::Model) -> DbConversationSummary {
         assistant_id: r.assistant_id,
         // Backfilled by `fill_summary_extras`, like `child_count`.
         tag_ids: Vec::new(),
+        cluster_id: r.cluster_id,
+        handoff_from_id: r.handoff_from_id,
     }
 }
 
@@ -2480,9 +2584,9 @@ mod tests {
 
     #[tokio::test]
     async fn bind_external_id_keeps_a_delegation_child_inside_its_parent() {
-        // `kind == Delegate ⟺ parent_id IS NOT NULL` is a documented invariant,
-        // and a preserved child that lost its parent would surface as a stray
-        // root in the sidebar. The two near-unique delegation identity fields
+        // `parent_id` set ⟺ Delegate or Side. A preserved child that lost its
+        // parent would surface as a stray root in the sidebar. The two
+        // near-unique delegation identity fields
         // are deliberately NOT carried — duplicating them would point the
         // parent's tool-call view at two children for one call.
         let db = fresh_in_memory_db().await;
@@ -3578,6 +3682,79 @@ mod tests {
         .expect("delegate");
         assert_eq!(child.kind, ConversationKind::Delegate);
         assert_eq!(child.parent_id, Some(regular.id));
+    }
+
+    #[tokio::test]
+    async fn create_side_sets_parent_and_inherits_cluster() {
+        let db = fresh_in_memory_db().await;
+        let folder = seed_folder(&db, "/tmp/codeg-side-inherit").await;
+        let source = create(
+            &db.conn,
+            folder,
+            AgentType::Cursor,
+            Some("src".into()),
+            Some("main".into()),
+        )
+        .await
+        .expect("source");
+        let mut active: conversation::ActiveModel = source.into();
+        active.cluster_id = Set(Some(7));
+        let source = active.update(&db.conn).await.expect("stamp cluster");
+
+        let side = create_side(&db.conn, &source, Some("这个函数在哪".into()))
+            .await
+            .expect("side");
+        assert_eq!(side.kind, ConversationKind::Side);
+        assert_eq!(side.parent_id, Some(source.id));
+        assert_eq!(side.cluster_id, Some(7));
+        assert_eq!(side.agent_type, source.agent_type);
+        assert_eq!(side.folder_id, source.folder_id);
+        assert_eq!(side.git_branch.as_deref(), Some("main"));
+        assert_eq!(side.handoff_from_id, None);
+        assert_eq!(side.parent_tool_use_id, None);
+        assert_eq!(side.delegation_call_id, None);
+        assert_eq!(side.title.as_deref(), Some("这个函数在哪"));
+    }
+
+    #[tokio::test]
+    async fn create_side_rejects_delegate_source() {
+        let db = fresh_in_memory_db().await;
+        let folder = seed_folder(&db, "/tmp/codeg-side-delegate").await;
+        let (_parent, child_id) = seed_parent_with_child(&db.conn, folder).await;
+        let child = conversation::Entity::find_by_id(child_id)
+            .one(&db.conn)
+            .await
+            .expect("query")
+            .expect("child row");
+        let err = create_side(&db.conn, &child, None)
+            .await
+            .expect_err("delegate is not a source");
+        match err {
+            DbError::Validation(msg) => assert_eq!(msg, "notRegular"),
+            other => panic!("expected notRegular, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_side_second_call_new_id() {
+        let db = fresh_in_memory_db().await;
+        let folder = seed_folder(&db, "/tmp/codeg-side-two").await;
+        let source = create(&db.conn, folder, AgentType::ClaudeCode, None, None)
+            .await
+            .expect("source");
+        let first = create_side(&db.conn, &source, None)
+            .await
+            .expect("first side");
+        let second = create_side(&db.conn, &source, Some("另一句".into()))
+            .await
+            .expect("second side");
+        assert_ne!(first.id, second.id);
+        assert_eq!(first.parent_id, Some(source.id));
+        assert_eq!(second.parent_id, Some(source.id));
+        assert_eq!(first.kind, ConversationKind::Side);
+        assert_eq!(second.kind, ConversationKind::Side);
+        assert_eq!(first.title.as_deref(), Some("旁问"));
+        assert_eq!(second.title.as_deref(), Some("另一句"));
     }
 
     #[tokio::test]

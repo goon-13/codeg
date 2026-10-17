@@ -1328,7 +1328,7 @@
         "defaultAgent": "الوكيل الافتراضي",
         "defaultAgentHint": "الوكيل الأساسي الذي تبدأ به الجلسة الجديدة. عند تركه فارغًا أو غير معروف يعود إلى build.",
         "share": "المشاركة",
-        "shareHint": "هل يمكن نشر الجلسة كرابط مشاركة. أوقف OpenCode مشاركة الجلسات في الإصدار 1.19.1، لذا لم يعد لهذا الإعداد أي تأثير بدءًا من ذلك الإصدار.",
+        "shareHint": "هل يمكن نشر الجلسة كرابط مشاركة.",
         "shareManual": "يدوي (عند الطلب فقط)",
         "shareAuto": "تلقائي (كل جلسة جديدة)",
         "shareDisabled": "معطَّل",
@@ -1857,7 +1857,7 @@
   "GeneralSettings": {
     "loading": "جارٍ التحميل...",
     "sectionTitle": "عام",
-    "sectionDescription": "تفضيلات موحّدة للطرفية الافتراضية وتسريع العرض ولوحة الإشارات @ وسلوك إغلاق النافذة والإشعارات والأصوات.",
+    "sectionDescription": "تفضيلات موحّدة للطرفية الافتراضية وتسريع العرض وسلوك إغلاق النافذة والإشعارات والأصوات.",
     "terminalTitle": "الطرفية الافتراضية",
     "terminalDescription": "اختر الصدفة التي يشغّلها codeg لعلامات تبويب الطرفية الجديدة ولأسطر الأوامر الكاملة التي تطلب الوكلاء تنفيذها نيابةً عنها. أما الوكلاء الذين يملكون صدفة خاصة بهم (مثل Codex و Claude Code) فينفّذون الأوامر داخل عملياتهم، ولا يصل إليهم هذا الإعداد.",
     "terminalSystemDefault": "افتراضي النظام",
@@ -3339,7 +3339,8 @@
         "mentionGroupSession": "الجلسات",
         "mentionGroupCommit": "عمليات الإيداع",
         "mentionGroupSkill": "المهارات",
-        "mentionGroupAssistant": "المساعدون"
+        "mentionGroupAssistant": "المساعدون",
+        "hermesRoleLabel": "الدور"
       },
       "messageQueue": {
         "addToQueue": "إضافة للقائمة",
@@ -3475,7 +3476,8 @@
         "noEnabledAgents": "لا يوجد وكلاء مفعّلون",
         "openAgentsSettings": "فتح إعدادات الوكلاء",
         "notInstalled": "غير مثبّت",
-        "moreAgents": "وكلاء إضافيون ({count})"
+        "moreAgents": "وكلاء إضافيون ({count})",
+        "openMenu": "الوكلاء"
       },
       "subAgentOverlay": {
         "title": "الوكلاء الفرعيون",
@@ -3924,7 +3926,12 @@
         "collapsedSummary": "الرسائل {count}",
         "fileCount": "{count, plural, one {# ملف} other {# ملفات}}",
         "remove": "إزالة",
-        "noDiffDataAvailable": "لا توجد بيانات diff متاحة لـ {filePath}"
+        "noDiffDataAvailable": "لا توجد بيانات diff متاحة لـ {filePath}",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "الملفات المتغيرة",
@@ -4102,6 +4109,26 @@
       "proposedPlan": {
         "title": "الخطة المقترحة",
         "planning": "جارٍ التخطيط…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4163,6 +4190,37 @@
     },
     "toasts": {
       "cloneFailed": "فشل استنساخ المستودع"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "المتابعة مع {agent}",
+      "currentSession": "هذه الجلسة"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -4971,43 +5029,43 @@
   "RemoteWorkspace": {
     "openLocalWorkspace": "فتح مساحة العمل المحلية",
     "openLocalFailed": "تعذر فتح مساحة العمل المحلية",
-    "openRemoteWorkspace": "فتح مساحة العمل البعيدة",
-    "manage": "إدارة مساحة العمل البعيدة",
-    "manageTitle": "اتصالات مساحات العمل البعيدة",
-    "empty": "لا توجد اتصالات بعيدة",
+    "openRemoteWorkspace": "Open remote workspace",
+    "manage": "Manage remote workspace",
+    "manageTitle": "Remote Workspace connections",
+    "empty": "No remote connections",
     "noMatches": "لا توجد اتصالات بعيدة مطابقة",
-    "searchPlaceholder": "البحث في مساحات العمل البعيدة",
-    "orderFailed": "تعذّر حفظ ترتيب مساحات العمل البعيدة",
-    "dragSort": "اسحب لإعادة الترتيب",
-    "dragSortConnection": "اسحب لإعادة ترتيب {name}",
-    "newConnection": "اتصال جديد",
-    "loading": "جارٍ التحميل",
-    "loadingConnection": "جارٍ تحميل الاتصال البعيد",
-    "name": "الاسم",
-    "baseUrl": "عنوان URL للخدمة",
-    "token": "رمز الوصول",
+    "searchPlaceholder": "Search remote workspaces",
+    "orderFailed": "Failed to save remote workspace order",
+    "dragSort": "Drag to sort",
+    "dragSortConnection": "Drag to sort {name}",
+    "newConnection": "New connection",
+    "loading": "Loading",
+    "loadingConnection": "Loading remote connection",
+    "name": "Name",
+    "baseUrl": "Service URL",
+    "token": "Access token",
     "customHeaders": "ترويسات مخصصة",
     "customHeaderName": "اسم الترويسة",
     "customHeaderValue": "قيمة الترويسة",
     "addCustomHeader": "إضافة ترويسة",
     "removeCustomHeader": "إزالة ترويسة",
-    "save": "حفظ",
-    "delete": "حذف",
+    "save": "Save",
+    "delete": "Delete",
     "confirmDelete": {
-      "title": "حذف الاتصال البعيد؟",
-      "message": "سيؤدي هذا إلى إزالة \"{name}\" من هذا الجهاز. لا يمكن التراجع عن هذا الإجراء.",
-      "cancel": "إلغاء",
-      "confirm": "حذف"
+      "title": "Delete remote connection?",
+      "message": "This will remove \"{name}\" from this device. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     },
-    "saved": "تم حفظ الاتصال البعيد.",
-    "deleted": "تم حذف الاتصال البعيد.",
-    "loadFailed": "تعذّر تحميل الاتصالات البعيدة",
-    "saveFailed": "تعذّر حفظ الاتصال البعيد",
-    "deleteFailed": "تعذّر حذف الاتصال البعيد",
-    "openFailed": "تعذّر فتح مساحة العمل البعيدة",
+    "saved": "Remote connection saved.",
+    "deleted": "Remote connection deleted.",
+    "loadFailed": "Failed to load remote connections",
+    "saveFailed": "Failed to save remote connection",
+    "deleteFailed": "Failed to delete remote connection",
+    "openFailed": "Failed to open remote workspace",
     "restoreFailed": "تعذّرت إعادة فتح مساحة العمل البعيدة \"{name}\"",
-    "connectionLoadFailed": "تعذّر تحميل الاتصال البعيد: {message}",
-    "connectionExpired": "انتهت صلاحية الاتصال البعيد \"{name}\". حدّث رمز الوصول الخاص به، ثم أعد تحميل هذه النافذة."
+    "connectionLoadFailed": "Failed to load remote connection: {message}",
+    "connectionExpired": "Remote connection \"{name}\" is expired. Update its token and reload this window."
   },
   "ServerFileBrowser": {
     "title": "اختر ملفًا من الخادم",
@@ -5382,7 +5440,7 @@
     "hideBody": "إخفاء محتوى الإشعار",
     "hideBodyHint": "إظهار سطر عام بدل مخرجات الوكيل. يحتفظ مركز الإشعارات بالمحتوى خارج التطبيق، حتى بعد إغلاق المحادثة. يظل العنوان يذكر اسم المجلد لتعرف إلى أي نافذة تعود.",
     "eventsTitle": "الأحداث",
-    "eventsHint": "أوقف أي حدث لا تريده أن يقاطعك. تُدمج تكرارات الحدث نفسه خلال ثوانٍ في إشعار واحد. تشمل طلبات الإذن الموافقة على الخطط.",
+    "eventsHint": "أوقف أي حدث لا تريده أن يقاطعك. تُدمج تكرارات الحدث نفسه خلال ثوانٍ في إشعار واحد.",
     "eventBackgroundTask": "مهمة في الخلفية",
     "eventWorkTask": "مهمة عمل"
   },
@@ -6747,9 +6805,9 @@
     "viewExisting": "عرض المهمة الحالية",
     "scenarioLabel": "طريقة المعالجة",
     "scenarioFix": "إصلاح / تنفيذ مباشرة",
-    "scenarioFixHint": "يحكم الوكيل أولاً على ما إذا كان البلاغ صحيحاً، ولا يصلحه إلا إذا كان كذلك؛ وإن لم يكن (لا يتكرر، يعمل كما صُمّم، أُصلح مسبقاً…) فلا يغيّر شيئاً وينهي المهمة مبكراً ويعيد إليك النتيجة لتقرر.",
+    "scenarioFixHint": "يتأكد الوكيل أولاً من أن المشكلة حقيقية داخل worktree ثم يصلحها — وإن تعذّر عليه التأكد أبلغ بالنتيجة بدل تعديل الشيفرة.",
     "scenarioPlanFirst": "الخطة أولاً",
-    "scenarioPlanFirstHint": "يحكم الوكيل أولاً على ما إذا كان البلاغ صحيحاً، ثم يقدّم خطة تنفيذ ويتوقف؛ وإن لم يكن صحيحاً ينهي المهمة مبكراً بلا خطة ويعيد إليك النتيجة. وافق على الخطة بإعادة المهمة لتنفيذها.",
+    "scenarioPlanFirstHint": "يتأكد الوكيل من أن المشكلة حقيقية ثم يقدّم خطة تنفيذ ويتوقف — وافق عليها بإعادة المهمة لتنفيذها.",
     "scenarioReviewFix": "مراجعة وإصلاح",
     "scenarioReviewFixHint": "يحكم الوكيل أولاً على ما إذا كان النهج نفسه سليماً، ولا يصلح المشكلات فوقه إلا إذا كان كذلك؛ وإلا فلا يودِع شيئاً ويعيد إليك المراجعة لتقرر. وعند القبول تُدفع الإصلاحات إلى الفرع نفسه.",
     "scenarioReviewOnly": "مراجعة فقط",
@@ -6986,7 +7044,20 @@
     "moveRunningBlocked": "Cannot move a conversation while its agent is running",
     "hideProjectFromShelf": "Remove this project from the shelf",
     "addToShelf": "Add this conversation to the shelf",
-    "showShelfConversations": "Shelf conversations"
+    "showShelfConversations": "Shelf conversations",
+    "scrollToTop": "Jump to top",
+    "scrollToBottom": "Jump to bottom",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7290,6 +7361,21 @@
         "bypassed": "يرسل محرك المتصفح في هذا الكمبيوتر بعض العناوين خارج النفق، لذا تبقى صفحات المضيف البعيد مغلقة بدل تحميلها من هذا الكمبيوتر.",
         "probeFailed": "تعذّر على المتصفح المدمج التأكد من أنه يصل إلى المضيف البعيد عبر النفق. حاول مرة أخرى بعد قليل."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

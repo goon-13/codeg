@@ -1328,7 +1328,7 @@
         "defaultAgent": "Agent par défaut",
         "defaultAgentHint": "Agent principal utilisé par une nouvelle session. Vide ou inconnu retombe sur build.",
         "share": "Partage",
-        "shareHint": "Si une session peut être publiée sous forme de lien partagé. OpenCode a abandonné le partage de sessions dans la version 1.19.1 : à partir de cette version, ce réglage n'a plus d'effet.",
+        "shareHint": "Si une session peut être publiée sous forme de lien partagé.",
         "shareManual": "Manuel (à la demande)",
         "shareAuto": "Automatique (chaque nouvelle session)",
         "shareDisabled": "Désactivé",
@@ -1857,7 +1857,7 @@
   "GeneralSettings": {
     "loading": "Chargement...",
     "sectionTitle": "Général",
-    "sectionDescription": "Préférences centralisées pour le terminal par défaut, l’accélération du rendu, le panneau de mentions @, le comportement à la fermeture de la fenêtre, les notifications et les sons.",
+    "sectionDescription": "Préférences centralisées pour le terminal par défaut, l’accélération du rendu, le comportement à la fermeture de la fenêtre, les notifications et les sons.",
     "terminalTitle": "Terminal par défaut",
     "terminalDescription": "Choisissez le shell que codeg lance pour les nouveaux onglets de terminal et pour les lignes de commande complètes qu’un agent lui demande d’exécuter. Les agents dotés de leur propre shell (Codex, Claude Code) exécutent les commandes dans leur propre processus : ce réglage ne les atteint pas.",
     "terminalSystemDefault": "Par défaut système",
@@ -3339,7 +3339,8 @@
         "mentionGroupSession": "Sessions",
         "mentionGroupCommit": "Commits",
         "mentionGroupSkill": "Compétences",
-        "mentionGroupAssistant": "Assistants"
+        "mentionGroupAssistant": "Assistants",
+        "hermesRoleLabel": "Rôle"
       },
       "messageQueue": {
         "addToQueue": "Mettre en file",
@@ -3475,7 +3476,8 @@
         "noEnabledAgents": "Aucun agent activé",
         "openAgentsSettings": "Ouvrir les paramètres des agents",
         "notInstalled": "Non installé",
-        "moreAgents": "Plus d'agents ({count})"
+        "moreAgents": "Plus d'agents ({count})",
+        "openMenu": "Agents"
       },
       "subAgentOverlay": {
         "title": "Sous-agents",
@@ -3924,7 +3926,12 @@
         "collapsedSummary": "Messages {count}",
         "fileCount": "{count, plural, one {# fichier} other {# fichiers}}",
         "remove": "Retirer",
-        "noDiffDataAvailable": "Aucune donnée de diff disponible pour {filePath}"
+        "noDiffDataAvailable": "Aucune donnée de diff disponible pour {filePath}",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "Fichiers modifiés",
@@ -4102,6 +4109,26 @@
       "proposedPlan": {
         "title": "Plan proposé",
         "planning": "Planification…"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4163,6 +4190,37 @@
     },
     "toasts": {
       "cloneFailed": "Échec du clonage du dépôt"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "Continuer avec {agent}",
+      "currentSession": "Cette session"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -5382,7 +5440,7 @@
     "hideBody": "Masquer le contenu",
     "hideBodyHint": "Affiche une ligne générique au lieu de la sortie de l'agent. Le centre de notifications conserve le contenu hors de l'application, même après la fermeture de la conversation. Le titre nomme toujours le dossier, pour que vous sachiez à quelle fenêtre revenir.",
     "eventsTitle": "Événements",
-    "eventsHint": "Désactivez les événements qui ne doivent pas vous interrompre. Les répétitions d'un même événement en quelques secondes sont regroupées en une seule notification. Les demandes d'autorisation incluent les validations de plan.",
+    "eventsHint": "Désactivez les événements qui ne doivent pas vous interrompre. Les répétitions d'un même événement en quelques secondes sont regroupées en une seule notification.",
     "eventBackgroundTask": "Tâche en arrière-plan",
     "eventWorkTask": "Tâche de travail"
   },
@@ -6747,9 +6805,9 @@
     "viewExisting": "Voir la tâche existante",
     "scenarioLabel": "Mode de traitement",
     "scenarioFix": "Corriger / implémenter",
-    "scenarioFixHint": "L'agent juge d'abord si le rapport tient, et ne corrige qu'ensuite ; s'il ne tient pas (non reproductible, comportement voulu, déjà corrigé…), il ne touche à rien, s'arrête tôt et vous rend sa conclusion pour que vous décidiez.",
+    "scenarioFixHint": "L'agent confirme d'abord dans son worktree que le problème existe vraiment, puis le corrige ; s'il ne peut pas le confirmer, il le signale au lieu de modifier le code.",
     "scenarioPlanFirst": "Planifier d'abord",
-    "scenarioPlanFirstHint": "L'agent juge d'abord si le rapport tient, puis livre un plan d'implémentation et s'arrête ; s'il ne tient pas, il s'arrête tôt sans plan et vous rend sa conclusion. Validez un plan en renvoyant la tâche pour l'implémentation.",
+    "scenarioPlanFirstHint": "L'agent confirme que le problème existe vraiment, livre un plan d'implémentation puis s'arrête — validez-le en renvoyant la tâche pour l'implémentation.",
     "scenarioReviewFix": "Revue et correction",
     "scenarioReviewFixHint": "L'agent juge d'abord si l'approche elle-même tient, et ne corrige les problèmes qu'ensuite ; sinon, il ne committe rien et vous rend la revue pour que vous décidiez. À l'acceptation, les correctifs repartent sur la branche.",
     "scenarioReviewOnly": "Revue seule",
@@ -6986,7 +7044,20 @@
     "moveRunningBlocked": "Cannot move a conversation while its agent is running",
     "hideProjectFromShelf": "Remove this project from the shelf",
     "addToShelf": "Add this conversation to the shelf",
-    "showShelfConversations": "Shelf conversations"
+    "showShelfConversations": "Shelf conversations",
+    "scrollToTop": "Jump to top",
+    "scrollToBottom": "Jump to bottom",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7290,6 +7361,21 @@
         "bypassed": "Le moteur du navigateur de cet ordinateur envoie certaines adresses en dehors du tunnel ; les pages de l'hôte distant restent donc fermées plutôt que d'être chargées depuis cet ordinateur.",
         "probeFailed": "Le navigateur intégré n'a pas pu confirmer qu'il atteint l'hôte distant par le tunnel. Réessayez dans un instant."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

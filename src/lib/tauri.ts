@@ -1098,6 +1098,61 @@ export async function createConversation(
   })
 }
 
+export async function listConversationClusters(): Promise<
+  import("@/lib/types").ConversationClusterDetail[]
+> {
+  return invoke("list_conversation_clusters")
+}
+
+export async function createConversationCluster(args: {
+  folderId: number
+  title: string
+}): Promise<import("@/lib/types").ConversationClusterDetail> {
+  return invoke("create_conversation_cluster", args)
+}
+
+export async function updateConversationCluster(
+  clusterId: number,
+  title: string
+): Promise<import("@/lib/types").ConversationClusterDetail> {
+  return invoke("update_conversation_cluster", { clusterId, title })
+}
+
+export async function deleteConversationCluster(
+  clusterId: number
+): Promise<void> {
+  return invoke("delete_conversation_cluster", { clusterId })
+}
+
+export async function setConversationCluster(args: {
+  conversationId: number
+  clusterId: number | null
+}): Promise<import("@/lib/types").DbConversationSummary> {
+  return invoke("set_conversation_cluster", args)
+}
+
+export async function handoffConversation(args: {
+  sourceId: number
+  agentType: AgentType
+  title?: string
+}): Promise<import("@/lib/types").HandoffConversationResult> {
+  return invoke("handoff_conversation", {
+    sourceId: args.sourceId,
+    agentType: args.agentType,
+    title: args.title ?? null,
+  })
+}
+
+export async function openSideConversation(args: {
+  sourceId: number
+  title?: string
+}): Promise<import("@/lib/types").OpenSideConversationResult> {
+  return invoke("open_side_conversation", {
+    sourceId: args.sourceId,
+    title: args.title ?? null,
+  })
+}
+
 export async function moveConversation(
   conversationId: number,
   toFolderId: number

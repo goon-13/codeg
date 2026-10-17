@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import {
   ConversationMessageNav,
   type MessageNavEntry,
+  type PromptTickItem,
 } from "./conversation-message-nav"
 
 // Stable `t` (per next-intl mock guidance) — returns the key verbatim, plus the
@@ -78,6 +81,14 @@ const entries: MessageNavEntry[] = [
   },
 ]
 
+const prompts: PromptTickItem[] = entries.map((e) => ({
+  turnId: e.turnId,
+  ordinal: e.ordinal,
+  threadIndex: e.threadIndex,
+  turnIndex: e.turnIndex,
+  label: e.label,
+}))
+
 /** A message above the loaded window: listed, but not rendered yet. */
 const earlierEntry: MessageNavEntry = {
   threadIndex: null,
@@ -109,21 +120,208 @@ describe("ConversationMessageNav", () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it("collapsed: shows the count chip and expands on click", () => {
-    const onToggle = vi.fn()
+  it("renders nothing when there is only one user message", () => {
+    const { container } = render(
+      <ConversationMessageNav
+        count={1}
+        expanded={false}
+        onToggle={vi.fn()}
+        entries={[]}
+        prompts={[
+          {
+            turnId: "u1",
+            ordinal: 1,
+            threadIndex: 0,
+            turnIndex: null,
+            label: "only",
+          },
+        ]}
+        onSelect={vi.fn()}
+      />
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it("collapsed: shows one tick per prompt and jumps on click", () => {
+    const onSelect = vi.fn()
     render(
       <ConversationMessageNav
         count={3}
         expanded={false}
-        onToggle={onToggle}
+        onToggle={vi.fn()}
         entries={[]}
+        prompts={prompts}
+        trackHeightPx={720}
+        onSelect={onSelect}
+      />
+    )
+    expect(screen.queryByText("title")).not.toBeInTheDocument()
+    expect(screen.getByTestId("prompt-tick-rail")).toBeInTheDocument()
+    expect(screen.getAllByTestId("prompt-tick")).toHaveLength(3)
+    fireEvent.click(
+      screen.getByTestId("prompt-tick-rail").querySelector('[data-ordinal="2"]')!
+    )
+    expect(onSelect).toHaveBeenCalled()
+  })
+
+  it("expanded: keeps the tick rail and shows the flyout beside it", () => {
+    render(
+      <ConversationMessageNav
+        count={entries.length}
+        expanded
+        onToggle={vi.fn()}
+        entries={entries}
+        prompts={prompts}
+        trackHeightPx={720}
         onSelect={vi.fn()}
       />
     )
-    // No card while collapsed.
-    expect(screen.queryByText("title")).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "collapsedSummary:3" }))
+    expect(screen.getByTestId("prompt-tick-rail")).toBeInTheDocument()
+    expect(screen.getByTestId("prompt-nav-flyout")).toBeInTheDocument()
+    expect(screen.getByText("title")).toBeInTheDocument()
+  })
+
+  it("hovering a tick shows only that prompt, not the flyout", () => {
+    render(
+      <ConversationMessageNav
+        count={3}
+        expanded={false}
+        onToggle={vi.fn()}
+        entries={[]}
+        prompts={prompts}
+        trackHeightPx={720}
+        onSelect={vi.fn()}
+      />
+    )
+    fireEvent.mouseEnter(screen.getAllByTestId("prompt-tick")[1])
+    expect(screen.getByTestId("prompt-tick-peek")).toHaveTextContent(
+      "edit something"
+    )
+    expect(screen.queryByTestId("prompt-nav-flyout")).not.toBeInTheDocument()
+  })
+
+  it("filters flyout rows by label", () => {
+    render(
+      <ConversationMessageNav
+        count={entries.length}
+        expanded
+        onToggle={vi.fn()}
+        entries={entries}
+        prompts={prompts}
+        trackHeightPx={720}
+        onSelect={vi.fn()}
+      />
+    )
+    fireEvent.change(screen.getByTestId("prompt-nav-filter"), {
+      target: { value: "delete" },
+    })
+    expect(screen.getByText("delete a file")).toBeInTheDocument()
+    expect(screen.queryByText("first message")).not.toBeInTheDocument()
+  })
+
+  function manyPrompts(n: number): PromptTickItem[] {
+    return Array.from({ length: n }, (_, i) => ({
+      turnId: `u${i + 1}`,
+      ordinal: i + 1,
+      threadIndex: i,
+      turnIndex: null,
+      label: `prompt ${i + 1}`,
+    }))
+  }
+
+  it("dense: consecutive window and the count opens the flyout", () => {
+    const onToggle = vi.fn()
+    render(
+      <ConversationMessageNav
+        count={40}
+        expanded={false}
+        onToggle={onToggle}
+        entries={[]}
+        prompts={manyPrompts(40)}
+        trackHeightPx={100}
+        onSelect={vi.fn()}
+      />
+    )
+    const ticks = screen.getAllByTestId("prompt-tick")
+    const ordinals = ticks.map((el) => Number(el.getAttribute("data-ordinal")))
+    expect(ordinals).toHaveLength(8)
+    expect(ordinals[ordinals.length - 1] - ordinals[0]).toBe(7)
+    expect(screen.getByTestId("prompt-tick-count")).toHaveTextContent("40")
+    fireEvent.click(screen.getByTestId("prompt-tick-count"))
     expect(onToggle).toHaveBeenCalledWith(true)
+  })
+
+  it("count click closes the flyout when it is already open", () => {
+    const onToggle = vi.fn()
+    render(
+      <ConversationMessageNav
+        count={40}
+        expanded
+        onToggle={onToggle}
+        entries={[]}
+        prompts={manyPrompts(40)}
+        trackHeightPx={100}
+        onSelect={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByTestId("prompt-tick-count"))
+    expect(onToggle).toHaveBeenCalledWith(false)
+  })
+
+  it("centers the active prompt in the window", () => {
+    render(
+      <ConversationMessageNav
+        count={40}
+        expanded={false}
+        onToggle={vi.fn()}
+        entries={[]}
+        prompts={manyPrompts(40)}
+        trackHeightPx={100}
+        activeOrdinal={20}
+        onSelect={vi.fn()}
+      />
+    )
+    const ordinals = screen
+      .getAllByTestId("prompt-tick")
+      .map((el) => Number(el.getAttribute("data-ordinal")))
+    expect(ordinals).toContain(20)
+    expect(ordinals.includes(1) && ordinals.includes(40)).toBe(false)
+    const i = ordinals.indexOf(20)
+    expect(i).toBeGreaterThan(1)
+    expect(i).toBeLessThan(ordinals.length - 2)
+  })
+
+  it("wheel pans the window without opening the flyout", () => {
+    render(
+      <ConversationMessageNav
+        count={40}
+        expanded={false}
+        onToggle={vi.fn()}
+        entries={[]}
+        prompts={manyPrompts(40)}
+        trackHeightPx={100}
+        activeOrdinal={20}
+        onSelect={vi.fn()}
+      />
+    )
+    const before = screen
+      .getAllByTestId("prompt-tick")
+      .map((el) => Number(el.getAttribute("data-ordinal")))
+    fireEvent.wheel(screen.getByTestId("prompt-tick-rail"), { deltaY: -120 })
+    const after = screen
+      .getAllByTestId("prompt-tick")
+      .map((el) => Number(el.getAttribute("data-ordinal")))
+    expect(after[0]).toBeLessThan(before[0])
+    expect(screen.queryByTestId("prompt-nav-flyout")).not.toBeInTheDocument()
+  })
+
+  it("binds a non-passive native wheel listener so preventDefault sticks", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/message/conversation-message-nav.tsx"),
+      "utf8"
+    )
+    expect(src).toMatch(/addEventListener\(\s*"wheel"/)
+    expect(src).toMatch(/passive:\s*false/)
   })
 
   it("expanded: clicking a message selects its entry", () => {

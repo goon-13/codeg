@@ -1328,7 +1328,7 @@
         "defaultAgent": "預設智慧體",
         "defaultAgentHint": "新工作階段使用哪個主要智慧體。留空或名稱無效時回落到 build。",
         "share": "工作階段分享",
-        "shareHint": "工作階段是否可以發佈成分享連結。OpenCode 已在 1.19.1 停止工作階段分享，從該版本起此項不再生效。",
+        "shareHint": "工作階段是否可以發佈成分享連結。",
         "shareManual": "手動（需要時才分享）",
         "shareAuto": "自動（每個新工作階段都分享）",
         "shareDisabled": "停用",
@@ -1857,7 +1857,7 @@
   "GeneralSettings": {
     "loading": "載入中...",
     "sectionTitle": "一般",
-    "sectionDescription": "集中管理預設終端機、渲染加速、@ 提及面板、關閉行為、通知與提示音等通用偏好。",
+    "sectionDescription": "集中管理預設終端機、渲染加速、關閉行為、通知與提示音等通用偏好。",
     "terminalTitle": "預設終端",
     "terminalDescription": "選擇 codeg 開啟新終端分頁、以及代智慧代理執行整條命令列時使用的 Shell。自帶 Shell 的智慧代理（如 Codex、Claude Code）會在自己的行程內執行命令，不受此設定影響。",
     "terminalSystemDefault": "系統預設",
@@ -3339,7 +3339,8 @@
         "mentionGroupSession": "工作階段",
         "mentionGroupCommit": "提交",
         "mentionGroupSkill": "技能",
-        "mentionGroupAssistant": "助手"
+        "mentionGroupAssistant": "助手",
+        "hermesRoleLabel": "角色"
       },
       "messageQueue": {
         "addToQueue": "加入佇列",
@@ -3475,7 +3476,8 @@
         "noEnabledAgents": "暫無已啟用的 Agent",
         "openAgentsSettings": "開啟 Agents 設定",
         "notInstalled": "未安裝",
-        "moreAgents": "更多 Agent（{count}）"
+        "moreAgents": "更多 Agent（{count}）",
+        "openMenu": "選擇 Agent"
       },
       "subAgentOverlay": {
         "title": "子智能體",
@@ -3924,7 +3926,12 @@
         "collapsedSummary": "訊息 {count}",
         "fileCount": "{count} 個檔案",
         "remove": "移除",
-        "noDiffDataAvailable": "找不到 {filePath} 的差異資料"
+        "noDiffDataAvailable": "找不到 {filePath} 的差異資料",
+        "tickRail": "使用者句刻度",
+        "jumpTo": "跳到第 {n} 句：{label}",
+        "openDirectory": "全部 {count} 句",
+        "filterPlaceholder": "過濾使用者句",
+        "filterAria": "按原文過濾使用者句"
       },
       "replyArtifacts": {
         "title": "變更檔案",
@@ -4102,6 +4109,26 @@
       "proposedPlan": {
         "title": "計劃提案",
         "planning": "規劃中…"
+      },
+      "sessionDashboard": {
+        "stripAria": "活动时间线",
+        "barAria": "上下文窗口",
+        "legendRead": "读取",
+        "legendWrite": "写入",
+        "legendSearch": "搜索",
+        "legendCommand": "命令",
+        "legendFetch": "网络",
+        "legendThink": "思考",
+        "legendTodo": "待办",
+        "legendTask": "任务",
+        "legendError": "错误",
+        "legendText": "文本",
+        "legendOther": "其它",
+        "peekJumpUser": "去你的话",
+        "peekJumpReply": "看回复",
+        "stickyAria": "当前回合",
+        "toolsToggle": "工具输出",
+        "thinkingToggle": "思考"
       }
     },
     "diffPreview": {
@@ -4163,6 +4190,37 @@
     },
     "toasts": {
       "cloneFailed": "複製倉庫失敗"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "接到 {agent}",
+      "currentSession": "目前工作階段"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -4971,43 +5029,43 @@
   "RemoteWorkspace": {
     "openLocalWorkspace": "開啟本地工作區",
     "openLocalFailed": "無法開啟本地工作區",
-    "openRemoteWorkspace": "開啟遠端工作區",
-    "manage": "管理遠端工作區",
-    "manageTitle": "遠端工作區連線",
-    "empty": "尚無遠端連線",
+    "openRemoteWorkspace": "Open remote workspace",
+    "manage": "Manage remote workspace",
+    "manageTitle": "Remote Workspace connections",
+    "empty": "No remote connections",
     "noMatches": "沒有符合的遠端連線",
-    "searchPlaceholder": "搜尋遠端工作區",
-    "orderFailed": "無法儲存遠端工作區的排序",
-    "dragSort": "拖拽排序",
-    "dragSortConnection": "拖拽排序 {name}",
-    "newConnection": "新增連線",
-    "loading": "載入中",
-    "loadingConnection": "正在載入遠端連線",
-    "name": "名稱",
-    "baseUrl": "服務位址",
-    "token": "存取 Token",
+    "searchPlaceholder": "Search remote workspaces",
+    "orderFailed": "Failed to save remote workspace order",
+    "dragSort": "Drag to sort",
+    "dragSortConnection": "Drag to sort {name}",
+    "newConnection": "New connection",
+    "loading": "Loading",
+    "loadingConnection": "Loading remote connection",
+    "name": "Name",
+    "baseUrl": "Service URL",
+    "token": "Access token",
     "customHeaders": "自訂請求標頭",
     "customHeaderName": "標頭名稱",
     "customHeaderValue": "標頭值",
     "addCustomHeader": "新增標頭",
     "removeCustomHeader": "移除標頭",
-    "save": "儲存",
-    "delete": "刪除",
+    "save": "Save",
+    "delete": "Delete",
     "confirmDelete": {
-      "title": "要刪除遠端連線嗎？",
-      "message": "這會從此裝置移除「{name}」，此操作無法復原。",
-      "cancel": "取消",
-      "confirm": "刪除"
+      "title": "Delete remote connection?",
+      "message": "This will remove \"{name}\" from this device. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     },
-    "saved": "遠端連線已儲存。",
-    "deleted": "遠端連線已刪除。",
-    "loadFailed": "無法載入遠端連線",
-    "saveFailed": "無法儲存遠端連線",
-    "deleteFailed": "無法刪除遠端連線",
-    "openFailed": "無法開啟遠端工作區",
+    "saved": "Remote connection saved.",
+    "deleted": "Remote connection deleted.",
+    "loadFailed": "Failed to load remote connections",
+    "saveFailed": "Failed to save remote connection",
+    "deleteFailed": "Failed to delete remote connection",
+    "openFailed": "Failed to open remote workspace",
     "restoreFailed": "無法重新開啟遠端工作區「{name}」",
-    "connectionLoadFailed": "無法載入遠端連線：{message}",
-    "connectionExpired": "遠端連線「{name}」已失效。請更新它的 Token，然後重新載入此視窗。"
+    "connectionLoadFailed": "Failed to load remote connection: {message}",
+    "connectionExpired": "Remote connection \"{name}\" is expired. Update its token and reload this window."
   },
   "ServerFileBrowser": {
     "title": "選擇伺服器檔案",
@@ -5382,7 +5440,7 @@
     "hideBody": "隱藏通知內容",
     "hideBodyHint": "用一句通用文案代替智慧體輸出。通知中心會把內容保留在應用之外，對話關掉了也還在。標題仍會顯示資料夾名稱，好讓你知道該回到哪個視窗。",
     "eventsTitle": "事件",
-    "eventsHint": "關掉不想被打斷的事件。同一事件在數秒內重複觸發時只通知一次。權限請求包含計畫核准。",
+    "eventsHint": "關掉不想被打斷的事件。同一事件在數秒內重複觸發時只通知一次。",
     "eventBackgroundTask": "背景任務",
     "eventWorkTask": "待辦任務"
   },
@@ -6747,9 +6805,9 @@
     "viewExisting": "檢視既有任務",
     "scenarioLabel": "處理方式",
     "scenarioFix": "直接修復 / 實作",
-    "scenarioFixHint": "智慧體先判斷報告是否屬實，屬實才動手修復；不屬實（無法重現、依設計如此、已修復……）就提前終止、不改任何程式碼，帶著結論回來等你處理。",
+    "scenarioFixHint": "智慧體先在工作樹裡確認問題真實存在，再動手修復；確認不了就如實回報，不會硬改程式碼。",
     "scenarioPlanFirst": "先出方案",
-    "scenarioPlanFirstHint": "智慧體先判斷報告是否屬實，屬實才產出實作方案並停下；不屬實就提前終止、不出方案，帶著結論回來等你處理。方案確認後退回任務，於同一工作樹實作。",
+    "scenarioPlanFirstHint": "先確認問題真實存在，再產出實作方案就停——你確認後退回任務，於同一工作樹實作。",
     "scenarioReviewFix": "審查並修復",
     "scenarioReviewFixHint": "智慧體先判斷方案本身是否合理，合理才在其上修復問題；不合理就不提交任何程式碼，帶著審查回來等你處理。驗收後修復提交推回原分支。",
     "scenarioReviewOnly": "僅審查",
@@ -6986,7 +7044,20 @@
     "moveRunningBlocked": "進行中的會話不可移動，請先停止智能體",
     "hideProjectFromShelf": "從貨架移除此專案",
     "addToShelf": "將此會話放到貨架",
-    "showShelfConversations": "貨架會話"
+    "showShelfConversations": "貨架會話",
+    "scrollToTop": "回到最上",
+    "scrollToBottom": "回到最下",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "目錄 {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "會話",
+    "shelfSessionRailExpand": "展開會話樹",
+    "shelfSessionRailCollapse": "收起會話樹",
+    "shelfBackToSource": "回本線"
   },
   "Browser": {
     "toolbar": {
@@ -7290,6 +7361,21 @@
         "bypassed": "這台電腦的瀏覽器引擎會讓部分位址繞過通道，為避免從這台電腦載入，遠端主機的頁面不會開啟。",
         "probeFailed": "內建瀏覽器無法確認它能透過通道連到遠端主機。請稍後再試。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

@@ -36,6 +36,7 @@ import {
   sweepOrphanDraftKeys,
 } from "@/lib/message-input-draft"
 import { discardAskSelectionPrompts } from "@/lib/ask-selection-handoff"
+import { discardSideOpen } from "@/lib/side-open-handoff"
 import {
   batchCloseSlots,
   pushClosedTab,
@@ -418,7 +419,7 @@ let recoveryRan = false
 // the module-level app-workspace subscription recomputes only when it changes.
 let lastConversations = useAppWorkspaceStore.getState().conversations
 
-function makeConversationTabId(
+export function makeConversationTabId(
   folderId: number,
   agentType: AgentType,
   conversationId: number
@@ -1323,6 +1324,7 @@ export const useTabStore = create<TabStoreState>()((set, get) => ({
       // the rest of the session — the tab id is never reused, so it could only
       // sit there.
       discardAskSelectionPrompts(closingTab.id)
+      discardSideOpen(closingTab.id)
 
       let draftKeyHandedOver = false
 
