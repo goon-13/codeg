@@ -7036,5 +7036,48 @@
         "probeFailed": "内置浏览器无法确认它能通过隧道访问远端主机。请稍后重试。"
       }
     }
-  }
+  },
+  "ThemeSeat": {
+      "name": "主题席",
+      "emptyTheme": "主题空。闸门挡住了这场。",
+      "play": "开跑",
+      "halt": "停",
+      "estimate": "估价 {amount}",
+      "estimateUnknown": "目录价未知 · {calls} 次呼叫",
+      "budget": "预算 {amount}",
+      "map": "议论地图",
+      "cost": "费用",
+      "newHint": "协议保持「关」就是普通会话。",
+      "recipe": {
+        "name": "这场",
+        "group": "主题席",
+        "code": "编码",
+        "council": "议会",
+        "debate": "辩论",
+        "relay": "接力",
+        "codeHint": "普通编码会话"
+      },
+      "protocol": {
+        "name": "协议",
+        "off": "关",
+        "council": "议会",
+        "debate": "辩论",
+        "relay": "接力"
+      },
+      "error": {
+        "empty-theme": "主题空。闸门挡住了这场。",
+        "too-few-seats": "至少两席说话。",
+        "too-many-seats": "说话席最多三席。",
+        "no-chair": "必须恰好一位主席。",
+        "duplicate-persona": "说话席的角色提示词不能相同。",
+        "chair-speaks": "主席不能同时坐说话席。",
+        "seat-error": "有一席失败。已经说完的轮次还在。"
+      },
+      "role": {
+        "contract": "产品合同。反对再开第六器官。",
+        "pilot": "试点。先做三轮硬顶。",
+        "quota": "额度与停机。先写闸门。",
+        "chair": "合成。不坐席抬杠。只根据前面轮次写终稿。"
+      }
+    }
 }

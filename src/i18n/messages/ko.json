@@ -7036,5 +7036,48 @@
         "probeFailed": "내장 브라우저가 터널을 통해 원격 호스트에 도달하는지 확인할 수 없습니다. 잠시 후 다시 시도하세요."
       }
     }
-  }
+  },
+  "ThemeSeat": {
+      "name": "Theme seats",
+      "emptyTheme": "主题空。闸门挡住了这场。",
+      "play": "Play",
+      "halt": "Halt",
+      "estimate": "Estimate {amount}",
+      "estimateUnknown": "Catalog price unknown · {calls} calls",
+      "budget": "Budget {amount}",
+      "map": "Argument map",
+      "cost": "Cost",
+      "newHint": "Leave the protocol on Off for a normal session.",
+      "recipe": {
+        "name": "This session",
+        "group": "Theme seats",
+        "code": "Code",
+        "council": "Council",
+        "debate": "Debate",
+        "relay": "Relay",
+        "codeHint": "Normal coding session"
+      },
+      "protocol": {
+        "name": "Protocol",
+        "off": "Off",
+        "council": "Council",
+        "debate": "Debate",
+        "relay": "Relay"
+      },
+      "error": {
+        "empty-theme": "主题空。闸门挡住了这场。",
+        "too-few-seats": "Need two speaking seats.",
+        "too-many-seats": "At most three speaking seats.",
+        "no-chair": "Need exactly one chair.",
+        "duplicate-persona": "Speaking seats need different role prompts.",
+        "chair-speaks": "The chair cannot also be a speaking seat.",
+        "seat-error": "A seat failed. Earlier turns are kept."
+      },
+      "role": {
+        "contract": "产品合同。反对再开第六器官。",
+        "pilot": "试点。先做三轮硬顶。",
+        "quota": "额度与停机。先写闸门。",
+        "chair": "合成。不坐席抬杠。只根据前面轮次写终稿。"
+      }
+    }
 }
