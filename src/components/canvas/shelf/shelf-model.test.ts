@@ -8,6 +8,7 @@ import {
   defaultVisibleConversationIds,
   filterShelfMiniRows,
   fitRecentStrip,
+  filterShelfFilmRows,
   isActiveShelfConversation,
   mergePersistedShelfOrder,
   moveShelfOrderId,
@@ -306,6 +307,39 @@ describe("shelfLiveSurfaceKeys", () => {
     )
     const keys = shelfLiveSurfaceKeys(rows, new Set([7, 9]), [7])
     expect([...keys]).toEqual(["shelf:7"])
+  })
+})
+
+
+describe("filterShelfFilmRows", () => {
+  const rows = buildShelfRows(
+    [folder(10, { name: "Alpha" }), folder(20, { name: "Beta" })],
+    [
+      conv(7, { folder_id: 10, title: "Fix the flaky test" }),
+      conv(8, { folder_id: 10, title: "Review the patch" }),
+      conv(9, { folder_id: 20, title: "Ship the shelf" }),
+    ]
+  )
+  const workset = rows.filter((r) => r.folder.id === 10)
+
+  it("returns the same workset array when the query is blank", () => {
+    expect(filterShelfFilmRows(workset, "  ")).toBe(workset)
+  })
+
+  it("keeps the whole project when the folder name matches", () => {
+    const hit = filterShelfFilmRows(workset, "alp")
+    expect(hit.map((r) => r.folder.id)).toEqual([10])
+    expect(hit[0].conversations.map((c) => c.id)).toEqual([7, 8])
+  })
+
+  it("keeps only matching on-shelf titles", () => {
+    const hit = filterShelfFilmRows(workset, "flaky")
+    expect(hit.map((r) => r.folder.id)).toEqual([10])
+    expect(hit[0].conversations.map((c) => c.id)).toEqual([7])
+  })
+
+  it("does not surface off-workset projects", () => {
+    expect(filterShelfFilmRows(workset, "shelf")).toEqual([])
   })
 })
 

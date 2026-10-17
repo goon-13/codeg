@@ -2458,7 +2458,14 @@
       "typeToSearch": "入力して会話を検索",
       "typeToSearchFiles": "入力してファイルまたはディレクトリを検索",
       "noResults": "結果が見つかりません。",
-      "untitledConversation": "無題の会話"
+      "untitledConversation": "無題の会話",
+      "groupConversations": "Conversations",
+      "groupFiles": "Files",
+      "groupCode": "Code",
+      "recentConversations": "Recent",
+      "placeholderAll": "Search conversations and files…",
+      "threadFindPlaceholder": "Find in conversation",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "サイドバーを表示",
@@ -7645,7 +7652,11 @@
     "recentMoreCount": "… さらに表示 · {count}",
     "recentCollapse": "閉じる",
     "shelfMiniExpand": "Expand to three columns",
-    "shelfMiniCollapse": "Collapse to one row"
+    "shelfMiniCollapse": "Collapse to one row",
+    "shelfFilmFilter": "Filter shelf",
+    "homeListFilter": "Filter conversations",
+    "homeListEmpty": "No matching conversations",
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf"
   },
   "Browser": {
     "toolbar": {

@@ -2458,7 +2458,14 @@
       "typeToSearch": "اكتب للبحث في المحادثات",
       "typeToSearchFiles": "اكتب للبحث في الملفات أو المجلدات",
       "noResults": "لم يتم العثور على نتائج.",
-      "untitledConversation": "محادثة بدون عنوان"
+      "untitledConversation": "محادثة بدون عنوان",
+      "groupConversations": "Conversations",
+      "groupFiles": "Files",
+      "groupCode": "Code",
+      "recentConversations": "Recent",
+      "placeholderAll": "Search conversations and files…",
+      "threadFindPlaceholder": "Find in conversation",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "إظهار الشريط الجانبي",
@@ -7645,7 +7652,11 @@
     "recentMoreCount": "… المزيد · {count}",
     "recentCollapse": "أقل",
     "shelfMiniExpand": "Expand to three columns",
-    "shelfMiniCollapse": "Collapse to one row"
+    "shelfMiniCollapse": "Collapse to one row",
+    "shelfFilmFilter": "Filter shelf",
+    "homeListFilter": "Filter conversations",
+    "homeListEmpty": "No matching conversations",
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf"
   },
   "Browser": {
     "toolbar": {

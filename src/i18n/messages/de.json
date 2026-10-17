@@ -2458,7 +2458,14 @@
       "typeToSearch": "Tippen, um Konversationen zu suchen",
       "typeToSearchFiles": "Tippen, um Dateien oder Verzeichnisse zu suchen",
       "noResults": "Keine Ergebnisse gefunden.",
-      "untitledConversation": "Unbenannte Konversation"
+      "untitledConversation": "Unbenannte Konversation",
+      "groupConversations": "Conversations",
+      "groupFiles": "Files",
+      "groupCode": "Code",
+      "recentConversations": "Recent",
+      "placeholderAll": "Search conversations and files…",
+      "threadFindPlaceholder": "Find in conversation",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "Seitenleiste anzeigen",
@@ -7645,7 +7652,11 @@
     "recentMoreCount": "… Mehr · {count}",
     "recentCollapse": "Weniger",
     "shelfMiniExpand": "Expand to three columns",
-    "shelfMiniCollapse": "Collapse to one row"
+    "shelfMiniCollapse": "Collapse to one row",
+    "shelfFilmFilter": "Filter shelf",
+    "homeListFilter": "Filter conversations",
+    "homeListEmpty": "No matching conversations",
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf"
   },
   "Browser": {
     "toolbar": {

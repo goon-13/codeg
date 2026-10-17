@@ -2458,7 +2458,14 @@
       "typeToSearch": "입력하여 대화를 검색하세요",
       "typeToSearchFiles": "입력하여 파일 또는 디렉토리를 검색하세요",
       "noResults": "검색 결과가 없습니다.",
-      "untitledConversation": "제목 없는 대화"
+      "untitledConversation": "제목 없는 대화",
+      "groupConversations": "Conversations",
+      "groupFiles": "Files",
+      "groupCode": "Code",
+      "recentConversations": "Recent",
+      "placeholderAll": "Search conversations and files…",
+      "threadFindPlaceholder": "Find in conversation",
+      "threadFindCount": "{current} / {total}"
     },
     "folderTitleBar": {
       "showSidebar": "사이드바 표시",
@@ -7645,7 +7652,11 @@
     "recentMoreCount": "… 더보기 · {count}",
     "recentCollapse": "접기",
     "shelfMiniExpand": "Expand to three columns",
-    "shelfMiniCollapse": "Collapse to one row"
+    "shelfMiniCollapse": "Collapse to one row",
+    "shelfFilmFilter": "Filter shelf",
+    "homeListFilter": "Filter conversations",
+    "homeListEmpty": "No matching conversations",
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf"
   },
   "Browser": {
     "toolbar": {

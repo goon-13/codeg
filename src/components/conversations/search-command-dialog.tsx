@@ -11,15 +11,22 @@ import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { useTabActions } from "@/contexts/tab-context"
 import { useWorkbenchRoute } from "@/contexts/workbench-route-context"
 import { useWorkspaceActions } from "@/contexts/workspace-context"
-import { listAllConversations } from "@/lib/api"
-import type {
-  AgentType,
-  ConversationStatus,
-  DbConversationSummary,
-} from "@/lib/types"
+import {
+  listAllConversations,
+  searchCorpus,
+  type CorpusHit,
+} from "@/lib/api"
+import { isElementLive } from "@/lib/search-surface"
+import { parseSearchQuery } from "@/lib/search-query"
 import { useFileTree, type FlatFileEntry } from "@/hooks/use-file-tree"
 import { rankFileMatches } from "@/lib/file-search-match"
-import { compareAgentType } from "@/lib/types"
+import {
+  compareAgentType,
+  STATUS_ORDER,
+  type AgentType,
+  type ConversationStatus,
+  type DbConversationSummary,
+} from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
 import { AgentIcon } from "@/components/agent-icon"
 import { ConversationStatusDot } from "@/components/conversations/conversation-status-dot"
@@ -34,11 +41,80 @@ import {
 import { cn } from "@/lib/utils"
 import { formatConversationTitle } from "@/lib/conversation-title"
 
-type SearchTab = "conversations" | "files"
+type SearchRow = DbConversationSummary & {
+  snippet?: string
+  hitSource?: "title" | "body"
+}
+
+function isConversationStatus(status: string): status is ConversationStatus {
+  return (STATUS_ORDER as readonly string[]).includes(status)
+}
+
+function hitToRow(
+  hit: CorpusHit,
+  known: DbConversationSummary | undefined
+): SearchRow {
+  const snippet = hit.snippet
+  const hitSource = hit.source
+  if (!known) {
+    return {
+      id: hit.conversation_id,
+      folder_id: hit.folder_id,
+      title: hit.title,
+      title_locked: false,
+      agent_type: hit.agent_type as AgentType,
+      status: "",
+      kind: "regular",
+      model: null,
+      git_branch: null,
+      external_id: null,
+      message_count: 0,
+      child_count: 0,
+      created_at: "",
+      updated_at: "",
+      pinned_at: null,
+      snippet,
+      hitSource,
+    }
+  }
+  return {
+    ...known,
+    id: hit.conversation_id,
+    folder_id: hit.folder_id,
+    agent_type: hit.agent_type as AgentType,
+    title: hit.title ?? known.title,
+    snippet,
+    hitSource,
+  }
+}
+
+function hitsToRows(
+  hits: CorpusHit[],
+  knownById: ReadonlyMap<number, DbConversationSummary>
+): SearchRow[] {
+  const byId = new Map<number, SearchRow>()
+  for (const hit of hits) {
+    const prev = byId.get(hit.conversation_id)
+    if (!prev || (prev.hitSource !== "body" && hit.source === "body")) {
+      byId.set(hit.conversation_id, hitToRow(hit, knownById.get(hit.conversation_id)))
+    }
+  }
+  return [...byId.values()]
+}
 
 interface SearchCommandDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+function applyAfter(
+  list: DbConversationSummary[],
+  after: string | null
+): DbConversationSummary[] {
+  if (!after) return list
+  const start = Date.parse(`${after}T00:00:00Z`)
+  if (Number.isNaN(start)) return list
+  return list.filter((c) => Date.parse(c.updated_at) >= start)
 }
 
 export function SearchCommandDialog({
@@ -64,97 +140,140 @@ export function SearchCommandDialog({
   const { openFilePreview } = useWorkspaceActions()
   const { revealInFileTree } = useAuxPanelContext()
 
-  const [activeTab, setActiveTab] = useState<SearchTab>("conversations")
-  // The search box owns the keyboard: the dialog opens with the cursor in it,
-  // and switching tabs or agent filters leaves it there, so typing always
-  // searches.
   const inputRef = useRef<HTMLInputElement>(null)
-  const switchTab = useCallback((tab: SearchTab) => {
-    setActiveTab(tab)
-    inputRef.current?.focus()
-  }, [])
   const [query, setQuery] = useState("")
   const [agentFilter, setAgentFilter] = useState<AgentType | null>(null)
-  const [results, setResults] = useState<DbConversationSummary[]>([])
+  const [results, setResults] = useState<SearchRow[]>([])
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const searchGen = useRef(0)
 
   const folderPath = folder?.path ?? ""
+  const parsed = useMemo(() => parseSearchQuery(query), [query])
+  const resolvedAgent = (parsed.agent as AgentType | null) ?? agentFilter
 
-  // File search via shared hook (lazy-loaded when files tab is active)
   const {
     allFiles,
     loading: filesLoading,
     reset: resetFileTree,
   } = useFileTree({
     folderPath: folderPath || undefined,
-    enabled: activeTab === "files",
+    enabled: open,
   })
 
-  // Compute which agent types exist in current folder
   const availableAgents = Array.from(
     new Set(conversations.map((c) => c.agent_type))
   ).sort(compareAgentType)
 
-  // Rank files by relevance (name/path tiers + fuzzy subsequence), scanning the
-  // full list so a deeply nested match isn't crowded out by shallower ones.
+  const fileNeedle = parsed.text
   const filteredFiles = useMemo(
-    () => rankFileMatches(query, allFiles, 100),
-    [allFiles, query]
+    () =>
+      rankFileMatches(fileNeedle, allFiles, fileNeedle.trim() ? 100 : 20),
+    [allFiles, fileNeedle]
   )
 
+  const knownById = useMemo(() => {
+    const map = new Map<number, DbConversationSummary>()
+    for (const row of allConversations) {
+      map.set(row.id, row)
+    }
+    return map
+  }, [allConversations])
+
+  const recents = useMemo(() => {
+    const usable = conversations.filter(
+      (c) => typeof c.id === "number" && typeof c.updated_at === "string"
+    )
+    const sorted = [...usable].sort((a, b) => {
+      const tb = Date.parse(b.updated_at)
+      const ta = Date.parse(a.updated_at)
+      return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta)
+    })
+    return applyAfter(sorted.slice(0, 8), parsed.after)
+  }, [conversations, parsed.after])
+
   const doSearch = useCallback(
-    async (q: string, agent: AgentType | null) => {
-      if (!q.trim() && !agent) {
-        setResults([])
+    async (raw: string, chipAgent: AgentType | null) => {
+      const gen = ++searchGen.current
+      const parsedQ = parseSearchQuery(raw)
+      const agent = (parsedQ.agent as AgentType | null) ?? chipAgent
+      if (!parsedQ.text.trim() && !agent) {
+        setResults(recents)
         setSearching(false)
         return
       }
+      const folderIds =
+        parsedQ.scope === "all" ? null : folderId > 0 ? [folderId] : null
       setSearching(true)
       try {
+        const text = parsedQ.text.trim()
+        if (text) {
+          try {
+            const corpus = await searchCorpus({
+              query: text,
+              folder_ids: folderIds,
+              agent_type: agent,
+              after: parsedQ.after,
+              limit: 30,
+            })
+            if (searchGen.current !== gen) return
+            setResults(hitsToRows(corpus.hits, knownById))
+            return
+          } catch {
+            if (searchGen.current !== gen) return
+            // Body index missing or 404: title LIKE still answers.
+          }
+        }
         const data = await listAllConversations({
-          folder_ids: folderId > 0 ? [folderId] : null,
-          search: q.trim() || null,
+          folder_ids: folderIds,
+          search: text || null,
           agent_type: agent,
         })
-        setResults(data)
+        if (searchGen.current !== gen) return
+        setResults(applyAfter(data, parsedQ.after))
       } catch {
+        if (searchGen.current !== gen) return
         setResults([])
       } finally {
-        setSearching(false)
+        if (searchGen.current === gen) setSearching(false)
       }
     },
-    [folderId]
+    [folderId, recents, knownById]
   )
 
-  // Debounced search on query change (conversations tab only)
   useEffect(() => {
-    if (activeTab !== "conversations") return
+    // Debounce has not started the next doSearch yet. Bump now so the
+    // in-flight corpus call is already stale when its await resolves.
+    searchGen.current += 1
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      doSearch(query, agentFilter)
+      void doSearch(query, agentFilter)
     }, 300)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [query, agentFilter, doSearch, activeTab])
+  }, [query, agentFilter, doSearch])
 
-  // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setQuery("")
       setAgentFilter(null)
       setResults([])
-      setActiveTab("conversations")
       resetFileTree()
     }
   }, [open, resetFileTree])
 
   const handleSelectConversation = useCallback(
     (conv: DbConversationSummary) => {
-      // Leave any workbench route (e.g. Automations) so the picked conversation
-      // isn't stranded behind the route overlay — covers re-selecting the
-      // already-active tab, which doesn't change activeTabId.
+      const onShelf = document.querySelector(
+        `[data-shelf-card="${conv.id}"]`
+      )
+      if (onShelf instanceof HTMLElement && isElementLive(onShelf)) {
+        if (onShelf instanceof HTMLButtonElement) onShelf.click()
+        onShelf.scrollIntoView({ block: "nearest", inline: "nearest" })
+        onOpenChange(false)
+        return
+      }
       openConversations()
       openTab(conv.folder_id, conv.id, conv.agent_type, true)
       onOpenChange(false)
@@ -167,7 +286,6 @@ export function SearchCommandDialog({
       if (entry.kind === "dir") {
         revealInFileTree(entry.relativePath)
       } else {
-        // Reveal parent directory in file tree, then open the file
         const lastSlash = entry.relativePath.lastIndexOf("/")
         if (lastSlash > 0) {
           revealInFileTree(entry.relativePath.slice(0, lastSlash))
@@ -179,8 +297,9 @@ export function SearchCommandDialog({
     [revealInFileTree, openFilePreview, onOpenChange]
   )
 
-  const placeholder =
-    activeTab === "conversations" ? t("placeholder") : t("filePlaceholder")
+  const conversationRows: SearchRow[] =
+    parsed.text.trim() || resolvedAgent ? results : recents
+  const emptyLabel = searching || filesLoading ? t("searching") : t("noResults")
 
   return (
     <CommandDialog
@@ -191,18 +310,12 @@ export function SearchCommandDialog({
       }
       open={open}
       onOpenChange={onOpenChange}
-      shouldFilter={activeTab === "conversations"}
-      // Not `autoFocus`: an input focused while mounting takes focus before
-      // the focus trap starts listening, so the trap never records it and has
-      // nothing to pull focus back to when the chat composer behind the dialog
-      // refocuses itself at the end of a turn — the rest of the query would be
-      // typed into the composer.
+      shouldFilter={false}
       onOpenAutoFocus={(event) => {
         event.preventDefault()
         inputRef.current?.focus()
       }}
     >
-      {/* Folder context header */}
       {folder && (
         <div className="flex items-center gap-2 border-b px-4 py-2.5">
           <Folder className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -212,54 +325,14 @@ export function SearchCommandDialog({
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-0 border-b px-3">
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => switchTab("conversations")}
-          className={cn(
-            "relative h-9 px-3 text-sm font-medium transition-colors",
-            activeTab === "conversations"
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {t("tabConversations")}
-          {activeTab === "conversations" && (
-            <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-foreground rounded-full" />
-          )}
-        </button>
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => switchTab("files")}
-          className={cn(
-            "relative h-9 px-3 text-sm font-medium transition-colors",
-            activeTab === "files"
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {t("tabFiles")}
-          {activeTab === "files" && (
-            <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-foreground rounded-full" />
-          )}
-        </button>
-      </div>
-
       <CommandInput
         ref={inputRef}
-        placeholder={placeholder}
+        placeholder={t("placeholder")}
         value={query}
         onValueChange={setQuery}
       />
 
-      {/* Agent filter (conversations tab only). Wraps: one chip per agent type
-          present in the folder, each carrying a full name, so a workspace with
-          a dozen enabled agents runs past the dialog — which is
-          `overflow-hidden`, so the tail chips were clipped away and simply
-          could not be clicked. Wrapping keeps every filter reachable and lets
-          the block grow by a row instead of hiding options. */}
-      {activeTab === "conversations" && availableAgents.length > 1 && (
+      {availableAgents.length > 1 && (
         <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b">
           <button
             onMouseDown={(e) => e.preventDefault()}
@@ -293,79 +366,70 @@ export function SearchCommandDialog({
       )}
 
       <CommandList className="min-h-96">
-        {/* Conversations tab */}
-        {activeTab === "conversations" && (
-          <>
-            <CommandEmpty>
-              {searching
-                ? t("searching")
-                : !query.trim() && !agentFilter
-                  ? t("typeToSearch")
-                  : t("noResults")}
-            </CommandEmpty>
-            {results.length > 0 && (
-              <CommandGroup>
-                {results.map((conv) => (
-                  <CommandItem
-                    key={conv.id}
-                    value={`${conv.id}-${formatConversationTitle(conv.title)}`}
-                    onSelect={() => handleSelectConversation(conv)}
-                  >
-                    <ConversationStatusDot
-                      status={conv.status as ConversationStatus}
-                    />
-                    <span className="flex-1 truncate">
-                      {formatConversationTitle(conv.title) ||
-                        t("untitledConversation")}
+        <CommandEmpty>{emptyLabel}</CommandEmpty>
+        {conversationRows.length > 0 && (
+          <CommandGroup
+            heading={
+              parsed.text.trim() || resolvedAgent
+                ? t("groupConversations")
+                : t("recentConversations")
+            }
+          >
+            {conversationRows.map((conv) => (
+              <CommandItem
+                key={conv.id}
+                value={`${conv.id}-${formatConversationTitle(conv.title)}`}
+                onSelect={() => handleSelectConversation(conv)}
+              >
+                {isConversationStatus(conv.status) ? (
+                  <ConversationStatusDot status={conv.status} />
+                ) : null}
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate">
+                    {formatConversationTitle(conv.title) ||
+                      t("untitledConversation")}
+                  </span>
+                  {conv.hitSource === "body" && conv.snippet ? (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {conv.snippet}
                     </span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {getAgentLabel(conv.agent_type)}
-                    </span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {formatDistanceToNow(new Date(conv.created_at), {
+                  ) : null}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {getAgentLabel(conv.agent_type)}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {Number.isNaN(Date.parse(conv.created_at))
+                    ? ""
+                    : formatDistanceToNow(new Date(conv.created_at), {
                         addSuffix: true,
                         locale: dateFnsLocale,
                       })}
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </>
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         )}
-
-        {/* Files tab */}
-        {activeTab === "files" && (
-          <>
-            <CommandEmpty>
-              {filesLoading
-                ? t("searching")
-                : !query.trim()
-                  ? t("typeToSearchFiles")
-                  : t("noResults")}
-            </CommandEmpty>
-            {filteredFiles.length > 0 && (
-              <CommandGroup>
-                {filteredFiles.map((entry) => (
-                  <CommandItem
-                    key={entry.relativePath}
-                    value={entry.relativePath}
-                    onSelect={() => handleSelectFile(entry)}
-                  >
-                    {entry.kind === "dir" ? (
-                      <Folder className="w-4 h-4 shrink-0 text-blue-500" />
-                    ) : (
-                      <File className="w-4 h-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="flex-1 truncate">{entry.name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0 truncate max-w-48">
-                      {entry.relativePath}
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </>
+        {filteredFiles.length > 0 && (
+          <CommandGroup heading={t("groupFiles")}>
+            {filteredFiles.map((entry) => (
+              <CommandItem
+                key={entry.relativePath}
+                value={entry.relativePath}
+                onSelect={() => handleSelectFile(entry)}
+              >
+                {entry.kind === "dir" ? (
+                  <Folder className="w-4 h-4 shrink-0 text-blue-500" />
+                ) : (
+                  <File className="w-4 h-4 shrink-0 text-muted-foreground" />
+                )}
+                <span className="flex-1 truncate">{entry.name}</span>
+                <span className="text-xs text-muted-foreground shrink-0 truncate max-w-48">
+                  {entry.relativePath}
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         )}
       </CommandList>
     </CommandDialog>

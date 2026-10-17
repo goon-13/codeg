@@ -331,3 +331,11 @@ export function fitRecentStrip(args: {
   }
   return { visibleCount: k, overflowCount: n - k }
 }
+
+export function filterShelfFilmRows(
+  worksetRows: readonly ShelfProjectRow[],
+  query: string
+): ShelfProjectRow[] {
+  if (!query.trim()) return worksetRows as ShelfProjectRow[]
+  return filterShelfMiniRows(worksetRows as ShelfProjectRow[], query)
+}

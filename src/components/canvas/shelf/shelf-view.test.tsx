@@ -666,6 +666,53 @@ describe("ShelfView", () => {
       h.conversations = original
     }
   })
+
+  it("filters the film to matching titles and restores on clear", () => {
+    renderShelf()
+    const box = screen.getByTestId("shelf-film-filter")
+    const film = () => screen.getByTestId("shelf-row-cards")
+    fireEvent.change(box, { target: { value: "flaky" } })
+    expect(film().textContent).toContain("Fix the flaky test")
+    expect(film().textContent).not.toContain("Review the patch")
+    fireEvent.change(box, { target: { value: "" } })
+    expect(film().textContent).toContain("Fix the flaky test")
+    expect(film().textContent).toContain("Review the patch")
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
+      )
+    ).toBeNull()
+  })
+
+  it("Mod+F focuses the film filter; Escape clears it", () => {
+    renderShelf()
+    const box = screen.getByTestId("shelf-film-filter") as HTMLInputElement
+    fireEvent.keyDown(window, { key: "f", metaKey: true })
+    expect(document.activeElement).toBe(box)
+    fireEvent.change(box, { target: { value: "flaky" } })
+    fireEvent.keyDown(box, { key: "Escape" })
+    expect(box.value).toBe("")
+    expect(screen.getByTestId("shelf-row-cards").textContent).toContain(
+      "Review the patch"
+    )
+  })
+
+  it("Mod+F does not focus the film filter when the shelf is not live", () => {
+    renderShelf()
+    const shelf = screen.getByTestId("shelf-view")
+    shelf.classList.add("conversation-tab-hidden")
+    shelf.setAttribute("inert", "")
+    const box = screen.getByTestId("shelf-film-filter") as HTMLInputElement
+    const event = new KeyboardEvent("keydown", {
+      key: "f",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    window.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.activeElement).not.toBe(box)
+  })
 })
 
 function clickShelfCard(id: number) {

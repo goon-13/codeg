@@ -11,6 +11,7 @@ import {
   useConnectionStore,
 } from "@/contexts/acp-connections-context"
 import { moveConversation } from "@/lib/api"
+import { isElementLive } from "@/lib/search-surface"
 import type { AgentType } from "@/lib/types"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { cn } from "@/lib/utils"
@@ -24,6 +25,7 @@ import {
   mergePersistedShelfOrder,
   moveShelfOrderId,
   recentShelfConversations,
+  filterShelfFilmRows,
   newShelfDraftNonce,
   intersectShelfLiveKeys,
   shelfDraftContextKey,
@@ -159,6 +161,8 @@ export function ShelfView() {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [jump, setJump] = useState<ShelfJumpButtons>(EMPTY_JUMP)
   const [recentOpen, setRecentOpen] = useState(false)
+  const [filmQuery, setFilmQuery] = useState("")
+  const filterInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -191,7 +195,8 @@ export function ShelfView() {
     [collapsedFolderIds]
   )
   const workingIds = visibleIds ?? defaultVisibleFolderIds(rows)
-  const shownRows = rows.filter((row) => workingIds.includes(row.folder.id))
+  const unfilteredShownRows = rows.filter((row) => workingIds.includes(row.folder.id))
+  const shownRows = filterShelfFilmRows(unfilteredShownRows, filmQuery)
   const conversationWorkingIds = workingConversationIds(
     rows,
     visibleConversationIds
@@ -277,6 +282,27 @@ export function ShelfView() {
     )
   }
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey)) return
+      if (event.key !== "f" && event.key !== "F") return
+      if (!isElementLive(document.querySelector('[data-testid="shelf-view"]'))) {
+        return
+      }
+      const el = event.target
+      if (el instanceof HTMLElement) {
+        const tag = el.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable) {
+          return
+        }
+      }
+      event.preventDefault()
+      filterInputRef.current?.focus()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   return (
     <ShelfComposerFocusProvider>
       <ShelfHeldKeysRegistrar mountedKeys={mountedKeys} />
@@ -349,6 +375,21 @@ export function ShelfView() {
             recentOpen ? "h-[112px]" : "h-[52px]"
           )}
         >
+          <input
+            ref={filterInputRef}
+            data-testid="shelf-film-filter"
+            type="search"
+            value={filmQuery}
+            placeholder={t("shelfFilmFilter")}
+            className="m-2 h-8 w-48 shrink-0 self-center rounded-lg bg-foreground/5 px-2.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground"
+            onChange={(event) => setFilmQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return
+              event.preventDefault()
+              setFilmQuery("")
+              event.currentTarget.blur()
+            }}
+          />
           <ShelfRecentRow
             conversations={recentConversations}
             onOpenConversation={jumpToConversation}

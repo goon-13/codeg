@@ -61,6 +61,7 @@ pub mod process;
 #[cfg(all(feature = "tauri-runtime", target_os = "macos"))]
 mod relaunch;
 pub mod runtime_lock;
+pub mod search;
 pub mod supervise;
 mod terminal;
 pub mod turn_timings;

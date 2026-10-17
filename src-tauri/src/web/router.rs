@@ -72,6 +72,7 @@ pub fn build_router_with_proxy_auth(
             "/list_all_conversations",
             post(handlers::conversations::list_all_conversations),
         )
+        .route("/search_corpus", post(handlers::search::search_corpus))
         .route(
             "/list_child_conversations",
             post(handlers::conversations::list_child_conversations),
