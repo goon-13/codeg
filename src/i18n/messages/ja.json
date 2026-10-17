@@ -3152,6 +3152,7 @@
         "loadingSettings": "設定を読み込み中...",
         "loadingMode": "モードを読み込み中...",
         "modeLabel": "モード",
+        "hermesRoleLabel": "ロール",
         "toggleOn": "オン",
         "toggleOff": "オフ",
         "agentSettings": "エージェント設定",

@@ -95,6 +95,7 @@ import {
   type SessionSelectorGroup,
   type SessionSelectorSetting,
 } from "@/components/chat/session-selectors-panel"
+import { HERMES_PROFILE_CONFIG_ID } from "@/lib/hermes-profile-option"
 import {
   deriveModelGroups,
   isModelConfigOption,
@@ -930,8 +931,13 @@ export function MessageInput({
     }
     return availableModes[0]?.id ?? null
   }, [hasModes, selectedModeId, availableModes])
+  const keepHermesModeSelector = availableConfigOptions.some(
+    (option) => option.id === HERMES_PROFILE_CONFIG_ID
+  )
   const showModeSelector =
-    hasModes && Boolean(effectiveModeId) && !hasConfigOptions
+    hasModes &&
+    Boolean(effectiveModeId) &&
+    (!hasConfigOptions || keepHermesModeSelector)
   const showModeLoading = modeLoading && !hasConfigOptions && !showModeSelector
   const showConfigLoading = configOptionsLoading && !hasConfigOptions
   const showSelectorsLoading = showConfigLoading || showModeLoading

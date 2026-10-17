@@ -46,9 +46,9 @@ impl HermesParser {
         }
     }
 
-    /// Test-only constructor that points the parser at a fixture directory
-    /// containing a `state.db` SQLite file.
-    #[cfg(any(test, feature = "test-utils"))]
+    /// Point the parser at a Hermes home directory containing `state.db`.
+    /// Used by tests and by Hermes role-switch recovery, which has to read
+    /// the previous profile's store after `HERMES_HOME` has already moved.
     pub fn with_base_dir(base_dir: PathBuf) -> Self {
         Self { base_dir }
     }

@@ -382,6 +382,28 @@ pub async fn update_conversation_title(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UpdateConversationAgentTypeParams {
+    pub conversation_id: i32,
+    pub agent_type: AgentType,
+}
+
+pub async fn update_conversation_agent_type(
+    Extension(state): Extension<Arc<AppState>>,
+    Json(params): Json<UpdateConversationAgentTypeParams>,
+) -> Result<Json<()>, AppCommandError> {
+    conv_commands::update_conversation_agent_type_core(
+        &state.db.conn,
+        params.conversation_id,
+        params.agent_type,
+    )
+    .await?;
+    conv_commands::emit_conversation_upsert(&state.emitter, &state.db.conn, params.conversation_id)
+        .await;
+    Ok(Json(()))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateConversationPinnedParams {
     pub conversation_id: i32,
     pub pinned: bool,

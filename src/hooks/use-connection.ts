@@ -26,6 +26,10 @@ import type {
   SessionModeStateInfo,
   PromptInputBlock,
 } from "@/lib/types"
+import {
+  hermesCachedConfigOptions,
+  hermesLiveOrCachedConfigOptions,
+} from "@/lib/hermes-profile-option"
 
 const DEFAULT_PROMPT_CAPABILITIES: PromptCapabilitiesInfo = {
   image: false,
@@ -248,11 +252,18 @@ export function useConnection(contextKey: string): UseConnectionReturn {
   const cached = connection?.agentType
     ? getCachedSelectors(connection.agentType)
     : null
-  const hasCachedSelectors = cached !== null
+  const cachedHermesConfig = connection?.agentType
+    ? hermesCachedConfigOptions(connection.agentType, getCachedSelectors)
+    : null
+  const hasCachedSelectors = cached !== null || cachedHermesConfig !== null
   const connectedWorkingDir = connection?.workingDir ?? null
   const modes = connection?.modes ?? cached?.modes ?? null
-  const configOptions =
-    connection?.configOptions ?? cached?.configOptions ?? null
+  const configOptions = hermesLiveOrCachedConfigOptions({
+    currentAgent: connection?.agentType ?? "cursor",
+    liveSelectorsReady: selectorsReady,
+    liveConfigOptions: connection?.configOptions ?? cached?.configOptions ?? null,
+    cachedConfigOptions: cachedHermesConfig,
+  })
   const availableCommands = connection?.availableCommands ?? null
   const pendingPermission = connection?.pendingPermission ?? null
   const pendingUserMessage = connection?.pendingUserMessage ?? null

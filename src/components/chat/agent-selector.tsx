@@ -13,6 +13,7 @@ import { MoreHorizontal } from "lucide-react"
 import { useAcpAgents } from "@/hooks/use-acp-agents"
 import type { AgentType, AcpAgentInfo } from "@/lib/types"
 import { getAgentLabel } from "@/lib/custom-agents"
+import { isHermesFamilyAgent } from "@/lib/hermes-profile-option"
 import { AgentIcon } from "@/components/agent-icon"
 import { SelectorTooltip } from "@/components/chat/selector-tooltip"
 import {
@@ -79,7 +80,12 @@ export function AgentSelector({
   const t = useTranslations("Folder.chat.agentSelector")
   const { agents: rawAgents } = useAcpAgents()
   const agents = useMemo<AcpAgentInfo[]>(
-    () => rawAgents.filter((a) => a.enabled),
+    () =>
+      rawAgents.filter(
+        (a) =>
+          a.enabled &&
+          (a.agent_type === "hermes" || !isHermesFamilyAgent(a.agent_type))
+      ),
     [rawAgents]
   )
   const onSelectRef = useRef(onSelect)
@@ -396,6 +402,7 @@ export function AgentSelector({
               <button
                 ref={setItemRef(agent.agent_type)}
                 data-slot="agent-pill"
+                data-agent-type={agent.agent_type}
                 aria-pressed={isSelected}
                 disabled={disabled || !agent.available}
                 onClick={() => handleSelect(agent.agent_type)}

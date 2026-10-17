@@ -158,18 +158,14 @@ describe("AgentSelector", () => {
       refresh: async () => {},
     })
     const onSelect = vi.fn()
-    renderWithIntl(
+    const { container } = renderWithIntl(
       <AgentSelector
         defaultAgentType="claude_code"
         onSelect={onSelect}
         onFallback={vi.fn()}
       />
     )
-    // The agent_type's display label comes from AGENT_LABELS; clicking the
-    // codex button by role/title is the most stable selector.
-    const buttons = screen.getAllByRole("button")
-    // First button is the selected (claude_code), second is codex.
-    fireEvent.click(buttons[1])
+    fireEvent.click(container.querySelector('[data-agent-type="codex"]')!)
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith("codex")
   })
@@ -391,5 +387,34 @@ describe("AgentSelector", () => {
     const calls = onAgentsLoaded.mock.calls
     const lastCall = calls[calls.length - 1]?.[0]
     expect(lastCall).toEqual([codex])
+  })
+
+  it("hides custom hermes roles from the agent selector", () => {
+    mockUseAcpAgents.mockReturnValue({
+      agents: [
+        agent("codex"),
+        agent("cline"),
+        agent("hermes"),
+        agent("code_buddy"),
+        agent("custom:goose"),
+        agent("custom:hermes-homeops"),
+        agent("custom:hermes-roleadmin"),
+      ],
+      fresh: true,
+      refresh: async () => {},
+    })
+    const { container } = renderWithIntl(
+      <AgentSelector defaultAgentType="hermes" onSelect={() => {}} />
+    )
+    const types = pills(container).map((el) =>
+      el.getAttribute("data-agent-type")
+    )
+    expect(types).toEqual([
+      "codex",
+      "cline",
+      "hermes",
+      "code_buddy",
+      "custom:goose",
+    ])
   })
 })

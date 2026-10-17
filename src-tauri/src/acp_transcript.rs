@@ -976,6 +976,47 @@ pub fn append_line_in(root: &Path, agent_dir: &str, session_id: &str, line: &str
     }
 }
 
+/// Replace a transcript file in one write. Used when a Hermes role switch
+/// copies the previous profile's turns under a stable `codeg-conv-*` id.
+pub fn replace_transcript_in(
+    root: &Path,
+    agent_dir: &str,
+    session_id: &str,
+    lines: impl IntoIterator<Item = String>,
+) {
+    let Some(path) = transcript_path_in(root, agent_dir, session_id) else {
+        tracing::debug!(
+            "[acp-transcript] skipping replace: unsafe id agent={agent_dir} session={session_id}"
+        );
+        return;
+    };
+    if let Some(dir) = path.parent() {
+        if let Err(e) = std::fs::create_dir_all(dir) {
+            tracing::debug!(
+                "[acp-transcript] replace mkdir failed for {}: {e}",
+                path.display()
+            );
+            return;
+        }
+    }
+    let write = || -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&path)?;
+        for line in lines {
+            if line.is_empty() {
+                continue;
+            }
+            writeln!(f, "{line}")?;
+        }
+        Ok(())
+    };
+    if let Err(e) = write() {
+        tracing::debug!(
+            "[acp-transcript] replace failed for {}: {e}",
+            path.display()
+        );
+    }
+}
+
 /// Read one session's transcript. Missing file → empty transcript. Malformed
 /// lines are skipped so a single truncated write (e.g. a hard kill mid-append)
 /// cannot poison the rest of the history.

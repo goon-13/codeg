@@ -3152,6 +3152,7 @@
         "loadingSettings": "Einstellungen werden geladen...",
         "loadingMode": "Modus wird geladen...",
         "modeLabel": "Modus",
+        "hermesRoleLabel": "Rolle",
         "toggleOn": "Ein",
         "toggleOff": "Aus",
         "agentSettings": "Agent-Einstellungen",

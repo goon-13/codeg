@@ -10,7 +10,7 @@ use agent_client_protocol::schema::v1::{
     ElicitationFormCapabilities, EmbeddedResource, EmbeddedResourceResource,
     FileSystemCapabilities, ImageContent, InitializeRequest,
     KillTerminalRequest,
-    KillTerminalResponse, LoadSessionRequest, NewSessionRequest,
+    KillTerminalResponse, LoadSessionRequest, LoadSessionResponse, NewSessionRequest,
     NewSessionResponse, NoticeCapabilities, PermissionOptionKind, Plan, PlanEntryPriority, PlanEntryStatus,
     PromptRequest, ReadTextFileRequest, ReadTextFileResponse,
     ReleaseTerminalRequest, ReleaseTerminalResponse, RequestPermissionOutcome,
@@ -3551,6 +3551,92 @@ const MODEL_CONFIG_OPTION_ID: &str = "model";
 /// grouped model selector via the frontend's `isModelConfigOption`).
 const GROK_MODEL_OPTION_ID: &str = MODEL_CONFIG_OPTION_ID;
 
+/// Built-in Hermes plus every registered `custom:hermes-*` profile. Launch
+/// metadata still uses the `hermes` binary; the wire id is the family signal
+/// the composer and `session/set_model` path key off.
+fn is_hermes_family(agent: &AgentType) -> bool {
+    matches!(agent, AgentType::Hermes)
+        || agent
+            .custom_id()
+            .is_some_and(|id| id.starts_with("hermes-"))
+}
+
+/// Fold Hermes ACP `SessionModelState` (`models` on `session/new`) into the
+/// same `SessionConfigOptionInfo` shape Grok synthesizes, so the composer
+/// ModelOptionPicker lights up with zero new frontend code. `None` when the
+/// payload names no usable model.
+fn synthesize_hermes_model_option(models: &serde_json::Value) -> Option<SessionConfigOptionInfo> {
+    let entries = models.get("availableModels")?.as_array()?;
+    let mut options: Vec<SessionConfigSelectOptionInfo> = Vec::new();
+    for entry in entries {
+        let Some(model_id) = entry
+            .get("modelId")
+            .and_then(|v| v.as_str())
+            .filter(|id| !id.is_empty())
+        else {
+            continue;
+        };
+        if options.iter().any(|row| row.value == model_id) {
+            continue;
+        }
+        let name = entry
+            .get("name")
+            .and_then(|v| v.as_str())
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or(model_id);
+        options.push(SessionConfigSelectOptionInfo {
+            value: model_id.to_string(),
+            name: name.to_string(),
+            description: None,
+        });
+    }
+    if options.is_empty() {
+        return None;
+    }
+    let current = models
+        .get("currentModelId")
+        .and_then(|v| v.as_str())
+        .filter(|id| !id.is_empty() && options.iter().any(|row| row.value == *id))
+        .unwrap_or(options[0].value.as_str())
+        .to_string();
+    Some(SessionConfigOptionInfo {
+        id: MODEL_CONFIG_OPTION_ID.to_string(),
+        name: "Model".to_string(),
+        description: None,
+        category: Some("model".to_string()),
+        kind: SessionConfigKindInfo::Select(SessionConfigSelectInfo {
+            current_value: current,
+            options,
+            groups: Vec::new(),
+        }),
+        recommended_value: None,
+    })
+}
+
+/// Whether a composer option already IS the model selector — by conventional
+/// id or `category: "model"`. Used so a synthesized Hermes model option never
+/// shadows one the agent advertised itself.
+fn session_config_info_is_model(option: &SessionConfigOptionInfo) -> bool {
+    option.id == MODEL_CONFIG_OPTION_ID || option.category.as_deref() == Some("model")
+}
+
+/// Append a synthesized Hermes model selector when the agent did not already
+/// advertise one. No-op when `models` is missing or names no usable model.
+fn fold_hermes_model_option(
+    opts: &mut Vec<SessionConfigOptionInfo>,
+    models: Option<&serde_json::Value>,
+) {
+    if opts.iter().any(session_config_info_is_model) {
+        return;
+    }
+    let Some(models) = models else {
+        return;
+    };
+    if let Some(opt) = synthesize_hermes_model_option(models) {
+        opts.push(opt);
+    }
+}
+
 /// Synthesized config-option id for Grok's per-session reasoning-effort selector.
 /// Grok ships effort choices in `x.ai/sessionConfig` under `category:"mode"`
 /// (ids `low`/`medium`/`high`), and applies a live override via the
@@ -4144,6 +4230,63 @@ fn build_grok_set_model_params(
     params
 }
 
+/// Hermes `session/set_model` params: `{ sessionId, modelId }` only. Unlike
+/// Grok, Hermes has no `_meta.reasoningEffort` — effort/mode stays on the
+/// advertised config-option / `session/set_mode` path.
+fn build_hermes_set_model_params(session_id: &str, model_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "sessionId": session_id,
+        "modelId": model_id,
+    })
+}
+
+/// Switch the Hermes-family session model via untyped `session/set_model`.
+async fn set_hermes_model(
+    cx: &ConnectionTo<Agent>,
+    session_id: &SessionId,
+    model_id: String,
+) -> Result<(), agent_client_protocol::Error> {
+    let params = build_hermes_set_model_params(session_id.0.as_ref(), &model_id);
+    let untyped_req = UntypedMessage::new("session/set_model", params).map_err(|e| {
+        agent_client_protocol::util::internal_error(format!("Failed to build set_model request: {e}"))
+    })?;
+    cx.send_request_to(Agent, untyped_req).block_task().await?;
+    Ok(())
+}
+
+/// Route a composer model pick for Hermes family through `session/set_model`.
+/// Other config ids stay on the standard `session/set_config_option` path
+/// (Hermes already advertises modes that way).
+async fn set_hermes_config_option(
+    cx: &ConnectionTo<Agent>,
+    session_id: &SessionId,
+    state: &Arc<RwLock<SessionState>>,
+    emitter: &EventEmitter,
+    config_id: String,
+    value_id: String,
+) -> Result<(), agent_client_protocol::Error> {
+    if config_id != MODEL_CONFIG_OPTION_ID {
+        return set_session_config_option(cx, session_id, state, emitter, config_id, value_id)
+            .await;
+    }
+    set_hermes_model(cx, session_id, value_id.clone()).await?;
+    emit_with_state_built(state, emitter, |s| {
+        let mut opts = s.config_options.clone()?;
+        if let Some(SessionConfigKindInfo::Select(sel)) = opts
+            .iter_mut()
+            .find(|o| o.id == config_id)
+            .map(|o| &mut o.kind)
+        {
+            sel.current_value = value_id.clone();
+        }
+        Some(AcpEvent::SessionConfigOptions {
+            config_options: opts,
+        })
+    })
+    .await;
+    Ok(())
+}
+
 /// Send `_session/steering` (the ACP steering extension) to inject a message
 /// into the RUNNING turn. Untyped because it is an extension method the schema
 /// has no typed request for. Always opts into the 0.64.0
@@ -4547,8 +4690,11 @@ async fn emit_grok_incompatible_agent_switch(
 }
 
 /// Emit the composer's session config-option selectors. For Grok this reads the
-/// synthesized `x.ai/sessionConfig` (parity path); for every other agent it runs
-/// the standard preference-application + schema-mapping pipeline unchanged.
+/// synthesized `x.ai/sessionConfig` (parity path); for Hermes family it runs
+/// the standard pipeline then folds a synthesized `id=model` option from the
+/// captured ACP `models` payload (unless the agent already advertised one);
+/// every other agent stays on the standard preference-application +
+/// schema-mapping pipeline.
 #[allow(clippy::too_many_arguments)]
 async fn apply_and_emit_session_config_options(
     cx: &ConnectionTo<Agent>,
@@ -4558,6 +4704,7 @@ async fn apply_and_emit_session_config_options(
     agent_type: AgentType,
     grok_meta: Option<&serde_json::Map<String, serde_json::Value>>,
     grok_model_specs: Option<&HashMap<String, GrokModelSpec>>,
+    models_raw: Option<&serde_json::Value>,
     preferred_mode_id: Option<&str>,
     preferred_config_values: &BTreeMap<String, String>,
     initial_config_options: Vec<SessionConfigOption>,
@@ -4610,6 +4757,21 @@ async fn apply_and_emit_session_config_options(
         initial_config_options,
     )
     .await;
+    if is_hermes_family(&agent_type) {
+        let pinned = state.read().await.env_pinned_config_option_ids.clone();
+        let visible = visible_config_options(&pinned, updated);
+        let mut opts = map_session_config_options(&visible);
+        fold_hermes_model_option(&mut opts, models_raw);
+        emit_with_state(
+            state,
+            emitter,
+            AcpEvent::SessionConfigOptions {
+                config_options: opts,
+            },
+        )
+        .await;
+        return;
+    }
     emit_session_config_options_values(state, emitter, updated).await;
 }
 
@@ -5146,12 +5308,14 @@ fn build_resume_session_request(
 /// the reply goes through the same serde impl (whose `configOptions` already
 /// skips an option kind this build does not know, one entry at a time), and a
 /// JSON-RPC error comes back as the same `Err(agent_client_protocol::Error)`
-/// with `.code` / `.to_string()` intact. `session/load` needs none of this and is
-/// a plain typed send.
+/// with `.code` / `.to_string()` intact. `session/load` uses the same capture:
+/// Hermes (and Grok) put `SessionModelState` on the load reply too, and the
+/// typed `LoadSessionResponse` has no `models` field.
 ///
 /// `models` is `None` when the reply carries none. Other agents can send one too
-/// (codex-acp reports its model state there), but only grok's is ever read:
-/// every caller checks the agent before parsing it.
+/// (codex-acp reports its model state there). Callers parse it for Grok (effort
+/// specs) and for the Hermes family (synthesized `id=model` option); every other
+/// agent leaves the raw value unread.
 pub(crate) async fn send_capturing_models<Resp: serde::de::DeserializeOwned>(
     cx: &ConnectionTo<Agent>,
     method: &str,
@@ -5178,6 +5342,14 @@ async fn send_resume_session(
     req: ResumeSessionRequest,
 ) -> Result<(ResumeSessionResponse, Option<serde_json::Value>), agent_client_protocol::Error> {
     send_capturing_models(cx, AGENT_METHOD_NAMES.session_resume, req).await
+}
+
+/// Wire-level half of `session/load`; see [`send_capturing_models`].
+async fn send_load_session(
+    cx: &ConnectionTo<Agent>,
+    req: LoadSessionRequest,
+) -> Result<(LoadSessionResponse, Option<serde_json::Value>), agent_client_protocol::Error> {
+    send_capturing_models(cx, AGENT_METHOD_NAMES.session_load, req).await
 }
 
 /// Wire-level half of `session/new`; see [`send_capturing_models`].
@@ -6627,8 +6799,15 @@ async fn run_connection(
                             };
                             // Opportunistic: grok may include per-model effort data
                             // on resume; absent ⇒ empty specs ⇒ flat fallback.
+                            // Hermes family also reads the captured `models`
+                            // payload (SessionModelState) to synthesize a model
+                            // selector — `send_capturing_models` already returned
+                            // it for every agent.
                             let grok_model_specs = (agent_type == AgentType::Grok)
                                 .then(|| parse_grok_model_specs(grok_models_raw.as_ref()));
+                            let hermes_models_raw = is_hermes_family(&agent_type)
+                                .then(|| grok_models_raw)
+                                .flatten();
                             let mut session = AgentSession::attach(&cx, new_resp)?;
 
                             // No drain: session/resume does not replay history,
@@ -6654,6 +6833,7 @@ async fn run_connection(
                                 agent_type,
                                 grok_meta.as_ref(),
                                 grok_model_specs.as_ref(),
+                                hermes_models_raw.as_ref(),
                                 preferred_mode_id.as_deref(),
                                 &preferred_config_values,
                                 initial_config_options.unwrap_or_default(),
@@ -6747,14 +6927,14 @@ async fn run_connection(
                         &cwd,
                         mcp_servers.clone(),
                     );
-                    cx.send_request_to(Agent, load_req).block_task().await
+                    send_load_session(&cx, load_req).await
                 } else {
                     Err(agent_client_protocol::Error::method_not_found()
                         .data("agent does not advertise the loadSession capability"))
                 };
 
                 match load_result {
-                    Ok(load_resp) => {
+                    Ok((load_resp, grok_models_raw)) => {
                         let initial_config_options = load_resp.config_options.clone();
                         let new_resp = NewSessionResponse::new(SessionId::new(sid.clone()))
                             .modes(load_resp.modes)
@@ -6765,6 +6945,16 @@ async fn run_connection(
                         } else {
                             None
                         };
+                        // Same capture as session/new and session/resume: the
+                        // typed LoadSessionResponse has no `models` field, so
+                        // Hermes cannot synthesize a selector unless we read
+                        // SessionModelState off the raw reply first. Grok
+                        // effort specs ride the same payload.
+                        let grok_model_specs = (agent_type == AgentType::Grok)
+                            .then(|| parse_grok_model_specs(grok_models_raw.as_ref()));
+                        let hermes_models_raw = is_hermes_family(&agent_type)
+                            .then(|| grok_models_raw)
+                            .flatten();
                         let mut session = AgentSession::attach(&cx, new_resp)?;
 
                         // Drain historical replay notifications from session/load,
@@ -6920,9 +7110,8 @@ async fn run_connection(
                             &emitter_clone,
                             agent_type,
                             grok_meta.as_ref(),
-                            // `session/load` is a typed send with no raw `models`
-                            // capture, so effort stays on the flat fallback.
-                            None,
+                            grok_model_specs.as_ref(),
+                            hermes_models_raw.as_ref(),
                             preferred_mode_id.as_deref(),
                             &preferred_config_values,
                             initial_config_options.unwrap_or_default(),
@@ -7083,6 +7272,9 @@ async fn run_connection(
                         };
                         let grok_model_specs = (agent_type == AgentType::Grok)
                             .then(|| parse_grok_model_specs(grok_models_raw.as_ref()));
+                        let hermes_models_raw = is_hermes_family(&agent_type)
+                            .then(|| grok_models_raw)
+                            .flatten();
                         // Read BEFORE `AgentSession::attach` consumes the response.
                         state.write().await.pi_startup_banner =
                             pi_startup_banner(agent_type, new_resp.meta.as_ref());
@@ -7118,6 +7310,7 @@ async fn run_connection(
                             agent_type,
                             grok_meta.as_ref(),
                             grok_model_specs.as_ref(),
+                            hermes_models_raw.as_ref(),
                             preferred_mode_id.as_deref(),
                             &preferred_config_values,
                             initial_config_options.unwrap_or_default(),
@@ -7183,6 +7376,9 @@ async fn run_connection(
                 };
                 let grok_model_specs = (agent_type == AgentType::Grok)
                     .then(|| parse_grok_model_specs(grok_models_raw.as_ref()));
+                let hermes_models_raw = is_hermes_family(&agent_type)
+                    .then(|| grok_models_raw)
+                    .flatten();
                 // Read BEFORE `AgentSession::attach` consumes the response.
                 state.write().await.pi_startup_banner =
                     pi_startup_banner(agent_type, new_resp.meta.as_ref());
@@ -7205,6 +7401,7 @@ async fn run_connection(
                     agent_type,
                     grok_meta.as_ref(),
                     grok_model_specs.as_ref(),
+                    hermes_models_raw.as_ref(),
                     preferred_mode_id.as_deref(),
                     &preferred_config_values,
                     initial_config_options.unwrap_or_default(),
@@ -10070,9 +10267,13 @@ async fn handle_fork_or_exit(
         None
     };
     // Opportunistic: grok may carry per-model effort data on a fork (or, when
-    // the fork was re-established above, a resume) response.
+    // the fork was re-established above, a resume) response. Hermes family
+    // reads the same captured `models` payload for its synthesized selector.
     let grok_model_specs =
         (agent_type == AgentType::Grok).then(|| parse_grok_model_specs(models_raw.as_ref()));
+    let hermes_models_raw = is_hermes_family(&agent_type)
+        .then(|| models_raw)
+        .flatten();
     let mut session = AgentSession::attach(&cx, new_resp)?;
 
     // A fork is a new session id, hence a new transcript file. Its history
@@ -10096,6 +10297,7 @@ async fn handle_fork_or_exit(
         agent_type,
         grok_meta.as_ref(),
         grok_model_specs.as_ref(),
+        hermes_models_raw.as_ref(),
         inherited_mode_id.as_deref(),
         &inherited_config_values,
         initial_config_options.unwrap_or_default(),
@@ -11840,6 +12042,11 @@ async fn run_conversation_loop(
                                             &cx, &sid, state, emitter, config_id, value_id,
                                         )
                                         .await
+                                    } else if is_hermes_family(&agent_type) {
+                                        set_hermes_config_option(
+                                            &cx, &sid, state, emitter, config_id, value_id,
+                                        )
+                                        .await
                                     } else {
                                         set_session_config_option(
                                             &cx, &sid, state, emitter, config_id, value_id,
@@ -12176,6 +12383,8 @@ async fn run_conversation_loop(
                 let sid = session.session_id().clone();
                 let set_result = if agent_type == AgentType::Grok {
                     set_grok_config_option(&cx, &sid, state, emitter, config_id, value_id).await
+                } else if is_hermes_family(&agent_type) {
+                    set_hermes_config_option(&cx, &sid, state, emitter, config_id, value_id).await
                 } else {
                     set_session_config_option(&cx, &sid, state, emitter, config_id, value_id).await
                 };
@@ -25888,6 +26097,174 @@ mod tests {
         assert_eq!(p["_meta"]["reasoningEffort"], "high");
     }
 
+    #[test]
+    fn is_hermes_family_matches_builtin_and_custom_prefix() {
+        assert!(is_hermes_family(&AgentType::Hermes));
+        assert!(is_hermes_family(
+            &AgentType::custom("hermes-homeops").expect("valid custom slug")
+        ));
+        assert!(!is_hermes_family(&AgentType::Grok));
+        assert!(!is_hermes_family(
+            &AgentType::custom("goose").expect("valid custom slug")
+        ));
+    }
+
+    #[test]
+    fn synthesize_hermes_model_option_from_session_model_state() {
+        // ACP SessionModelState as Hermes (and Grok) send it on session/new:
+        // camelCase currentModelId + availableModels[{modelId, name}].
+        let models = serde_json::json!({
+            "currentModelId": "openrouter/x",
+            "availableModels": [
+                { "modelId": "openrouter/x", "name": "x" },
+                { "modelId": "openrouter/y", "name": "y" }
+            ]
+        });
+        let opt = synthesize_hermes_model_option(&models).expect("should synthesize");
+        assert_eq!(opt.id, MODEL_CONFIG_OPTION_ID);
+        assert_eq!(opt.category.as_deref(), Some("model"));
+        let sel = expect_select(&opt.kind);
+        assert_eq!(sel.current_value, "openrouter/x");
+        assert_eq!(sel.options.len(), 2);
+        assert_eq!(sel.options[0].value, "openrouter/x");
+        assert_eq!(sel.options[0].name, "x");
+        assert_eq!(sel.options[1].value, "openrouter/y");
+        assert_eq!(sel.options[1].name, "y");
+    }
+
+    fn hermes_models_fixture() -> serde_json::Value {
+        serde_json::json!({
+            "currentModelId": "openrouter/x",
+            "availableModels": [
+                { "modelId": "openrouter/x", "name": "x" },
+                { "modelId": "openrouter/y", "name": "y" }
+            ]
+        })
+    }
+
+    #[test]
+    fn hermes_set_model_params_are_untyped_without_effort_meta() {
+        let p = build_hermes_set_model_params("s1", "openrouter/y");
+        assert_eq!(p["sessionId"], "s1");
+        assert_eq!(p["modelId"], "openrouter/y");
+        assert!(p.get("_meta").is_none());
+        // Grok's effort path is unchanged: an override still rides `_meta`.
+        let grok = build_grok_set_model_params("s1", "grok-4.5", Some("high"));
+        assert_eq!(grok["_meta"]["reasoningEffort"], "high");
+    }
+
+    #[test]
+    fn fold_hermes_model_option_appends_when_agent_did_not_advertise_model() {
+        let models = hermes_models_fixture();
+        let mut opts = vec![SessionConfigOptionInfo {
+            id: "mode".to_string(),
+            name: "Mode".to_string(),
+            description: None,
+            category: Some("mode".to_string()),
+            kind: SessionConfigKindInfo::Select(SessionConfigSelectInfo {
+                current_value: "default".to_string(),
+                options: vec![SessionConfigSelectOptionInfo {
+                    value: "default".to_string(),
+                    name: "Default".to_string(),
+                    description: None,
+                }],
+                groups: Vec::new(),
+            }),
+            recommended_value: None,
+        }];
+        fold_hermes_model_option(&mut opts, Some(&models));
+        assert_eq!(opts.len(), 2);
+        assert_eq!(opts[1].id, MODEL_CONFIG_OPTION_ID);
+        assert_eq!(opts[1].category.as_deref(), Some("model"));
+        let sel = expect_select(&opts[1].kind);
+        assert_eq!(sel.options.len(), 2);
+        assert_eq!(sel.current_value, "openrouter/x");
+    }
+
+    #[test]
+    fn fold_hermes_model_option_does_not_shadow_advertised_model() {
+        let models = hermes_models_fixture();
+        let advertised = SessionConfigOptionInfo {
+            id: MODEL_CONFIG_OPTION_ID.to_string(),
+            name: "Model".to_string(),
+            description: None,
+            category: Some("model".to_string()),
+            kind: SessionConfigKindInfo::Select(SessionConfigSelectInfo {
+                current_value: "already-advertised".to_string(),
+                options: vec![SessionConfigSelectOptionInfo {
+                    value: "already-advertised".to_string(),
+                    name: "Already advertised".to_string(),
+                    description: None,
+                }],
+                groups: Vec::new(),
+            }),
+            recommended_value: None,
+        };
+        let mut opts = vec![advertised.clone()];
+        fold_hermes_model_option(&mut opts, Some(&models));
+        assert_eq!(opts, vec![advertised], "do not shadow an agent-advertised model option");
+    }
+
+    #[test]
+    fn fold_hermes_model_option_is_noop_when_models_raw_is_none() {
+        // The load path used to pass models_raw=None. Fold must not invent a
+        // selector from an empty capture (composer would only show Default).
+        let mut opts = vec![SessionConfigOptionInfo {
+            id: "mode".to_string(),
+            name: "Mode".to_string(),
+            description: None,
+            category: Some("mode".to_string()),
+            kind: SessionConfigKindInfo::Select(SessionConfigSelectInfo {
+                current_value: "default".to_string(),
+                options: vec![SessionConfigSelectOptionInfo {
+                    value: "default".to_string(),
+                    name: "Default".to_string(),
+                    description: None,
+                }],
+                groups: Vec::new(),
+            }),
+            recommended_value: None,
+        }];
+        fold_hermes_model_option(&mut opts, None);
+        assert_eq!(opts.len(), 1);
+        assert_eq!(opts[0].id, "mode");
+    }
+
+    #[test]
+    fn typed_load_session_response_drops_models_so_fold_needs_raw_capture() {
+        // Hermes session/load returns SessionModelState as top-level `models`.
+        // ACP schema v1 LoadSessionResponse has no such field, so the typed
+        // parse drops it — the same reason session/new and session/resume go
+        // through send_capturing_models.
+        let raw = serde_json::json!({
+            "modes": {
+                "currentModeId": "default",
+                "availableModes": [{"id": "default", "name": "Default"}]
+            },
+            "models": {
+                "currentModelId": "openrouter/x",
+                "availableModels": [
+                    { "modelId": "openrouter/x", "name": "x" },
+                    { "modelId": "openrouter/y", "name": "y" }
+                ]
+            }
+        });
+        let captured = raw.get("models").cloned().expect("models on the wire");
+        let load: LoadSessionResponse = serde_json::from_value(raw).expect("typed load parses");
+        let dumped = serde_json::to_value(&load).expect("re-serializes");
+        assert!(
+            dumped.get("models").is_none(),
+            "schema v1 LoadSessionResponse has no models field; capture must precede typed parse"
+        );
+        let mut opts = Vec::new();
+        fold_hermes_model_option(&mut opts, Some(&captured));
+        assert_eq!(opts.len(), 1);
+        assert_eq!(opts[0].id, MODEL_CONFIG_OPTION_ID);
+        let sel = expect_select(&opts[0].kind);
+        assert_eq!(sel.current_value, "openrouter/x");
+        assert_eq!(sel.options.len(), 2);
+    }
+
     // ── config-option verdicts ──────────────────────────────────────────────
     //
     // `session/set_config_option` is advisory: the agent answers with the option
@@ -31188,6 +31565,22 @@ mod tests {
         assert_eq!(untyped.params(), &expected);
     }
 
+    #[test]
+    fn untyped_load_session_carries_the_typed_request_payload() {
+        let cwd = std::path::PathBuf::from("/tmp/codeg");
+        let req = build_load_session_request(
+            AgentType::Cline,
+            SessionId::new("sess-1".to_string()),
+            &cwd,
+            Vec::new(),
+        );
+        let expected = serde_json::to_value(&req).unwrap();
+
+        let untyped = UntypedMessage::new(AGENT_METHOD_NAMES.session_load, req).expect("builds");
+        assert_eq!(untyped.method(), "session/load");
+        assert_eq!(untyped.params(), &expected);
+    }
+
     /// The saved-preference replay must set the model BEFORE anything scoped to
     /// it. Cursor's parameterized picker (unlocked by
     /// `_meta.parameterizedModelPicker`) ships `fast` / thinking options that
@@ -31381,6 +31774,7 @@ mod tests {
                     &establishment_state,
                     &EventEmitter::Noop,
                     AgentType::OpenCode,
+                    None,
                     None,
                     None,
                     None,

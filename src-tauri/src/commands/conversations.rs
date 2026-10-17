@@ -1523,6 +1523,36 @@ pub async fn get_folder_conversation_core(
         summary.model = Some(parsed);
     }
 
+    if summary.agent_type.is_hermes_family() {
+        let at = summary.agent_type;
+        let ext = summary.external_id.clone();
+        let title = summary.title.clone();
+        let created_at = summary.created_at;
+        let folder_path = match summary.origin_cwd.clone() {
+            Some(cwd) => Some(cwd),
+            None => folder_service::get_folder_by_id(conn, summary.folder_id)
+                .await
+                .ok()
+                .flatten()
+                .map(|f| f.path),
+        };
+        let cid = conversation_id;
+        let recovered = tokio::task::spawn_blocking(move || {
+            crate::parsers::hermes_role::history_for_role(
+                at,
+                cid,
+                ext.as_deref(),
+                folder_path.as_deref(),
+                title.as_deref(),
+                created_at,
+            )
+        })
+        .await
+        .unwrap_or_else(|_| Vec::new());
+        turns = crate::parsers::hermes_role::merge_seeded_turns(recovered, turns);
+        summary.message_count = crate::parsers::message_turn_count(&turns);
+    }
+
     // Historical recovery for the read-only sub-agent viewer: JSONL parsers
     // don't carry `meta["codeg.delegation"]`, so a reloaded conversation
     // can't drive the parent UI's child-conversation lookup. Join on
@@ -2633,6 +2663,60 @@ pub async fn update_conversation_title_core(
         .map_err(AppCommandError::from)
 }
 
+pub async fn update_conversation_agent_type_core(
+    conn: &sea_orm::DatabaseConnection,
+    conversation_id: i32,
+    agent_type: AgentType,
+) -> Result<(), AppCommandError> {
+    let summary = conversation_service::get_by_id(conn, conversation_id)
+        .await
+        .map_err(AppCommandError::from)?;
+    let from_agent = summary.agent_type;
+    let external_id = summary.external_id.clone();
+    let title = summary.title.clone();
+    let created_at = summary.created_at;
+    let folder_path = match summary.origin_cwd.clone() {
+        Some(cwd) => Some(cwd),
+        None => folder_service::get_folder_by_id(conn, summary.folder_id)
+            .await
+            .ok()
+            .flatten()
+            .map(|f| f.path),
+    };
+    let cwd = folder_path.clone().unwrap_or_default();
+    let turns = if from_agent.is_hermes_family() && agent_type.is_hermes_family() {
+        let cid = conversation_id;
+        tokio::task::spawn_blocking(move || {
+            crate::parsers::hermes_role::collect_turns(
+                from_agent,
+                cid,
+                external_id.as_deref(),
+                folder_path.as_deref(),
+                title.as_deref(),
+                created_at,
+            )
+        })
+        .await
+        .unwrap_or_else(|_| Vec::new())
+    } else {
+        Vec::new()
+    };
+
+    conversation_service::update_agent_type(conn, conversation_id, agent_type)
+        .await
+        .map_err(AppCommandError::from)?;
+
+    if from_agent.is_hermes_family() && agent_type.is_hermes_family() && !turns.is_empty() {
+        let cid = conversation_id;
+        tokio::task::spawn_blocking(move || {
+            crate::parsers::hermes_role::seed_transcript(agent_type, cid, &cwd, &turns);
+        })
+        .await
+        .ok();
+    }
+    Ok(())
+}
+
 /// Re-read the persisted conversation title and best-effort sync it to any
 /// bound chat-channel threads (e.g. Telegram forum topics). Lives in
 /// `commands/` so web handlers route through a `_core` helper instead of
@@ -2663,6 +2747,19 @@ pub async fn update_conversation_title(
     update_conversation_title_core(&db.conn, conversation_id, title).await?;
     emit_conversation_upsert(&EventEmitter::Tauri(app), &db.conn, conversation_id).await;
     sync_conversation_title_to_channels_core(&db.conn, &chat_channel_manager, conversation_id).await;
+    Ok(())
+}
+
+#[cfg(feature = "tauri-runtime")]
+#[cfg_attr(feature = "tauri-runtime", tauri::command)]
+pub async fn update_conversation_agent_type(
+    app: tauri::AppHandle,
+    db: tauri::State<'_, AppDatabase>,
+    conversation_id: i32,
+    agent_type: AgentType,
+) -> Result<(), AppCommandError> {
+    update_conversation_agent_type_core(&db.conn, conversation_id, agent_type).await?;
+    emit_conversation_upsert(&EventEmitter::Tauri(app), &db.conn, conversation_id).await;
     Ok(())
 }
 
@@ -5083,6 +5180,27 @@ mod tests {
             .await
             .expect("read back");
         assert_eq!(summary.title.as_deref(), Some("Renamed"));
+    }
+
+    #[tokio::test]
+    async fn update_conversation_agent_type_core_clears_external_id() {
+        let db = fresh_in_memory_db().await;
+        let folder_id = seed_folder(&db, "/tmp/codeg-agent-type-test").await;
+        let conv_id = create_conversation_core(&db.conn, folder_id, AgentType::Hermes, None)
+            .await
+            .expect("create");
+        conversation_service::bind_external_id(&db.conn, conv_id, "hermes-sess-1", &[])
+            .await
+            .expect("bind");
+        let next = AgentType::custom("hermes-homeops").expect("custom hermes");
+        update_conversation_agent_type_core(&db.conn, conv_id, next)
+            .await
+            .expect("update");
+        let summary = conversation_service::get_by_id(&db.conn, conv_id)
+            .await
+            .expect("read back");
+        assert_eq!(summary.agent_type, AgentType::custom("hermes-homeops").unwrap());
+        assert!(summary.external_id.is_none());
     }
 
     #[tokio::test]

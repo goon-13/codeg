@@ -1122,6 +1122,13 @@ export async function updateConversationTitle(
   return invoke("update_conversation_title", { conversationId, title })
 }
 
+export async function updateConversationAgentType(
+  conversationId: number,
+  agentType: AgentType
+): Promise<void> {
+  return invoke("update_conversation_agent_type", { conversationId, agentType })
+}
+
 export async function deleteConversation(
   conversationId: number
 ): Promise<void> {

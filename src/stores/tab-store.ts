@@ -279,6 +279,7 @@ export interface TabStoreState {
   }) => OpenedDraftTarget
   setChatDraftWorkingDir: (tabId: string, workingDir: string) => void
   confirmDraftAgent: (tabId: string, agentType: AgentType) => void
+  setTabAgentType: (tabId: string, agentType: AgentType) => void
   setDraftAgentFromFallback: (tabId: string, agentType: AgentType) => void
   bindConversationTab: (
     tabId: string,
@@ -2042,6 +2043,18 @@ export const useTabStore = create<TabStoreState>()((set, get) => ({
     recomputeTabs()
   },
 
+  setTabAgentType: (tabId, agentType) => {
+    const prev = get().rawTabs
+    const next = prev.map((t) => {
+      if (t.id !== tabId) return t
+      if (t.agentType === agentType && !t.agentTypeProvisional) return t
+      return { ...t, agentType, agentTypeProvisional: false }
+    })
+    if (next.every((t, i) => t === prev[i])) return
+    set({ rawTabs: next })
+    recomputeTabs()
+  },
+
   setDraftAgentFromFallback: (tabId, agentType) => {
     const prev = get().rawTabs
     const next = prev.map((t) => {
@@ -2805,6 +2818,7 @@ export function useTabActions() {
       openChatModeTab: s.openChatModeTab,
       setChatDraftWorkingDir: s.setChatDraftWorkingDir,
       confirmDraftAgent: s.confirmDraftAgent,
+      setTabAgentType: s.setTabAgentType,
       setDraftAgentFromFallback: s.setDraftAgentFromFallback,
       bindConversationTab: s.bindConversationTab,
       setTabRuntimeConversationId: s.setTabRuntimeConversationId,
