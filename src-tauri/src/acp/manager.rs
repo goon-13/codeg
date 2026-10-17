@@ -2558,12 +2558,15 @@ impl ConnectionManager {
                     // eligible for later backfills.
                     let title_locked = current.title_locked;
                     // The sibling keeps the original's sidebar routing (a forked
-                    // chat conversation must stay in the Chat group). `Delegate`
-                    // is unreachable here — children are never forked from the
-                    // UI — but the invariant `delegate ⟺ parent_id set` wins
-                    // over inheritance, so it degrades to `Regular`.
+                    // chat conversation must stay in the Chat group). Child
+                    // kinds are unreachable here — children are never forked
+                    // from the UI — but the sibling clears `parent_id`, so
+                    // Delegate and Side degrade to Regular (`parent_id` set ⟺
+                    // Delegate or Side).
                     let sibling_kind = match current.kind {
-                        ConversationKind::Delegate => ConversationKind::Regular,
+                        ConversationKind::Delegate | ConversationKind::Side => {
+                            ConversationKind::Regular
+                        }
                         ref kind => kind.clone(),
                     };
                     // The pre-fork history was started where the original was.
@@ -2647,6 +2650,8 @@ impl ConnectionManager {
                         assistant_id: Set(None),
                         assistant_snapshot: Set(None),
                         source: Set(source),
+                        cluster_id: Set(None),
+                        handoff_from_id: Set(None),
                     };
                     let inserted = sibling.insert(txn).await?;
                     // The sibling keeps the pre-fork history under the

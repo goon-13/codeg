@@ -9,6 +9,8 @@ import {
   useState,
 } from "react"
 import { useTranslations } from "next-intl"
+import { toast } from "sonner"
+import { shelfContextKey } from "@/components/canvas/shelf/shelf-model"
 import { AgentSelector } from "@/components/chat/agent-selector"
 import { ConversationShell } from "@/components/chat/conversation-shell"
 import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
@@ -26,8 +28,14 @@ import {
   createChatConversation,
   createConversation,
   createChatDir,
+  openSideConversation,
+  updateConversationAgentType,
 } from "@/lib/api"
-import { toErrorMessage } from "@/lib/app-error"
+import {
+  toErrorMessage,
+  toLocalizedErrorMessage,
+  type AppErrorTranslator,
+} from "@/lib/app-error"
 import { notify } from "@/lib/notify"
 import { getAgentLabel } from "@/lib/custom-agents"
 import {
@@ -49,7 +57,21 @@ import type {
 } from "@/lib/types"
 import { cn, randomUUID } from "@/lib/utils"
 import { userPromptHistory } from "@/lib/composer-history"
+import { emitAppendTextToSession } from "@/lib/session-attachment-events"
+import {
+  buildSideSeed,
+  planSideIntercept,
+  sideSeedSourceTurns,
+} from "@/lib/side-seed"
+import {
+  SIDE_OPEN_PARKED_EVENT,
+  consumeSideOpen,
+  parkSideOpen,
+  sideOpenDrafts,
+  type SideOpenParkedDetail,
+} from "@/lib/side-open-handoff"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
+import { makeConversationTabId, useTabStore } from "@/stores/tab-store"
 import {
   getTimelineTurns,
   useConversationRuntimeActions,
@@ -192,6 +214,8 @@ export function CanvasConversationSurface({
   const sharedT = useTranslations("Folder.chat.shared")
   const tAsyncTasks = useTranslations("Folder.chat.asyncTasks")
   const tComposer = useTranslations("Folder.chat.messageInput")
+  const tSide = useTranslations("Folder.side")
+  const { agents: acpAgents, fresh: acpAgentsFresh } = useAcpAgents()
   const acpActions = useAcpActions()
   const {
     appendOptimisticTurn,
@@ -586,6 +610,88 @@ export function CanvasConversationSurface({
       // to another agent; this catches a submit that races the switch.
       if (connIsForOtherAgent) return
 
+      const sourceId = dbConversationIdRef.current
+      if (sourceId != null) {
+        const handoffSummary =
+          useAppWorkspaceStore
+            .getState()
+            .conversations.find((c) => c.id === sourceId) ?? null
+        const text = getPromptDraftDisplayText(
+          draft,
+          sharedT("attachedResources")
+        )
+        const planned = planSideIntercept({
+          kind: handoffSummary?.kind,
+          hasDbId: true,
+          text,
+        })
+        if (planned && handoffSummary) {
+          const sourceFolderId = handoffSummary.folder_id
+          const agent = selectedAgent
+          const question = planned.question
+          const title = question
+            ? Array.from(question).slice(0, 64).join("")
+            : tSide("tag")
+          const seed = buildSideSeed(
+            sideSeedSourceTurns(
+              getTimelineTurns(effectiveConversationId).map(
+                (entry) => entry.turn
+              )
+            )
+          )
+          void (async () => {
+            try {
+              const result = await openSideConversation({
+                sourceId,
+                title,
+              })
+              const sideId = result.conversationId
+              const onShelf = contextKey.startsWith("shelf:")
+              parkSideOpen(
+                onShelf
+                  ? shelfContextKey(sideId)
+                  : makeConversationTabId(sourceFolderId, agent, sideId),
+                { seed, question }
+              )
+              window.dispatchEvent(
+                new CustomEvent("codeg:expand-conversation-tree", {
+                  detail: { id: sourceId },
+                })
+              )
+              if (onShelf) {
+                window.dispatchEvent(
+                  new CustomEvent("codeg:shelf-open-side", {
+                    detail: {
+                      sourceId,
+                      sideId,
+                      folderId: sourceFolderId,
+                    },
+                  })
+                )
+              } else {
+                useTabStore
+                  .getState()
+                  .openTab(sourceFolderId, sideId, agent, false, title)
+              }
+            } catch (err) {
+              toast.error(
+                toLocalizedErrorMessage(err, ((key: string) => {
+                  if (key === "ConversationSide.errors.notRegular") {
+                    return tSide("errors.notRegular")
+                  }
+                  if (key === "ConversationSide.errors.notFound") {
+                    return tSide("errors.notFound")
+                  }
+                  throw new Error(key)
+                }) as AppErrorTranslator)
+              )
+              emitAppendTextToSession({ tabId: contextKey, text })
+            }
+          })()
+          return
+        }
+      }
+
       const optimisticTurn = buildOptimisticUserTurn(
         draft,
         sharedT("attachedResources")
@@ -729,9 +835,65 @@ export function CanvasConversationSurface({
       sharedT,
       t,
       tComposer,
+      tSide,
       upsertFolder,
     ]
   )
+
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+  const connStatusRef = useRef(connStatus)
+  connStatusRef.current = connStatus
+  const sideQueueRef = useRef<PromptDraft[]>([])
+  const sideAwaitingTurnRef = useRef(false)
+  const pumpSideQueueRef = useRef(() => {})
+  pumpSideQueueRef.current = () => {
+    if (sideAwaitingTurnRef.current) return
+    if (connStatusRef.current !== "connected") return
+    const next = sideQueueRef.current.shift()
+    if (!next) return
+    sideAwaitingTurnRef.current = true
+    handleSendRef.current(next)
+  }
+
+  // Strict Mode discards the first mount. Consume on a timeout so that mount
+  // cannot take the packet. No message queue here: the question waits until
+  // the seed turn is connected again, or the second prompt is rolled back.
+  useEffect(() => {
+    let cancelled = false
+    const take = () => {
+      if (cancelled) return
+      const packet = consumeSideOpen(contextKey)
+      if (!packet) return
+      sideQueueRef.current.push(...sideOpenDrafts(packet))
+      pumpSideQueueRef.current()
+    }
+    const timer = window.setTimeout(take, 0)
+    const onParked = (event: Event) => {
+      const detail = (event as CustomEvent<SideOpenParkedDetail>).detail
+      if (detail?.tabId !== contextKey) return
+      take()
+    }
+    window.addEventListener(SIDE_OPEN_PARKED_EVENT, onParked)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      window.removeEventListener(SIDE_OPEN_PARKED_EVENT, onParked)
+    }
+  }, [contextKey])
+
+  useEffect(() => {
+    if (connStatus === "prompting") {
+      sideAwaitingTurnRef.current = true
+      return
+    }
+    if (connStatus !== "connected") return
+    if (!sideAwaitingTurnRef.current && sideQueueRef.current.length === 0) {
+      return
+    }
+    sideAwaitingTurnRef.current = false
+    pumpSideQueueRef.current()
+  }, [connStatus])
 
   const handleAnswerQuestion = useCallback(
     (answer: string) => {
@@ -829,6 +991,11 @@ export function CanvasConversationSurface({
   )
 
   const isDraft = dbConversationId == null
+  const handoffSummary = useAppWorkspaceStore((s) =>
+    dbConversationId == null
+      ? null
+      : (s.conversations.find((c) => c.id === dbConversationId) ?? null)
+  )
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -840,6 +1007,20 @@ export function CanvasConversationSurface({
       <div className="nowheel flex min-h-0 flex-1 flex-col">
         <ConversationShell
           status={composerStatus}
+          handoffSource={
+            !isDraft &&
+            handoffSummary &&
+            handoffSummary.kind === "regular"
+              ? {
+                  id: dbConversationId!,
+                  folderId: handoffSummary.folder_id,
+                  agentType: selectedAgent,
+                  title: handoffSummary.title,
+                  summary: handoffSummary,
+                }
+              : null
+          }
+          status={connStatus}
           promptCapabilities={conn.promptCapabilities}
           defaultPath={workingDir}
           agentName={getAgentLabel(agentType)}

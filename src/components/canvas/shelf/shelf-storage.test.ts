@@ -6,11 +6,13 @@ import {
   loadShelfExpandedConversationIds,
   loadShelfShowAll,
   loadShelfShowAllConversationFolderIds,
+  loadShelfSessionRailOpen,
   loadShelfVisibleConversationIds,
   loadShelfVisibleFolderIds,
   saveCanvasLayoutMode,
   saveShelfCollapsedFolderIds,
   saveShelfExpandedConversationIds,
+  saveShelfSessionRailOpen,
   saveShelfShowAll,
   saveShelfShowAllConversationFolderIds,
   saveShelfVisibleConversationIds,
@@ -109,5 +111,26 @@ describe("shelf storage", () => {
     expect(loadShelfShowAllConversationFolderIds()).toEqual([])
     saveShelfShowAllConversationFolderIds([10, 20])
     expect(loadShelfShowAllConversationFolderIds()).toEqual([10, 20])
+  })
+
+  it("round-trips folder and per-folder conversation order", () => {
+    expect(loadShelfFolderOrder()).toBeNull()
+    saveShelfFolderOrder([20, 10])
+    expect(loadShelfFolderOrder()).toEqual([20, 10])
+    saveShelfConversationOrder({ 10: [8, 7] })
+    expect(loadShelfConversationOrder()).toEqual({ 10: [8, 7] })
+  })
+
+  it("keeps the session rail closed unless the stored json is true", () => {
+    expect(loadShelfSessionRailOpen()).toBe(false)
+    saveShelfSessionRailOpen(true)
+    expect(loadShelfSessionRailOpen()).toBe(true)
+    expect(localStorage.getItem("codeg.shelf.sessionRailOpen")).toBe("true")
+    saveShelfSessionRailOpen(false)
+    expect(loadShelfSessionRailOpen()).toBe(false)
+    localStorage.setItem("codeg.shelf.sessionRailOpen", "{")
+    expect(loadShelfSessionRailOpen()).toBe(false)
+    localStorage.setItem("codeg.shelf.sessionRailOpen", JSON.stringify("true"))
+    expect(loadShelfSessionRailOpen()).toBe(false)
   })
 })

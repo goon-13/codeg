@@ -1410,6 +1410,8 @@ mod tests {
                 source: None,
                 assistant_name: None,
                 tag_ids: Vec::new(),
+            cluster_id: None,
+            handoff_from_id: None,
             },
             turns,
             session_stats: stats,

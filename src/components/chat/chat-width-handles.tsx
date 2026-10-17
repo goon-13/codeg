@@ -317,12 +317,13 @@ function WidthHandle({ side }: { side: Side }) {
       title={t("resizeWidth")}
       tabIndex={0}
       data-width-handle={side}
-      // Hangs inward from the column edge: the 12px hit zone lies over the
-      // rows' own px-4 padding (no text under it) and, with the shell's
-      // gutter, never reaches the window border.
+      // Anchor is the column edge. `-translate-x-full` hangs the 12px hit
+      // zone to the left of that edge: left handle sits in the gutter
+      // (so it does not cover the 24px prompt-tick rail), right handle
+      // sits over the rows' px-4 padding. The shell gutter keeps the left
+      // handle off the window border.
       className={cn(
-        "group absolute inset-y-0 z-10 hidden w-3 cursor-col-resize touch-none select-none outline-none md:block",
-        side === "right" && "-translate-x-full"
+        "group absolute inset-y-0 z-10 hidden w-3 -translate-x-full cursor-col-resize touch-none select-none outline-none md:block"
       )}
       style={{
         left:

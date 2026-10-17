@@ -1238,7 +1238,12 @@
       "loginSaveFailed": "ログインは成功しましたが、設定の保存に失敗しました",
       "apiUrlLabel": "API URL",
       "apiKeyLabel": "API キー",
-      "managedKeysHint": "codeg がモデル一覧を公開している間は、ここの model_catalog_json とルートの model を codeg が管理します。上のモデル一覧で変更してください。"
+      "managedKeysHint": "codeg がモデル一覧を公開している間は、ここの model_catalog_json とルートの model を codeg が管理します。上のモデル一覧で変更してください。",
+      "enableSkills": "Skills を有効化",
+      "enableSkillsAria": "Codex の Skills を有効化",
+      "enableFast": "Fast を有効化",
+      "enableFastAria": "Codex の Fast サービスティアを有効化",
+      "approvalPolicyUntrustedAcpWarning": "ACP アダプターの 3 つの承認プリセットに untrusted に相当するものはないため、codeg のセッションは「要求時」にフォールバックします。その場合はモデルが尋ねるタイミングを決め、サンドボックスが既に許可しているコマンドは確認されなくなります。代わりに下のサンドボックスモードで制限してください。"
     },
     "gemini": {
       "authConfig": "Gemini 認証設定",
@@ -1320,7 +1325,9 @@
         "action": "接続",
         "editTitle": "プロバイダーを編集",
         "editDescription": "このプロバイダーの API キーを置き換えるか、ベース URL を変更します。",
-        "saveAction": "保存"
+        "saveAction": "保存",
+        "catalogLabel": "models.dev カタログ",
+        "oauthApiKeyNote": "このプロバイダーは opencode auth login によるブラウザサインインにも対応しています。ブラウザサインインは近日対応予定です。今は API キーを貼り付けてください。"
       },
       "customProvider": {
         "title": "カスタムプロバイダーを追加",
@@ -1378,8 +1385,14 @@
           "webfetch": "URL の取得。URL で照合",
           "websearch": "ウェブ検索。検索語で照合",
           "todowrite": "ToDo リストへの書き込み（ToDo リストツールが有効な場合）",
-          "question": "あなたへの質問"
-        }
+          "question": "あなたへの質問",
+          "bash": "シェルコマンドの実行。解析後のコマンドで照合",
+          "task": "サブエージェントの起動。サブエージェントの種類で照合",
+          "list": "ディレクトリ内容の一覧表示",
+          "lsp": "LSP クエリの実行",
+          "doom_loop": "同じ入力で同じ呼び出しが 3 回繰り返されたときに作動"
+        },
+        "legacyTools": "トップレベルの旧 tools 設定がツールを拒否しています。OpenCode はこれを権限に統合するため、ここに表示されている設定すべての上に適用されます。下のネイティブ JSON で編集するか、自動承認をオンにして削除してください。"
       },
       "behavior": {
         "title": "動作とコンパクション",
@@ -1408,16 +1421,26 @@
           "preserveRecentTokens": "原文のまま残すトークン数",
           "reserved": "予約トークン",
           "maxLines": "ツール出力の行数上限",
-          "maxBytes": "ツール出力のバイト数上限"
+          "maxBytes": "ツール出力のバイト数上限",
+          "tailTurns": "原文のまま残すターン数"
         },
         "hints": {
           "subagentDepth": "サブエージェントを何段までネストできるか（experimental.subagent_depth）。1 ならサブエージェントはさらに別のサブエージェントを起動できません。",
           "preserveRecentTokens": "コンパクション後も原文のまま残す直近ターンのトークン予算（compaction.keep.tokens）。既定値 15000。",
           "reserved": "コンパクション自体がコンテキストを溢れさせないよう空けておくウィンドウ（compaction.buffer）。未設定ならウィンドウの 15%（最低 16K）を確保します。",
           "maxLines": "これを超える出力はディスクに書き出され、プレビューだけが残ります。既定 2000。",
-          "maxBytes": "これを超える出力はディスクに書き出され、プレビューだけが残ります。既定 51200。"
-        }
-      }
+          "maxBytes": "これを超える出力はディスクに書き出され、プレビューだけが残ります。既定 51200。",
+          "tailTurns": "直近いくつのユーザーターンをコンパクションから除外するか。未設定なら下のトークン予算だけが上限になります。"
+        },
+        "share": "共有",
+        "shareHint": "セッションを共有リンクとして公開できるかどうか。",
+        "shareManual": "手動（必要なときだけ）",
+        "shareAuto": "自動（新しいセッションを常に共有）",
+        "shareDisabled": "無効",
+        "compactionPrune": "古いツール出力を削る",
+        "compactionPruneHint": "コンパクション時に古いツール呼び出しの出力を要約せずに破棄します。"
+      },
+      "addProvider": "プロバイダーを追加"
     },
     "openClaw": {
       "gatewayConfig": "Gateway 設定",
@@ -1543,7 +1566,9 @@
       "authTypeHint": "config.toml 内で API キーを書き込む場所。",
       "rawEditorLabel": "config.toml を直接編集",
       "rawEditorWarning": "ここで保存するとファイル全体がそのまま上書きされ、上の構造化設定が置き換えられます。",
-      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\""
+      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\"",
+      "fetchModels": "テストしてモデルを取得",
+      "fetchModelsNeedsKey": "先に API キーとエンドポイントを入力してください"
     },
     "authModeOfficialSubscription": "公式サブスクリプション",
     "authModeCustomEndpoint": "カスタムエンドポイント",
@@ -1600,11 +1625,15 @@
       "providerIdPattern": "Provider ID は英字・数字・アンダースコア・ドット・ハイフンのみ使用できます",
       "providerExists": "Provider {providerId} はすでに存在します",
       "modelIdPattern": "Model ID は英字・数字・アンダースコア・ドット・コロン・ハイフンのみ使用できます",
-      "modelExists": "Model {modelId} はすでに存在します"
+      "modelExists": "Model {modelId} はすでに存在します",
+      "openCodeAuthMustBeObject": "OpenCode の auth.json はJSONオブジェクトである必要があります",
+      "openCodeAuthInvalid": "OpenCode の auth.json 形式エラー: {message}"
     },
     "warnings": {
       "nativeJsonRecoveredStructured": "ネイティブJSON設定が不正のため、構造化設定にリセットしました",
-      "authRecoveredStructured": "auth.json が不正のため、構造化設定にリセットしました"
+      "authRecoveredStructured": "auth.json が不正のため、構造化設定にリセットしました",
+      "nativeJsonRecoveredOpenCode": "ネイティブJSON設定が不正のため、OpenCode構造化設定にリセットしました",
+      "openCodeAuthRecovered": "OpenCode の auth.json が不正のため、デフォルト設定にリセットしました"
     },
     "toasts": {
       "agentActionCompleted": "{name} の {action} が完了しました",
@@ -1741,7 +1770,20 @@
       "remove": "削除",
       "refresh": "更新",
       "loadFailed": "OpenCode の設定を読み込めませんでした：{message}",
-      "updateFailed": "OpenCode の設定を更新できませんでした：{message}"
+      "updateFailed": "OpenCode の設定を更新できませんでした：{message}",
+      "status": {
+        "installed": "インストール済み",
+        "needs_migration": "移行が必要",
+        "missing": "未インストール",
+        "path": "パスプラグイン",
+        "path_missing": "パスが見つかりません"
+      },
+      "installAll": "不足プラグインをすべてインストール",
+      "pinVersions": "@latest バージョンを固定",
+      "install": "インストール",
+      "uninstall": "アンインストール",
+      "success": "すべてのプラグインが正常にインストールされました",
+      "failed": "プラグイン操作に失敗しました"
     },
     "pi": {
       "configManagement": "Pi 設定",
@@ -3497,7 +3539,8 @@
         "mentionGroupSession": "セッション",
         "mentionGroupCommit": "コミット",
         "mentionGroupSkill": "スキル",
-        "mentionGroupAssistant": "アシスタント"
+        "mentionGroupAssistant": "アシスタント",
+        "hermesRoleLabel": "ロール"
       },
       "messageQueue": {
         "addToQueue": "キューに追加",
@@ -3633,7 +3676,8 @@
         "noEnabledAgents": "有効なエージェントがありません",
         "openAgentsSettings": "エージェント設定を開く",
         "notInstalled": "未インストール",
-        "moreAgents": "他のエージェント（{count}）"
+        "moreAgents": "他のエージェント（{count}）",
+        "openMenu": "エージェント"
       },
       "subAgentOverlay": {
         "title": "サブエージェント",
@@ -3777,14 +3821,22 @@
         "jumpToPreviousUserMessage": "前のユーザーメッセージへ",
         "showMore": "もっと見る",
         "showLess": "折りたたむ",
-        "resizeWidth": "ドラッグでチャット幅を調整 · ダブルクリックで元に戻す"
+        "resizeWidth": "ドラッグでチャット幅を調整 · ダブルクリックで元に戻す",
+        "attachedResources": "添付リソース",
+        "error": "エラー: {message}",
+        "duration": "所要時間",
+        "worked": "作業完了",
+        "workedFor": "{duration} 作業しました",
+        "working": "作業中..."
       },
       "liveTurnStats": {
         "elapsedHours": "{value}時間",
         "elapsedMinutes": "{value}分",
         "elapsedSeconds": "{value}秒",
         "outputSpeedAria": "推定出力速度",
-        "outputSpeedTooltip": "推定出力速度（テキスト + 思考）"
+        "outputSpeedTooltip": "推定出力速度（テキスト + 思考）",
+        "thinking": "考え中...",
+        "streaming": "ストリーミング中"
       },
       "jsonTree": {
         "viewRaw": "生の JSON を表示",
@@ -3797,8 +3849,14 @@
           "inputAvailable": "実行中",
           "inputStreaming": "保留中",
           "outputAvailable": "完了",
-          "outputError": "エラー"
-        }
+          "outputError": "エラー",
+          "approvalRequested": "承認待ち",
+          "approvalResponded": "応答済み",
+          "outputDenied": "拒否"
+        },
+        "parameters": "パラメーター",
+        "error": "エラー",
+        "result": "結果"
       },
       "delegation": {
         "unknownAgent": "サブエージェント",
@@ -3844,7 +3902,10 @@
           }
         },
         "unknownAssistant": "アシスタント #{id}",
-        "deletedAssistant": "（削除済み）"
+        "deletedAssistant": "（削除済み）",
+        "subAgentRunning": "サブエージェント実行中…",
+        "noDetail": "No detail available yet.",
+        "resumeDetail": "再開の詳細"
       },
       "contentParts": {
         "offset": "オフセット: {offset}",
@@ -3885,7 +3946,8 @@
             "budgetLimited": "予算制限",
             "complete": "完了",
             "limited": "上限到達"
-          }
+          },
+          "titleWithStatus": "目標 {status}"
         },
         "search": {
           "noMatches": "一致する結果なし",
@@ -3904,7 +3966,15 @@
         "backgroundTask": {
           "polledTimes": "{count} 回ポーリング",
           "launchNote": "バックグラウンドで実行中 · {id}",
-          "monitorNote": "バックグラウンドで監視中 · {id}"
+          "monitorNote": "バックグラウンドで監視中 · {id}",
+          "title": "バックグラウンドタスク",
+          "titleWithId": "バックグラウンドタスク · {id}",
+          "running": "実行中",
+          "completed": "完了",
+          "failed": "失敗",
+          "stopped": "停止しました",
+          "exitCode": "終了コード {code}",
+          "runningInBackground": "バックグラウンド"
         },
         "codexScript": {
           "outputMissing": "codex がスクリプト出力を切り詰めた際にこのコマンドの区切り行が失われたため、出力を割り当てられませんでした。",
@@ -3925,7 +3995,119 @@
         "visualizeFrameTitle": "Codex ビジュアライゼーション",
         "htmlPreviewOpen": "プレビュー",
         "htmlPreviewOpenAria": "{name} をプレビュー",
-        "htmlPreviewHide": "プレビューを閉じる"
+        "htmlPreviewHide": "プレビューを閉じる",
+        "showingTailOutput": "パフォーマンスのため、ストリーミング中は末尾出力を表示しています。",
+        "result": "結果",
+        "unknown": "不明",
+        "inputTruncated": "入力が切り詰められました — diff が不完全な可能性があります。",
+        "replaceAll": "すべて置換",
+        "filesCount": "ファイル: {count}",
+        "update": "更新",
+        "moreFiles": "+{count} 件の追加ファイル",
+        "timeoutMs": "タイムアウト: {timeout}ms",
+        "backgroundTrue": "バックグラウンド: true",
+        "scriptToolCalls": "{count} 個のツールを呼び出し",
+        "limit": "上限: {limit}",
+        "mode": "モード: {mode}",
+        "cell": "セル: {cell}",
+        "pathLabel": "パス:",
+        "globLabel": "Glob パターン:",
+        "typeLabel": "タイプ:",
+        "outputLabel": "出力:",
+        "caseInsensitive": "大文字小文字を区別しない",
+        "multiline": "複数行",
+        "promptLabel": "プロンプト",
+        "subjectLabel": "件名",
+        "taskLabel": "タスク",
+        "nameLabel": "名前:",
+        "agentRunning": "実行中...",
+        "agentLiveTranscript": "ライブアクティビティ",
+        "agentProcessCount": "サブエージェントのアクティビティ · {count} ステップ",
+        "agentProcessDuration": "サブエージェントのアクティビティ · {duration}",
+        "agentSubagentDone": "完了",
+        "agentSubagentInterrupted": "中断",
+        "agentSubagentUnknown": "結果不明",
+        "agentStatsBash": "コマンド",
+        "agentStatsRead": "ファイル読取",
+        "agentStatsSearch": "検索",
+        "agentStatsEdit": "編集",
+        "agentStatsOther": "その他",
+        "field": {
+          "file": "ファイル",
+          "notebook": "ノートブック",
+          "command": "コマンド",
+          "old": "旧",
+          "new": "新",
+          "pattern": "パターン",
+          "path": "パス",
+          "query": "クエリ",
+          "url": "URL:",
+          "description": "説明",
+          "content": "内容",
+          "source": "ソース",
+          "prompt": "プロンプト",
+          "subject": "件名",
+          "taskId": "タスク ID",
+          "status": "状態",
+          "skill": "Skill",
+          "args": "引数",
+          "offset": "オフセット",
+          "limit": "上限",
+          "glob": "Glob パターン",
+          "type": "タイプ",
+          "output": "出力",
+          "replaceAll": "すべて置換",
+          "language": "言語",
+          "timeout": "タイムアウト",
+          "background": "バックグラウンド",
+          "agentType": "エージェント種別",
+          "library": "ライブラリ",
+          "libraryId": "ライブラリ ID"
+        },
+        "title": {
+          "edit": "編集",
+          "command": "コマンド",
+          "script": "スクリプト",
+          "waitCommand": "待機 {command}",
+          "waitCell": "セッション {id} を待機",
+          "terminateCommand": "停止 {command}",
+          "terminateCell": "セッション {id} を停止",
+          "stdinChars": "入力 {chars}",
+          "todoWrite": "TodoWrite（タスク更新）",
+          "read": "読み取り",
+          "write": "書き込み",
+          "notebookEdit": "NotebookEdit（ノート編集）",
+          "editFiles": "編集 ({count} 件のファイル)",
+          "editWithTarget": "{target} を編集",
+          "readWithTarget": "{target} を読み取り",
+          "writeWithTarget": "{target} に書き込み",
+          "notebookEditWithTarget": "NotebookEdit（{target}）",
+          "globWithPattern": "Glob パターン {pattern}",
+          "listFilesWithPath": "ファイル一覧 {path}",
+          "grepWithPattern": "Grep パターン {pattern}",
+          "taskCreateWithSubject": "タスク作成: {subject}",
+          "taskUpdateWithStatus": "タスク更新 #{id} -> {status}",
+          "taskUpdate": "タスク更新 #{id}",
+          "webFetchWithUrl": "WebFetch（{url}）",
+          "webSearchWithQuery": "WebSearch（{query}）",
+          "todosProgress": "タスク ({done}/{total})",
+          "skillWithName": "Skill: {name}",
+          "genericWithContext": "{tool}（{context}）"
+        },
+        "toolGroup": {
+          "search": "{count} 件を検索",
+          "command": "{count} 件のコマンドを実行",
+          "read": "ファイルを {count} 回読み取り",
+          "memory": "{count} 件の記憶を呼び出し",
+          "edit": "ファイルを {count} 回編集",
+          "fetch": "{count} 件のリソースを取得",
+          "think": "{count} 回思考",
+          "todo": "{count} 件の TODO を更新",
+          "task": "{count} 件のタスクを実行",
+          "other": "{count} 件のツールを使用",
+          "errorSuffix": "{count} 件失敗",
+          "joiner": " · "
+        }
       },
       "activity": {
         "header": {
@@ -4102,7 +4284,15 @@
         "openFile": "{filePath} を開く",
         "collapse": "折りたたむ",
         "currentMessage": "現在のメッセージ",
-        "scrollToCurrent": "現在のメッセージ（#{ordinal}）へスクロール"
+        "scrollToCurrent": "現在のメッセージ（#{ordinal}）へスクロール",
+        "collapsedSummary": "メッセージ {count}",
+        "remove": "削除",
+        "noDiffDataAvailable": "{filePath} の差分データがありません",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "変更されたファイル",
@@ -4142,7 +4332,9 @@
       },
       "feedbackCheckResult": {
         "count": "フィードバック {count} 件",
-        "errorTitle": "フィードバックの確認に失敗しました"
+        "errorTitle": "フィードバックの確認に失敗しました",
+        "expand": "すべてのフィードバックを表示",
+        "collapse": "折りたたむ"
       },
       "codegMcpTool": {
         "getSessionInfo": "セッション {session} を読み取り中",
@@ -4220,7 +4412,16 @@
         "opWait": "サブエージェントの結果を取得中",
         "opClose": "サブエージェントを終了中",
         "opResume": "サブエージェントを再開中",
-        "opList": "サブエージェント一覧"
+        "opList": "サブエージェント一覧",
+        "errorTitle": "サブエージェントのタスクが失敗しました",
+        "statesLabel": "サブエージェント",
+        "statusRunning": "実行中",
+        "statusCompleted": "完了",
+        "statusFailed": "失敗",
+        "statusPending": "起動中",
+        "statusInterrupted": "中断",
+        "statusClosed": "終了",
+        "statusNotFound": "見つかりません"
       },
       "contextCompaction": {
         "compacting": "コンテキストを圧縮しています…",
@@ -4289,6 +4490,40 @@
       "proposedPlan": {
         "title": "提案された計画",
         "planning": "計画中…"
+      },
+      "terminal": {
+        "title": "ターミナル",
+        "running": "実行中"
+      },
+      "reasoning": {
+        "thinking": "考え中…",
+        "thoughtForFewSeconds": "考えた",
+        "thoughtForSeconds": "考えた"
+      },
+      "toolCallBlock": {
+        "tool": "ツール",
+        "error": "エラー",
+        "result": "結果"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4350,6 +4585,37 @@
     },
     "toasts": {
       "cloneFailed": "リポジトリのクローンに失敗しました"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "{agent} に引き継ぐ",
+      "currentSession": "このセッション"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -6677,7 +6943,8 @@
         "config_changed": "保存中に Codex の設定が別の場所で変更されました。もう一度お試しください。",
         "database": "設定を読み込めませんでした：{message}"
       }
-    }
+    },
+    "officialsTitle": "公式モデル"
   },
   "ProviderModels": {
     "fetch": "モデル一覧を取得",
@@ -7356,7 +7623,20 @@
     "moveRunningBlocked": "実行中の会話は移動できません。先にエージェントを停止してください",
     "hideProjectFromShelf": "このプロジェクトをシェルフから外す",
     "addToShelf": "この会話をシェルフに追加",
-    "showShelfConversations": "シェルフの会話"
+    "showShelfConversations": "シェルフの会話",
+    "scrollToTop": "一番上へ",
+    "scrollToBottom": "一番下へ",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7660,6 +7940,21 @@
         "bypassed": "このコンピューターのブラウザーエンジンは一部のアドレスをトンネルを通さずに送るため、このコンピューターから読み込まないよう、リモートホストのページは開きません。",
         "probeFailed": "内蔵ブラウザーがトンネル経由でリモートホストに届くことを確認できませんでした。しばらくしてからもう一度お試しください。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

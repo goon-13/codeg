@@ -1238,7 +1238,12 @@
       "loginSaveFailed": "登录成功但配置保存失败",
       "apiUrlLabel": "API 地址",
       "apiKeyLabel": "API Key",
-      "managedKeysHint": "codeg 发布模型列表期间，这里的 model_catalog_json 和根键 model 由 codeg 管理，请在上面的模型列表里修改。"
+      "managedKeysHint": "codeg 发布模型列表期间，这里的 model_catalog_json 和根键 model 由 codeg 管理，请在上面的模型列表里修改。",
+      "enableSkills": "启用 Skills",
+      "enableSkillsAria": "Codex 启用 Skills",
+      "enableFast": "启用 Fast",
+      "enableFastAria": "Codex 启用 Fast 服务等级",
+      "approvalPolicyUntrustedAcpWarning": "ACP 适配器只有三种审批预设，untrusted 无对应项，codeg 会话会退回「按需询问」——此时由模型自行决定何时询问，沙箱本就允许的命令不再询问。请改用下方的沙箱模式收紧。"
     },
     "gemini": {
       "authConfig": "Gemini 认证配置",
@@ -1320,7 +1325,9 @@
         "action": "连接",
         "editTitle": "编辑 Provider",
         "editDescription": "替换此供应商的 API 密钥，或修改其 Base URL。",
-        "saveAction": "保存"
+        "saveAction": "保存",
+        "catalogLabel": "models.dev 目录",
+        "oauthApiKeyNote": "该 Provider 也支持通过 opencode auth login 浏览器登录。浏览器登录即将推出——目前请粘贴 API Key。"
       },
       "customProvider": {
         "title": "添加自定义 Provider",
@@ -1378,8 +1385,14 @@
           "webfetch": "获取 URL，按 URL 匹配",
           "websearch": "搜索网络，按搜索词匹配",
           "todowrite": "写入待办列表（需开启待办列表工具）",
-          "question": "向你提问"
-        }
+          "question": "向你提问",
+          "bash": "运行 shell 命令，按解析后的命令匹配",
+          "task": "启动子代理，按子代理类型匹配",
+          "list": "列出目录内容",
+          "lsp": "运行 LSP 查询",
+          "doom_loop": "同一调用以相同输入重复 3 次时触发"
+        },
+        "legacyTools": "顶层的旧版 tools 配置禁用了某个工具。OpenCode 会把它并入权限，因此它会叠加在此处显示的全部设置之上。请在下方原生 JSON 中修改，或开启「自动接受所有权限」将其清除。"
       },
       "behavior": {
         "title": "行为与压缩",
@@ -1408,16 +1421,26 @@
           "preserveRecentTokens": "保留原文的 token 数",
           "reserved": "预留 token",
           "maxLines": "工具输出行数上限",
-          "maxBytes": "工具输出字节上限"
+          "maxBytes": "工具输出字节上限",
+          "tailTurns": "保留原文的轮数"
         },
         "hints": {
           "subagentDepth": "子智能体最多可以嵌套几层（experimental.subagent_depth）。填 1 表示子智能体不能再启动子智能体。",
           "preserveRecentTokens": "压缩后仍按原文保留的最近对话 token 预算（compaction.keep.tokens）。默认 15000。",
           "reserved": "为压缩本身预留的窗口，避免压缩过程撑爆上下文（compaction.buffer）。不填则预留窗口的 15%，至少 16K。",
           "maxLines": "超过该行数的输出会落盘，只在会话里留一段预览。默认 2000。",
-          "maxBytes": "超过该字节数的输出会落盘，只在会话里留一段预览。默认 51200。"
-        }
-      }
+          "maxBytes": "超过该字节数的输出会落盘，只在会话里留一段预览。默认 51200。",
+          "tailTurns": "最近多少轮用户对话不参与压缩。留空表示只受下面的 token 预算约束。"
+        },
+        "share": "会话分享",
+        "shareHint": "会话是否可以发布成分享链接。",
+        "shareManual": "手动（需要时才分享）",
+        "shareAuto": "自动（每个新会话都分享）",
+        "shareDisabled": "禁用",
+        "compactionPrune": "裁剪旧工具输出",
+        "compactionPruneHint": "压缩时直接丢弃较早工具调用的输出，而不是把它们总结进去。"
+      },
+      "addProvider": "新增 Provider"
     },
     "openClaw": {
       "gatewayConfig": "Gateway 配置",
@@ -1543,7 +1566,9 @@
       "authTypeHint": "API Key 在 config.toml 中的写入位置。",
       "rawEditorLabel": "直接编辑 config.toml",
       "rawEditorWarning": "在此保存会按原文覆盖整个文件，替换掉上方的结构化配置。",
-      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\""
+      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\"",
+      "fetchModels": "测试并获取模型",
+      "fetchModelsNeedsKey": "请先填写 API Key 和接入点"
     },
     "authModeOfficialSubscription": "官网订阅",
     "authModeCustomEndpoint": "自定义接口",
@@ -1600,11 +1625,15 @@
       "providerIdPattern": "Provider ID 仅支持字母、数字、下划线、点与中划线",
       "providerExists": "Provider {providerId} 已存在",
       "modelIdPattern": "模型 ID 仅支持字母、数字、下划线、点、冒号与中划线",
-      "modelExists": "Model {modelId} 已存在"
+      "modelExists": "Model {modelId} 已存在",
+      "openCodeAuthMustBeObject": "OpenCode auth.json 必须是 JSON 对象",
+      "openCodeAuthInvalid": "OpenCode auth.json 格式错误：{message}"
     },
     "warnings": {
       "nativeJsonRecoveredStructured": "原生 JSON 配置格式无效，已重置为结构化配置",
-      "authRecoveredStructured": "auth.json 格式无效，已重置为结构化配置"
+      "authRecoveredStructured": "auth.json 格式无效，已重置为结构化配置",
+      "nativeJsonRecoveredOpenCode": "原生 JSON 配置格式无效，已重置为 OpenCode 结构化配置",
+      "openCodeAuthRecovered": "OpenCode auth.json 格式无效，已重置为默认配置"
     },
     "toasts": {
       "agentActionCompleted": "{name}{action}完成",
@@ -1741,7 +1770,20 @@
       "remove": "移除",
       "refresh": "刷新",
       "loadFailed": "无法读取 OpenCode 配置：{message}",
-      "updateFailed": "无法更新 OpenCode 配置：{message}"
+      "updateFailed": "无法更新 OpenCode 配置：{message}",
+      "status": {
+        "installed": "已安装",
+        "needs_migration": "需要迁移",
+        "missing": "未安装",
+        "path": "路径插件",
+        "path_missing": "路径不存在"
+      },
+      "installAll": "安装全部缺失插件",
+      "pinVersions": "固定 @latest 版本",
+      "install": "安装",
+      "uninstall": "卸载",
+      "success": "所有插件安装成功",
+      "failed": "插件操作失败"
     },
     "pi": {
       "configManagement": "Pi 配置",
@@ -3497,7 +3539,8 @@
         "mentionGroupSession": "会话",
         "mentionGroupCommit": "提交",
         "mentionGroupSkill": "技能",
-        "mentionGroupAssistant": "助手"
+        "mentionGroupAssistant": "助手",
+        "hermesRoleLabel": "角色"
       },
       "messageQueue": {
         "addToQueue": "加入队列",
@@ -3633,7 +3676,8 @@
         "noEnabledAgents": "暂无已启用的 Agent",
         "openAgentsSettings": "打开 Agents 设置",
         "notInstalled": "未安装",
-        "moreAgents": "更多 Agent（{count}）"
+        "moreAgents": "更多 Agent（{count}）",
+        "openMenu": "选择 Agent"
       },
       "subAgentOverlay": {
         "title": "子智能体",
@@ -3777,14 +3821,22 @@
         "jumpToPreviousUserMessage": "跳转到上一条用户消息",
         "showMore": "展开",
         "showLess": "收起",
-        "resizeWidth": "拖动调整聊天区域宽度 · 双击恢复默认"
+        "resizeWidth": "拖动调整聊天区域宽度 · 双击恢复默认",
+        "attachedResources": "附加资源",
+        "error": "错误：{message}",
+        "duration": "耗时",
+        "worked": "工作已结束",
+        "workedFor": "工作了 {duration}",
+        "working": "正在工作中..."
       },
       "liveTurnStats": {
         "elapsedHours": "{value} 小时",
         "elapsedMinutes": "{value} 分钟",
         "elapsedSeconds": "{value} 秒",
         "outputSpeedAria": "估算输出速度",
-        "outputSpeedTooltip": "估算输出速度（正文 + 思考）"
+        "outputSpeedTooltip": "估算输出速度（正文 + 思考）",
+        "thinking": "思考中...",
+        "streaming": "生成中"
       },
       "jsonTree": {
         "viewRaw": "查看原始 JSON",
@@ -3797,8 +3849,14 @@
           "inputAvailable": "运行中",
           "inputStreaming": "等待中",
           "outputAvailable": "已完成",
-          "outputError": "错误"
-        }
+          "outputError": "错误",
+          "approvalRequested": "等待授权",
+          "approvalResponded": "已响应",
+          "outputDenied": "已拒绝"
+        },
+        "parameters": "参数",
+        "error": "错误",
+        "result": "结果"
       },
       "delegation": {
         "unknownAgent": "子智能体",
@@ -3844,7 +3902,10 @@
           }
         },
         "unknownAssistant": "助手 #{id}",
-        "deletedAssistant": "（已删除）"
+        "deletedAssistant": "（已删除）",
+        "subAgentRunning": "子智能体运行中…",
+        "noDetail": "暂无详情。",
+        "resumeDetail": "恢复详情"
       },
       "contentParts": {
         "offset": "偏移：{offset}",
@@ -3885,7 +3946,8 @@
             "budgetLimited": "预算受限",
             "complete": "已完成",
             "limited": "已达上限"
-          }
+          },
+          "titleWithStatus": "目标{status}"
         },
         "search": {
           "noMatches": "无匹配结果",
@@ -3904,7 +3966,15 @@
         "backgroundTask": {
           "polledTimes": "轮询 {count} 次",
           "launchNote": "已在后台运行 · {id}",
-          "monitorNote": "已在后台监视 · {id}"
+          "monitorNote": "已在后台监视 · {id}",
+          "title": "后台任务",
+          "titleWithId": "后台任务 · {id}",
+          "running": "运行中",
+          "completed": "已完成",
+          "failed": "失败",
+          "stopped": "已停止",
+          "exitCode": "退出码 {code}",
+          "runningInBackground": "后台运行"
         },
         "codexScript": {
           "outputMissing": "codex 截断脚本输出时丢掉了这条命令的分隔行，因此没有输出可以归属给它。",
@@ -3925,7 +3995,119 @@
         "visualizeFrameTitle": "Codex 可视化",
         "htmlPreviewOpen": "预览",
         "htmlPreviewOpenAria": "预览 {name}",
-        "htmlPreviewHide": "收起预览"
+        "htmlPreviewHide": "收起预览",
+        "showingTailOutput": "为保证性能，流式输出时仅显示尾部内容。",
+        "result": "结果",
+        "unknown": "未知",
+        "inputTruncated": "输入已截断，diff 可能不完整。",
+        "replaceAll": "全部替换",
+        "filesCount": "文件：{count}",
+        "update": "更新",
+        "moreFiles": "+{count} 个更多文件",
+        "timeoutMs": "超时：{timeout}ms",
+        "backgroundTrue": "后台：true",
+        "scriptToolCalls": "调用 {count} 个工具",
+        "limit": "限制：{limit}",
+        "mode": "模式：{mode}",
+        "cell": "单元：{cell}",
+        "pathLabel": "路径：",
+        "globLabel": "Glob：",
+        "typeLabel": "类型：",
+        "outputLabel": "输出：",
+        "caseInsensitive": "忽略大小写",
+        "multiline": "多行",
+        "promptLabel": "提示词",
+        "subjectLabel": "主题",
+        "taskLabel": "任务",
+        "nameLabel": "名称：",
+        "agentRunning": "运行中...",
+        "agentLiveTranscript": "实时活动",
+        "agentProcessCount": "子智能体活动 · {count} 步",
+        "agentProcessDuration": "子智能体活动 · {duration}",
+        "agentSubagentDone": "已完成",
+        "agentSubagentInterrupted": "已中断",
+        "agentSubagentUnknown": "结果未知",
+        "agentStatsBash": "命令",
+        "agentStatsRead": "读取文件",
+        "agentStatsSearch": "搜索",
+        "agentStatsEdit": "编辑",
+        "agentStatsOther": "其他",
+        "field": {
+          "file": "文件",
+          "notebook": "笔记本",
+          "command": "命令",
+          "old": "旧内容",
+          "new": "新内容",
+          "pattern": "模式",
+          "path": "路径",
+          "query": "查询",
+          "url": "URL地址",
+          "description": "描述",
+          "content": "内容",
+          "source": "源内容",
+          "prompt": "提示词",
+          "subject": "主题",
+          "taskId": "任务 ID",
+          "status": "状态",
+          "skill": "Skill",
+          "args": "参数",
+          "offset": "偏移",
+          "limit": "限制",
+          "glob": "Glob",
+          "type": "类型",
+          "output": "输出",
+          "replaceAll": "全部替换",
+          "language": "语言",
+          "timeout": "超时",
+          "background": "后台",
+          "agentType": "Agent 类型",
+          "library": "库",
+          "libraryId": "库 ID"
+        },
+        "title": {
+          "edit": "编辑",
+          "command": "命令",
+          "script": "脚本",
+          "waitCommand": "等待 {command}",
+          "waitCell": "等待会话 {id}",
+          "terminateCommand": "终止 {command}",
+          "terminateCell": "终止会话 {id}",
+          "stdinChars": "输入 {chars}",
+          "todoWrite": "待办",
+          "read": "读取",
+          "write": "写入",
+          "notebookEdit": "Notebook 编辑",
+          "editFiles": "编辑（{count} 个文件）",
+          "editWithTarget": "编辑 {target}",
+          "readWithTarget": "读取 {target}",
+          "writeWithTarget": "写入 {target}",
+          "notebookEditWithTarget": "Notebook 编辑 {target}",
+          "globWithPattern": "Glob {pattern}",
+          "listFilesWithPath": "列出文件 {path}",
+          "grepWithPattern": "Grep {pattern}",
+          "taskCreateWithSubject": "创建任务：{subject}",
+          "taskUpdateWithStatus": "更新任务 #{id} -> {status}",
+          "taskUpdate": "更新任务 #{id}",
+          "webFetchWithUrl": "抓取网页 {url}",
+          "webSearchWithQuery": "网页搜索：{query}",
+          "todosProgress": "待办（{done}/{total}）",
+          "skillWithName": "Skill：{name}",
+          "genericWithContext": "{tool}：{context}"
+        },
+        "toolGroup": {
+          "search": "搜索 {count} 次",
+          "command": "运行 {count} 个命令",
+          "read": "读取 {count} 次文件",
+          "memory": "回忆 {count} 项记忆",
+          "edit": "编辑 {count} 次文件",
+          "fetch": "抓取 {count} 个资源",
+          "think": "思考 {count} 次",
+          "todo": "更新 {count} 项待办",
+          "task": "执行 {count} 个任务",
+          "other": "调用 {count} 个工具",
+          "errorSuffix": "{count} 个失败",
+          "joiner": " · "
+        }
       },
       "activity": {
         "header": {
@@ -4102,7 +4284,15 @@
         "openFile": "打开 {filePath}",
         "collapse": "收起",
         "currentMessage": "当前消息",
-        "scrollToCurrent": "滚动到当前消息（#{ordinal}）"
+        "scrollToCurrent": "滚动到当前消息（#{ordinal}）",
+        "collapsedSummary": "消息 {count}",
+        "remove": "移除",
+        "noDiffDataAvailable": "未找到 {filePath} 的差异数据",
+        "tickRail": "用户句刻度",
+        "jumpTo": "跳到第 {n} 句：{label}",
+        "openDirectory": "全部 {count} 句",
+        "filterPlaceholder": "过滤用户句",
+        "filterAria": "按原文过滤用户句"
       },
       "replyArtifacts": {
         "title": "改动文件",
@@ -4142,7 +4332,9 @@
       },
       "feedbackCheckResult": {
         "count": "{count} 条反馈",
-        "errorTitle": "反馈检查失败"
+        "errorTitle": "反馈检查失败",
+        "expand": "展开全部反馈",
+        "collapse": "收起"
       },
       "codegMcpTool": {
         "getSessionInfo": "读取会话 {session}",
@@ -4220,7 +4412,16 @@
         "opWait": "获取子智能体结果",
         "opClose": "结束子智能体",
         "opResume": "恢复子智能体",
-        "opList": "查看子智能体"
+        "opList": "查看子智能体",
+        "errorTitle": "子智能体任务失败",
+        "statesLabel": "子智能体",
+        "statusRunning": "运行中",
+        "statusCompleted": "已完成",
+        "statusFailed": "失败",
+        "statusPending": "初始化中",
+        "statusInterrupted": "已中断",
+        "statusClosed": "已关闭",
+        "statusNotFound": "未找到"
       },
       "contextCompaction": {
         "compacting": "正在压缩上下文…",
@@ -4289,6 +4490,40 @@
       "proposedPlan": {
         "title": "计划提案",
         "planning": "规划中…"
+      },
+      "terminal": {
+        "title": "终端",
+        "running": "运行中"
+      },
+      "reasoning": {
+        "thinking": "思考中…",
+        "thoughtForFewSeconds": "思考",
+        "thoughtForSeconds": "思考"
+      },
+      "toolCallBlock": {
+        "tool": "工具",
+        "error": "错误",
+        "result": "结果"
+      },
+      "sessionDashboard": {
+        "stripAria": "活动时间线",
+        "barAria": "上下文窗口",
+        "legendRead": "读取",
+        "legendWrite": "写入",
+        "legendSearch": "搜索",
+        "legendCommand": "命令",
+        "legendFetch": "网络",
+        "legendThink": "思考",
+        "legendTodo": "待办",
+        "legendTask": "任务",
+        "legendError": "错误",
+        "legendText": "文本",
+        "legendOther": "其它",
+        "peekJumpUser": "去你的话",
+        "peekJumpReply": "看回复",
+        "stickyAria": "当前回合",
+        "toolsToggle": "工具输出",
+        "thinkingToggle": "思考"
       }
     },
     "diffPreview": {
@@ -4350,6 +4585,37 @@
     },
     "toasts": {
       "cloneFailed": "克隆仓库失败"
+    },
+    "cluster": {
+      "rename": "重命名主题",
+      "renameTitle": "重命名主题",
+      "dissolve": "解散主题",
+      "dissolveTitle": "解散这个主题？",
+      "dissolveDescription": "「{title}」会拆成平铺的会话，会话本身不删。",
+      "leave": "移出主题",
+      "untitled": "主题",
+      "memberCount": "{count}",
+      "expand": "展开主题",
+      "collapse": "收起主题",
+      "cancel": "取消",
+      "save": "保存"
+    },
+    "handoff": {
+      "dockLabel": "用另一 agent 接力",
+      "goalTitle": "用 {agent} 接力",
+      "goalPlaceholder": "下一刀要做什么",
+      "emptyGoal": "先写下一刀目标。",
+      "confirm": "接力",
+      "cancel": "取消",
+      "handoffTo": "接到 {agent}",
+      "currentSession": "当前会话"
+    },
+    "side": {
+      "tag": "旁问",
+      "errors": {
+        "notRegular": "源不是普通会话",
+        "notFound": "找不到会话"
+      }
     }
   },
   "ProjectBoot": {
@@ -6677,7 +6943,8 @@
         "config_changed": "保存期间 Codex 配置被别处修改了，请重试。",
         "database": "读取设置失败：{message}"
       }
-    }
+    },
+    "officialsTitle": "官方模型"
   },
   "ProviderModels": {
     "fetch": "获取模型列表",
@@ -7356,7 +7623,20 @@
     "moveRunningBlocked": "进行中的会话不可移动，请先停止智能体",
     "hideProjectFromShelf": "从货架拿掉此项目",
     "addToShelf": "将此会话放到货架",
-    "showShelfConversations": "货架会话"
+    "showShelfConversations": "货架会话",
+    "scrollToTop": "回到最上",
+    "scrollToBottom": "回到最下",
+    "shelfOutline": "货架",
+    "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
+    "shelfOutlineShort": "目录 {projects}·{sessions}",
+    "shelfOutlineTitle": "编辑货架",
+    "shelfOutlineEmpty": "没有匹配的项目或会话",
+    "shelfMoveUp": "上移",
+    "shelfMoveDown": "下移",
+    "shelfSessionRail": "会话",
+    "shelfSessionRailExpand": "展开会话树",
+    "shelfSessionRailCollapse": "收起会话树",
+    "shelfBackToSource": "回本线"
   },
   "Browser": {
     "toolbar": {
@@ -7660,6 +7940,21 @@
         "bypassed": "这台电脑的浏览器引擎会让部分地址绕过隧道，为避免从这台电脑加载，远端主机的页面不会打开。",
         "probeFailed": "内置浏览器无法确认它能通过隧道访问远端主机。请稍后重试。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "主题名不能空",
+      "notRegular": "只有项目会话能进主题",
+      "sameAgent": "请选另一个 agent",
+      "folderMismatch": "这个主题属于另一个文件夹",
+      "notFound": "主题已经不在了"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "源不是普通会话",
+      "notFound": "找不到会话"
     }
   }
 }

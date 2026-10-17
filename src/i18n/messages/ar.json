@@ -1238,7 +1238,12 @@
       "loginSaveFailed": "تم تسجيل الدخول بنجاح ولكن فشل حفظ الإعدادات",
       "apiUrlLabel": "عنوان API",
       "apiKeyLabel": "مفتاح API",
-      "managedKeysHint": "ما دام codeg ينشر قائمة النماذج فهو يدير هنا model_catalog_json و«model» في الجذر — غيّرهما من قائمة النماذج أعلاه."
+      "managedKeysHint": "ما دام codeg ينشر قائمة النماذج فهو يدير هنا model_catalog_json و«model» في الجذر — غيّرهما من قائمة النماذج أعلاه.",
+      "enableSkills": "تفعيل Skills",
+      "enableSkillsAria": "تفعيل Skills لـ Codex",
+      "enableFast": "تفعيل Fast",
+      "enableFastAria": "تفعيل مستوى خدمة Fast لـ Codex",
+      "approvalPolicyUntrustedAcpWarning": "لا يوجد مكافئ لـ untrusted بين إعدادات الموافقة الثلاثة في محوّل ACP، لذا تعود جلسات codeg إلى «عند الطلب»: يقرّر النموذج حينها متى يسأل، وتتوقف الأوامر التي تسمح بها البيئة المعزولة أصلاً عن طلب التأكيد. قيّد وضع العزل أدناه بدلاً من ذلك."
     },
     "gemini": {
       "authConfig": "إعداد مصادقة Gemini",
@@ -1320,7 +1325,9 @@
         "action": "ربط",
         "editTitle": "تعديل المزود",
         "editDescription": "استبدل مفتاح API لهذا المزوّد أو غيّر عنوان URL الأساسي له.",
-        "saveAction": "حفظ"
+        "saveAction": "حفظ",
+        "catalogLabel": "كتالوج models.dev",
+        "oauthApiKeyNote": "يدعم هذا المزود أيضًا تسجيل الدخول عبر المتصفح باستخدام opencode auth login. سيتوفر تسجيل الدخول عبر المتصفح قريبًا — في الوقت الحالي، الصق مفتاح API."
       },
       "customProvider": {
         "title": "إضافة مزود مخصص",
@@ -1378,8 +1385,14 @@
           "webfetch": "جلب URL، يُطابق حسب العنوان",
           "websearch": "البحث في الويب، يُطابق حسب الاستعلام",
           "todowrite": "كتابة قائمة المهام (مع تشغيل أداة قائمة المهام)",
-          "question": "طرح سؤال عليك"
-        }
+          "question": "طرح سؤال عليك",
+          "bash": "تشغيل أوامر الصدفة، بمطابقة الأمر بعد تحليله",
+          "task": "تشغيل الوكلاء الفرعيين، بمطابقة نوع الوكيل الفرعي",
+          "list": "سرد محتويات المجلد",
+          "lsp": "تشغيل استعلامات LSP",
+          "doom_loop": "يُفعَّل عند تكرار الاستدعاء نفسه ثلاث مرات بالمدخلات نفسها"
+        },
+        "legacyTools": "خريطة tools القديمة في المستوى الأعلى ترفض إحدى الأدوات. يدمجها OpenCode ضمن الأذونات، لذا تُطبَّق فوق كل ما يظهر هنا. عدّلها في JSON الأصلي أدناه، أو فعّل القبول التلقائي لمسحها."
       },
       "behavior": {
         "title": "السلوك والضغط",
@@ -1408,16 +1421,26 @@
           "preserveRecentTokens": "الرموز المحفوظة حرفيًا",
           "reserved": "رموز محجوزة",
           "maxLines": "حد أسطر مخرجات الأدوات",
-          "maxBytes": "حد بايتات مخرجات الأدوات"
+          "maxBytes": "حد بايتات مخرجات الأدوات",
+          "tailTurns": "الأدوار المحفوظة حرفيًا"
         },
         "hints": {
           "subagentDepth": "عدد مستويات تداخل الوكلاء الفرعيين (experimental.subagent_depth). القيمة 1 تمنع الوكيل الفرعي من تشغيل وكيل آخر.",
           "preserveRecentTokens": "ميزانية الرموز للأدوار الأخيرة التي تُحفظ حرفيًا بعد الضغط (compaction.keep.tokens). الافتراضي 15000.",
           "reserved": "نافذة تُترك فارغة كي لا يتجاوز الضغط السياق أبدًا (compaction.buffer). عند عدم التعيين تُحجز 15% من النافذة، بحد أدنى 16K.",
           "maxLines": "المخرجات الأطول من ذلك تُكتب إلى القرص ويُستبدل بها معاينة. الافتراضي 2000.",
-          "maxBytes": "المخرجات الأكبر من ذلك تُكتب إلى القرص ويُستبدل بها معاينة. الافتراضي 51200."
-        }
-      }
+          "maxBytes": "المخرجات الأكبر من ذلك تُكتب إلى القرص ويُستبدل بها معاينة. الافتراضي 51200.",
+          "tailTurns": "عدد أدوار المستخدم الأخيرة التي تبقى بلا ضغط. عند تركه فارغًا تحدّها ميزانية الرموز أدناه فقط."
+        },
+        "share": "المشاركة",
+        "shareHint": "هل يمكن نشر الجلسة كرابط مشاركة.",
+        "shareManual": "يدوي (عند الطلب فقط)",
+        "shareAuto": "تلقائي (كل جلسة جديدة)",
+        "shareDisabled": "معطَّل",
+        "compactionPrune": "تقليم مخرجات الأدوات القديمة",
+        "compactionPruneHint": "يتخلص من مخرجات استدعاءات الأدوات القديمة أثناء الضغط بدل تلخيصها."
+      },
+      "addProvider": "إضافة مزود"
     },
     "openClaw": {
       "gatewayConfig": "إعداد Gateway",
@@ -1543,7 +1566,9 @@
       "authTypeHint": "الموضع الذي يُكتب فيه مفتاح API داخل config.toml.",
       "rawEditorLabel": "تحرير config.toml مباشرة",
       "rawEditorWarning": "الحفظ هنا يستبدل الملف بأكمله حرفيًا، ويحل محل الإعدادات المنظَّمة أعلاه.",
-      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\""
+      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\"",
+      "fetchModels": "اختبار وجلب النماذج",
+      "fetchModelsNeedsKey": "أدخل أولًا مفتاح API ونقطة النهاية"
     },
     "authModeOfficialSubscription": "الاشتراك الرسمي",
     "authModeCustomEndpoint": "نقطة نهاية مخصصة",
@@ -1600,11 +1625,15 @@
       "providerIdPattern": "يدعم معرّف المزود الأحرف والأرقام والشرطة السفلية والنقطة والشرطة فقط",
       "providerExists": "المزوّد {providerId} موجود بالفعل",
       "modelIdPattern": "يدعم معرّف النموذج الأحرف والأرقام والشرطة السفلية والنقطة والنقطتين والشرطة فقط",
-      "modelExists": "النموذج {modelId} موجود بالفعل"
+      "modelExists": "النموذج {modelId} موجود بالفعل",
+      "openCodeAuthMustBeObject": "يجب أن يكون OpenCode auth.json كائن JSON",
+      "openCodeAuthInvalid": "خطأ في تنسيق OpenCode auth.json: {message}"
     },
     "warnings": {
       "nativeJsonRecoveredStructured": "إعداد JSON الأصلي غير صالح؛ تمت إعادة التعيين إلى إعداد مُهيكل",
-      "authRecoveredStructured": "ملف auth.json غير صالح؛ تمت إعادة التعيين إلى إعداد مُهيكل"
+      "authRecoveredStructured": "ملف auth.json غير صالح؛ تمت إعادة التعيين إلى إعداد مُهيكل",
+      "nativeJsonRecoveredOpenCode": "إعداد JSON الأصلي غير صالح؛ تمت إعادة التعيين إلى إعداد OpenCode المُهيكل",
+      "openCodeAuthRecovered": "ملف OpenCode auth.json غير صالح؛ تمت إعادة التعيين إلى الإعداد الافتراضي"
     },
     "toasts": {
       "agentActionCompleted": "اكتمل {action} لـ {name}",
@@ -1741,7 +1770,20 @@
       "remove": "إزالة",
       "refresh": "تحديث",
       "loadFailed": "تعذّرت قراءة إعدادات OpenCode: {message}",
-      "updateFailed": "تعذّر تحديث إعدادات OpenCode: {message}"
+      "updateFailed": "تعذّر تحديث إعدادات OpenCode: {message}",
+      "status": {
+        "installed": "مثبّت",
+        "needs_migration": "يتطلب الترحيل",
+        "missing": "غير مثبّت",
+        "path": "إضافة من مسار",
+        "path_missing": "المسار غير موجود"
+      },
+      "installAll": "تثبيت جميع الإضافات المفقودة",
+      "pinVersions": "تثبيت إصدارات @latest",
+      "install": "تثبيت",
+      "uninstall": "إزالة",
+      "success": "تم تثبيت جميع الإضافات بنجاح",
+      "failed": "فشلت عملية الإضافة"
     },
     "pi": {
       "configManagement": "إعدادات Pi",
@@ -3497,7 +3539,8 @@
         "mentionGroupSession": "الجلسات",
         "mentionGroupCommit": "عمليات الإيداع",
         "mentionGroupSkill": "المهارات",
-        "mentionGroupAssistant": "المساعدون"
+        "mentionGroupAssistant": "المساعدون",
+        "hermesRoleLabel": "الدور"
       },
       "messageQueue": {
         "addToQueue": "إضافة للقائمة",
@@ -3633,7 +3676,8 @@
         "noEnabledAgents": "لا يوجد وكلاء مفعّلون",
         "openAgentsSettings": "فتح إعدادات الوكلاء",
         "notInstalled": "غير مثبّت",
-        "moreAgents": "وكلاء إضافيون ({count})"
+        "moreAgents": "وكلاء إضافيون ({count})",
+        "openMenu": "الوكلاء"
       },
       "subAgentOverlay": {
         "title": "الوكلاء الفرعيون",
@@ -3777,14 +3821,22 @@
         "jumpToPreviousUserMessage": "الانتقال إلى رسالة المستخدم",
         "showMore": "عرض المزيد",
         "showLess": "طي",
-        "resizeWidth": "اسحب لتغيير عرض المحادثة · انقر مرتين للإعادة"
+        "resizeWidth": "اسحب لتغيير عرض المحادثة · انقر مرتين للإعادة",
+        "attachedResources": "الموارد المرفقة",
+        "error": "خطأ: {message}",
+        "duration": "المدة",
+        "worked": "انتهى العمل",
+        "workedFor": "عمل لمدة {duration}",
+        "working": "جارٍ العمل..."
       },
       "liveTurnStats": {
         "elapsedHours": "{value}س",
         "elapsedMinutes": "{value}د",
         "elapsedSeconds": "{value}ث",
         "outputSpeedAria": "السرعة التقديرية للإخراج",
-        "outputSpeedTooltip": "السرعة التقديرية للإخراج (نص + تفكير)"
+        "outputSpeedTooltip": "السرعة التقديرية للإخراج (نص + تفكير)",
+        "thinking": "جارٍ التفكير...",
+        "streaming": "جارٍ البث"
       },
       "jsonTree": {
         "viewRaw": "عرض JSON الخام",
@@ -3797,8 +3849,14 @@
           "inputAvailable": "قيد التشغيل",
           "inputStreaming": "قيد الانتظار",
           "outputAvailable": "مكتمل",
-          "outputError": "خطأ"
-        }
+          "outputError": "خطأ",
+          "approvalRequested": "بانتظار الموافقة",
+          "approvalResponded": "تم الرد",
+          "outputDenied": "مرفوض"
+        },
+        "parameters": "المعلمات",
+        "error": "خطأ",
+        "result": "النتيجة"
       },
       "delegation": {
         "unknownAgent": "وكيل فرعي",
@@ -3807,9 +3865,9 @@
         "resumeReasonLabel": "سبب الاستئناف",
         "detailTitle": "محادثة الوكيل الفرعي",
         "detailDescription": "عرض للقراءة فقط لمحادثة الوكيل الفرعي المُفوَّض.",
-        "waitForResult": "في انتظار نتيجة المهمة \u2066{task}\u2069",
+        "waitForResult": "في انتظار نتيجة المهمة ⁦{task}⁩",
         "waitForResultNoTask": "في انتظار نتيجة المهمة",
-        "cancelTask": "جارٍ إلغاء المهمة \u2066{task}\u2069",
+        "cancelTask": "جارٍ إلغاء المهمة ⁦{task}⁩",
         "cancelTaskNoTask": "جارٍ إلغاء المهمة",
         "resultPageOf": "{current} / {total}",
         "prevResult": "النتيجة السابقة",
@@ -3844,7 +3902,10 @@
           }
         },
         "unknownAssistant": "المساعد #{id}",
-        "deletedAssistant": "(محذوف)"
+        "deletedAssistant": "(محذوف)",
+        "subAgentRunning": "العميل الفرعي قيد التشغيل…",
+        "noDetail": "No detail available yet.",
+        "resumeDetail": "تفاصيل الاستئناف"
       },
       "contentParts": {
         "offset": "الإزاحة: {offset}",
@@ -3885,7 +3946,8 @@
             "budgetLimited": "الميزانية محدودة",
             "complete": "مكتمل",
             "limited": "تم بلوغ الحد"
-          }
+          },
+          "titleWithStatus": "الهدف {status}"
         },
         "search": {
           "noMatches": "لا توجد نتائج مطابقة",
@@ -3904,7 +3966,15 @@
         "backgroundTask": {
           "polledTimes": "تم الاستعلام {count} مرة",
           "launchNote": "قيد التشغيل في الخلفية · {id}",
-          "monitorNote": "قيد المراقبة في الخلفية · {id}"
+          "monitorNote": "قيد المراقبة في الخلفية · {id}",
+          "title": "مهمة في الخلفية",
+          "titleWithId": "مهمة في الخلفية · {id}",
+          "running": "قيد التشغيل",
+          "completed": "اكتملت",
+          "failed": "فشلت",
+          "stopped": "متوقفة",
+          "exitCode": "رمز الخروج {code}",
+          "runningInBackground": "في الخلفية"
         },
         "codexScript": {
           "outputMissing": "اقتطع codex مُخرَج النص البرمجي وأزال الفاصل الخاص بهذا الأمر، لذا تعذّر نسب أي مُخرَج إليه.",
@@ -3925,7 +3995,119 @@
         "visualizeFrameTitle": "تصوّر بياني من Codex",
         "htmlPreviewOpen": "معاينة",
         "htmlPreviewOpenAria": "معاينة {name}",
-        "htmlPreviewHide": "إخفاء المعاينة"
+        "htmlPreviewHide": "إخفاء المعاينة",
+        "showingTailOutput": "يتم عرض نهاية المخرجات أثناء البث لتحسين الأداء.",
+        "result": "النتيجة",
+        "unknown": "غير معروف",
+        "inputTruncated": "تم اقتطاع الإدخال — قد يكون الفرق غير مكتمل.",
+        "replaceAll": "استبدال الكل",
+        "filesCount": "الملفات: {count}",
+        "update": "تحديث",
+        "moreFiles": "+{count} ملف إضافي",
+        "timeoutMs": "المهلة: {timeout}ms",
+        "backgroundTrue": "الخلفية: true",
+        "scriptToolCalls": "{count, plural, zero {صفر استدعاء أداة} one {استدعاء أداة واحد} two {استدعاءا أداة} few {# استدعاءات أداة} many {# استدعاء أداة} other {# استدعاء أداة}}",
+        "limit": "الحد: {limit}",
+        "mode": "الوضع: {mode}",
+        "cell": "الخلية: {cell}",
+        "pathLabel": "المسار:",
+        "globLabel": "نمط glob:",
+        "typeLabel": "النوع:",
+        "outputLabel": "المخرجات:",
+        "caseInsensitive": "غير حساس لحالة الأحرف",
+        "multiline": "متعدد الأسطر",
+        "promptLabel": "المطالبة",
+        "subjectLabel": "الموضوع",
+        "taskLabel": "المهمة",
+        "nameLabel": "الاسم:",
+        "agentRunning": "قيد التشغيل...",
+        "agentLiveTranscript": "النشاط المباشر",
+        "agentProcessCount": "{count, plural, zero {نشاط الوكيل الفرعي · صفر خطوة} one {نشاط الوكيل الفرعي · خطوة واحدة} two {نشاط الوكيل الفرعي · خطوتان} few {نشاط الوكيل الفرعي · # خطوات} many {نشاط الوكيل الفرعي · # خطوة} other {نشاط الوكيل الفرعي · # خطوة}}",
+        "agentProcessDuration": "نشاط الوكيل الفرعي · {duration}",
+        "agentSubagentDone": "انتهى",
+        "agentSubagentInterrupted": "تمت مقاطعته",
+        "agentSubagentUnknown": "النتيجة غير معروفة",
+        "agentStatsBash": "الأوامر",
+        "agentStatsRead": "الملفات المقروءة",
+        "agentStatsSearch": "عمليات البحث",
+        "agentStatsEdit": "التعديلات",
+        "agentStatsOther": "أخرى",
+        "field": {
+          "file": "ملف",
+          "notebook": "دفتر",
+          "command": "أمر",
+          "old": "قديم",
+          "new": "جديد",
+          "pattern": "النمط",
+          "path": "المسار",
+          "query": "الاستعلام",
+          "url": "URL:",
+          "description": "الوصف",
+          "content": "المحتوى",
+          "source": "المصدر",
+          "prompt": "المطالبة",
+          "subject": "الموضوع",
+          "taskId": "معرف المهمة",
+          "status": "الحالة",
+          "skill": "Skill",
+          "args": "الوسائط",
+          "offset": "الإزاحة",
+          "limit": "الحد",
+          "glob": "نمط glob",
+          "type": "النوع",
+          "output": "المخرجات",
+          "replaceAll": "استبدال الكل",
+          "language": "اللغة",
+          "timeout": "المهلة",
+          "background": "الخلفية",
+          "agentType": "نوع الوكيل",
+          "library": "المكتبة",
+          "libraryId": "معرف المكتبة"
+        },
+        "title": {
+          "edit": "تحرير",
+          "command": "أمر",
+          "script": "سكربت",
+          "waitCommand": "انتظار {command}",
+          "waitCell": "انتظار الجلسة {id}",
+          "terminateCommand": "إنهاء {command}",
+          "terminateCell": "إنهاء الجلسة {id}",
+          "stdinChars": "إدخال {chars}",
+          "todoWrite": "TodoWrite (تحديث المهام)",
+          "read": "قراءة",
+          "write": "كتابة",
+          "notebookEdit": "NotebookEdit (تحرير الدفتر)",
+          "editFiles": "تحرير ({count} ملفًا)",
+          "editWithTarget": "تحرير {target}",
+          "readWithTarget": "قراءة {target}",
+          "writeWithTarget": "كتابة {target}",
+          "notebookEditWithTarget": "NotebookEdit ({target})",
+          "globWithPattern": "نمط glob {pattern}",
+          "listFilesWithPath": "عرض الملفات {path}",
+          "grepWithPattern": "نمط grep {pattern}",
+          "taskCreateWithSubject": "إنشاء مهمة: {subject}",
+          "taskUpdateWithStatus": "تحديث المهمة #{id} -> {status}",
+          "taskUpdate": "تحديث المهمة #{id}",
+          "webFetchWithUrl": "WebFetch ({url})",
+          "webSearchWithQuery": "بحث الويب: {query}",
+          "todosProgress": "المهام ({done}/{total})",
+          "skillWithName": "Skill: {name}",
+          "genericWithContext": "{tool} ({context})"
+        },
+        "toolGroup": {
+          "search": "{count, plural, zero {بحث صفر مرة} one {بحث مرة واحدة} two {بحث مرتين} few {بحث # مرات} many {بحث # مرة} other {بحث # مرة}}",
+          "command": "{count, plural, zero {تنفيذ صفر أمر} one {تنفيذ أمر واحد} two {تنفيذ أمرين} few {تنفيذ # أوامر} many {تنفيذ # أمراً} other {تنفيذ # أمر}}",
+          "read": "{count, plural, zero {قراءة ملفات صفر مرة} one {قراءة ملفات مرة واحدة} two {قراءة ملفات مرتين} few {قراءة ملفات # مرات} many {قراءة ملفات # مرة} other {قراءة ملفات # مرة}}",
+          "memory": "{count, plural, zero {استرجاع صفر ذاكرة} one {استرجاع ذاكرة واحدة} two {استرجاع ذاكرتين} few {استرجاع # ذكريات} many {استرجاع # ذكرى} other {استرجاع # ذكرى}}",
+          "edit": "{count, plural, zero {تعديل ملفات صفر مرة} one {تعديل ملفات مرة واحدة} two {تعديل ملفات مرتين} few {تعديل ملفات # مرات} many {تعديل ملفات # مرة} other {تعديل ملفات # مرة}}",
+          "fetch": "{count, plural, zero {جلب صفر مورد} one {جلب مورد واحد} two {جلب موردين} few {جلب # موارد} many {جلب # مورداً} other {جلب # مورد}}",
+          "think": "{count, plural, zero {تفكير صفر مرة} one {تفكير مرة واحدة} two {تفكير مرتين} few {تفكير # مرات} many {تفكير # مرة} other {تفكير # مرة}}",
+          "todo": "{count, plural, zero {تحديث صفر مهمة} one {تحديث مهمة واحدة} two {تحديث مهمتين} few {تحديث # مهام} many {تحديث # مهمة} other {تحديث # مهمة}}",
+          "task": "{count, plural, zero {تشغيل صفر مهمة} one {تشغيل مهمة واحدة} two {تشغيل مهمتين} few {تشغيل # مهام} many {تشغيل # مهمة} other {تشغيل # مهمة}}",
+          "other": "{count, plural, zero {استخدام صفر أداة} one {استخدام أداة واحدة} two {استخدام أداتين} few {استخدام # أدوات} many {استخدام # أداة} other {استخدام # أداة}}",
+          "errorSuffix": "{count, plural, zero {صفر فشل} one {فشل واحد} two {فشلان} few {# فشلوا} many {# فشلاً} other {# فشل}}",
+          "joiner": " · "
+        }
       },
       "activity": {
         "header": {
@@ -3968,7 +4150,7 @@
           "monitor": "مراقبة",
           "networkAccess": "الوصول إلى الشبكة",
           "codexScript": "نص برمجي",
-          "background": "في الخلفية · \u2066#{id}\u2069",
+          "background": "في الخلفية · ⁦#{id}⁩",
           "backgroundShort": "في الخلفية",
           "sessionWait": "انتظار",
           "sessionTerminate": "إيقاف",
@@ -4102,7 +4284,15 @@
         "openFile": "فتح {filePath}",
         "collapse": "طي",
         "currentMessage": "الرسالة الحالية",
-        "scrollToCurrent": "التمرير إلى الرسالة الحالية (#{ordinal})"
+        "scrollToCurrent": "التمرير إلى الرسالة الحالية (#{ordinal})",
+        "collapsedSummary": "الرسائل {count}",
+        "remove": "إزالة",
+        "noDiffDataAvailable": "لا توجد بيانات diff متاحة لـ {filePath}",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "الملفات المتغيرة",
@@ -4142,7 +4332,9 @@
       },
       "feedbackCheckResult": {
         "count": "{count} ملاحظة",
-        "errorTitle": "فشل التحقق من الملاحظات"
+        "errorTitle": "فشل التحقق من الملاحظات",
+        "expand": "عرض كل الملاحظات",
+        "collapse": "طي"
       },
       "codegMcpTool": {
         "getSessionInfo": "قراءة المحادثة {session}",
@@ -4220,7 +4412,16 @@
         "opWait": "جلب نتيجة الوكيل الفرعي",
         "opClose": "إغلاق الوكيل الفرعي",
         "opResume": "استئناف الوكيل الفرعي",
-        "opList": "سرد الوكلاء الفرعيين"
+        "opList": "سرد الوكلاء الفرعيين",
+        "errorTitle": "فشلت مهمة الوكيل الفرعي",
+        "statesLabel": "الوكلاء الفرعيون",
+        "statusRunning": "قيد التشغيل",
+        "statusCompleted": "مكتمل",
+        "statusFailed": "فشل",
+        "statusPending": "قيد البدء",
+        "statusInterrupted": "متوقف",
+        "statusClosed": "مغلق",
+        "statusNotFound": "غير موجود"
       },
       "contextCompaction": {
         "compacting": "جارٍ ضغط السياق…",
@@ -4269,9 +4470,9 @@
         "tokens": "{count} رمز",
         "stopDeclined": "تعذّر إيقاف هذه المهمة، ربما تكون قد انتهت بالفعل.",
         "stopFailed": "فشل إيقاف المهمة: {error}",
-        "agentWorking": "\u2066{agent}\u2069 يعمل",
+        "agentWorking": "⁦{agent}⁩ يعمل",
         "scheduledWakeup": "تنبيه مجدول",
-        "scheduledWakeupAt": "تنبيه مجدول في \u2066{time}\u2069",
+        "scheduledWakeupAt": "تنبيه مجدول في ⁦{time}⁩",
         "scheduledTask": "مهمة مجدولة"
       },
       "remoteControl": {
@@ -4289,6 +4490,40 @@
       "proposedPlan": {
         "title": "الخطة المقترحة",
         "planning": "جارٍ التخطيط…"
+      },
+      "terminal": {
+        "title": "الطرفية",
+        "running": "قيد التشغيل"
+      },
+      "reasoning": {
+        "thinking": "جارٍ التفكير…",
+        "thoughtForFewSeconds": "تفكير",
+        "thoughtForSeconds": "تفكير"
+      },
+      "toolCallBlock": {
+        "tool": "أداة",
+        "error": "خطأ",
+        "result": "النتيجة"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4350,6 +4585,37 @@
     },
     "toasts": {
       "cloneFailed": "فشل استنساخ المستودع"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "المتابعة مع {agent}",
+      "currentSession": "هذه الجلسة"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -6600,8 +6866,8 @@
       "fetch": "جلب النماذج",
       "needKey": "أدخل مفتاح API أولًا.",
       "needBaseUrl": "أدخل عنوان API بصيغة http(s) أولًا.",
-      "summaryModels": "{count, plural, zero {لا نماذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}} · \u2066{host}\u2069",
-      "summaryPicked": "تم اختيار {picked} من {total} · \u2066{host}\u2069",
+      "summaryModels": "{count, plural, zero {لا نماذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}} · ⁦{host}⁩",
+      "summaryPicked": "تم اختيار {picked} من {total} · ⁦{host}⁩",
       "summaryRemoved": "أُزيل {count}",
       "fromPublished": "القائمة المطبّقة",
       "fromCache": "قائمة جُلبت سابقًا",
@@ -6677,12 +6943,13 @@
         "config_changed": "تغيّرت إعدادات Codex أثناء الحفظ؛ حاول مرة أخرى.",
         "database": "تعذّرت قراءة الإعدادات: {message}"
       }
-    }
+    },
+    "officialsTitle": "النماذج الرسمية"
   },
   "ProviderModels": {
     "fetch": "جلب النماذج",
     "fetching": "جارٍ جلب النماذج…",
-    "fromHost": "{count, plural, zero {لا نماذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}} · \u2066{host}\u2069",
+    "fromHost": "{count, plural, zero {لا نماذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}} · ⁦{host}⁩",
     "retry": "إعادة المحاولة",
     "needKey": "أدخل مفتاح API أولًا: تُجلب النماذج به.",
     "needBaseUrl": "أدخل عنوان API أولًا.",
@@ -7356,7 +7623,20 @@
     "moveRunningBlocked": "Cannot move a conversation while its agent is running",
     "hideProjectFromShelf": "Remove this project from the shelf",
     "addToShelf": "Add this conversation to the shelf",
-    "showShelfConversations": "Shelf conversations"
+    "showShelfConversations": "Shelf conversations",
+    "scrollToTop": "Jump to top",
+    "scrollToBottom": "Jump to bottom",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7660,6 +7940,21 @@
         "bypassed": "يرسل محرك المتصفح في هذا الكمبيوتر بعض العناوين خارج النفق، لذا تبقى صفحات المضيف البعيد مغلقة بدل تحميلها من هذا الكمبيوتر.",
         "probeFailed": "تعذّر على المتصفح المدمج التأكد من أنه يصل إلى المضيف البعيد عبر النفق. حاول مرة أخرى بعد قليل."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

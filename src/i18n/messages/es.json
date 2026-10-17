@@ -1238,7 +1238,12 @@
       "loginSaveFailed": "Inicio de sesión exitoso pero falló al guardar la configuración",
       "apiUrlLabel": "URL de API",
       "apiKeyLabel": "Clave API",
-      "managedKeysHint": "Mientras codeg publica la lista de modelos, gestiona aquí model_catalog_json y «model» en la raíz: cámbialos en la lista de modelos de arriba."
+      "managedKeysHint": "Mientras codeg publica la lista de modelos, gestiona aquí model_catalog_json y «model» en la raíz: cámbialos en la lista de modelos de arriba.",
+      "enableSkills": "Habilitar Skills",
+      "enableSkillsAria": "Habilitar Skills para Codex",
+      "enableFast": "Habilitar Fast",
+      "enableFastAria": "Habilitar nivel de servicio Fast para Codex",
+      "approvalPolicyUntrustedAcpWarning": "Untrusted no tiene equivalente entre los tres ajustes de aprobación del adaptador ACP, así que las sesiones de codeg recurren a «a petición»: el modelo decide entonces cuándo preguntar y los comandos que la zona aislada ya permite dejan de pedir confirmación. Restringe mejor el modo de aislamiento de abajo."
     },
     "gemini": {
       "authConfig": "Configuración de autenticación de Gemini",
@@ -1320,7 +1325,9 @@
         "action": "Conectar",
         "editTitle": "Editar proveedor",
         "editDescription": "Sustituye la clave de API de este proveedor o cambia su URL base.",
-        "saveAction": "Guardar"
+        "saveAction": "Guardar",
+        "catalogLabel": "Catálogo de models.dev",
+        "oauthApiKeyNote": "Este proveedor también admite el inicio de sesión por navegador con opencode auth login. El inicio por navegador llegará pronto; por ahora, pega una clave API."
       },
       "customProvider": {
         "title": "Agregar un proveedor personalizado",
@@ -1378,8 +1385,14 @@
           "webfetch": "Obtener una URL, comparada por URL",
           "websearch": "Buscar en la web, comparada por la consulta",
           "todowrite": "Escribir la lista de tareas (con la herramienta de lista de tareas activada)",
-          "question": "Hacerte una pregunta"
-        }
+          "question": "Hacerte una pregunta",
+          "bash": "Ejecutar comandos de shell, según el comando analizado",
+          "task": "Lanzar subagentes, según el tipo de subagente",
+          "list": "Listar el contenido de un directorio",
+          "lsp": "Ejecutar consultas LSP",
+          "doom_loop": "Se activa cuando la misma llamada se repite tres veces con la misma entrada"
+        },
+        "legacyTools": "El mapa tools heredado del nivel superior deniega una herramienta. OpenCode lo fusiona con los permisos, así que se aplica por encima de todo lo que se ve aquí. Edítalo en el JSON nativo de abajo o activa el aceptar automático para borrarlo."
       },
       "behavior": {
         "title": "Comportamiento y compactación",
@@ -1408,16 +1421,26 @@
           "preserveRecentTokens": "Tokens conservados literales",
           "reserved": "Tokens reservados",
           "maxLines": "Límite de líneas de salida",
-          "maxBytes": "Límite de bytes de salida"
+          "maxBytes": "Límite de bytes de salida",
+          "tailTurns": "Turnos conservados literales"
         },
         "hints": {
           "subagentDepth": "Cuántos niveles pueden anidarse los subagentes (experimental.subagent_depth). 1 impide que un subagente lance otro.",
           "preserveRecentTokens": "Presupuesto de tokens de los turnos recientes que se conservan literalmente tras una compactación (compaction.keep.tokens). Predeterminado: 15000.",
           "reserved": "Ventana que se deja libre para que una compactación nunca desborde el contexto (compaction.buffer). Sin valor reserva el 15 % de la ventana, al menos 16K.",
           "maxLines": "La salida más larga se escribe en disco y se sustituye por una vista previa. Por defecto 2000.",
-          "maxBytes": "La salida más grande se escribe en disco y se sustituye por una vista previa. Por defecto 51200."
-        }
-      }
+          "maxBytes": "La salida más grande se escribe en disco y se sustituye por una vista previa. Por defecto 51200.",
+          "tailTurns": "Turnos de usuario recientes que no se compactan. Sin valor, solo los limita el presupuesto de tokens de abajo."
+        },
+        "share": "Compartir",
+        "shareHint": "Si una sesión puede publicarse como enlace compartido.",
+        "shareManual": "Manual (solo a petición)",
+        "shareAuto": "Automático (cada sesión nueva)",
+        "shareDisabled": "Desactivado",
+        "compactionPrune": "Podar salida antigua de herramientas",
+        "compactionPruneHint": "Descarta la salida de llamadas antiguas al compactar en lugar de resumirla."
+      },
+      "addProvider": "Agregar proveedor"
     },
     "openClaw": {
       "gatewayConfig": "Configuración de Gateway",
@@ -1543,7 +1566,9 @@
       "authTypeHint": "Dónde se escribe la clave de API dentro de config.toml.",
       "rawEditorLabel": "Editar config.toml directamente",
       "rawEditorWarning": "Guardar aquí sobrescribe el archivo completo tal cual y reemplaza la configuración estructurada de arriba.",
-      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\""
+      "rawEditorPlaceholder": "[providers.codeg]\ntype = \"kimi\"\nbase_url = \"https://api.moonshot.cn/v1\"\napi_key = \"sk-...\"",
+      "fetchModels": "Probar y listar modelos",
+      "fetchModelsNeedsKey": "Introduce primero una clave de API y un endpoint"
     },
     "authModeOfficialSubscription": "Suscripción oficial",
     "authModeCustomEndpoint": "Endpoint personalizado",
@@ -1600,11 +1625,15 @@
       "providerIdPattern": "El ID de proveedor solo admite letras, números, guion bajo, punto y guion",
       "providerExists": "El proveedor {providerId} ya existe",
       "modelIdPattern": "El ID de modelo solo admite letras, números, guion bajo, punto, dos puntos y guion",
-      "modelExists": "El modelo {modelId} ya existe"
+      "modelExists": "El modelo {modelId} ya existe",
+      "openCodeAuthMustBeObject": "OpenCode auth.json debe ser un objeto JSON",
+      "openCodeAuthInvalid": "Error de formato en OpenCode auth.json: {message}"
     },
     "warnings": {
       "nativeJsonRecoveredStructured": "La configuración JSON nativa es inválida; se restableció a configuración estructurada",
-      "authRecoveredStructured": "auth.json es inválido; se restableció a configuración estructurada"
+      "authRecoveredStructured": "auth.json es inválido; se restableció a configuración estructurada",
+      "nativeJsonRecoveredOpenCode": "La configuración JSON nativa es inválida; se restableció a configuración estructurada de OpenCode",
+      "openCodeAuthRecovered": "OpenCode auth.json es inválido; se restableció a configuración predeterminada"
     },
     "toasts": {
       "agentActionCompleted": "{name} {action} completado",
@@ -1741,7 +1770,20 @@
       "remove": "Quitar",
       "refresh": "Actualizar",
       "loadFailed": "No se pudo leer la configuración de OpenCode: {message}",
-      "updateFailed": "No se pudo actualizar la configuración de OpenCode: {message}"
+      "updateFailed": "No se pudo actualizar la configuración de OpenCode: {message}",
+      "status": {
+        "installed": "Instalado",
+        "needs_migration": "Requiere migración",
+        "missing": "No instalado",
+        "path": "Complemento de ruta",
+        "path_missing": "Ruta no encontrada"
+      },
+      "installAll": "Instalar todos los faltantes",
+      "pinVersions": "Fijar versiones @latest",
+      "install": "Instalar",
+      "uninstall": "Desinstalar",
+      "success": "Todos los plugins se instalaron correctamente",
+      "failed": "La operación del plugin falló"
     },
     "pi": {
       "configManagement": "Configuración de Pi",
@@ -3497,7 +3539,8 @@
         "mentionGroupSession": "Sesiones",
         "mentionGroupCommit": "Commits",
         "mentionGroupSkill": "Habilidades",
-        "mentionGroupAssistant": "Asistentes"
+        "mentionGroupAssistant": "Asistentes",
+        "hermesRoleLabel": "Rol"
       },
       "messageQueue": {
         "addToQueue": "Agregar a la cola",
@@ -3633,7 +3676,8 @@
         "noEnabledAgents": "No hay agentes habilitados",
         "openAgentsSettings": "Abrir ajustes de agentes",
         "notInstalled": "No instalado",
-        "moreAgents": "Más agentes ({count})"
+        "moreAgents": "Más agentes ({count})",
+        "openMenu": "Agentes"
       },
       "subAgentOverlay": {
         "title": "Subagentes",
@@ -3777,14 +3821,22 @@
         "jumpToPreviousUserMessage": "Ir al mensaje del usuario",
         "showMore": "Mostrar más",
         "showLess": "Mostrar menos",
-        "resizeWidth": "Arrastra para cambiar el ancho del chat · doble clic para restablecer"
+        "resizeWidth": "Arrastra para cambiar el ancho del chat · doble clic para restablecer",
+        "attachedResources": "Recursos adjuntos",
+        "error": "Error del chat: {message}",
+        "duration": "Duración",
+        "worked": "Trabajo finalizado",
+        "workedFor": "Trabajo realizado durante {duration}",
+        "working": "Trabajando..."
       },
       "liveTurnStats": {
         "elapsedHours": "{value} h",
         "elapsedMinutes": "{value} min",
         "elapsedSeconds": "{value} s",
         "outputSpeedAria": "Velocidad de salida estimada",
-        "outputSpeedTooltip": "Velocidad de salida estimada (texto + razonamiento)"
+        "outputSpeedTooltip": "Velocidad de salida estimada (texto + razonamiento)",
+        "thinking": "Pensando...",
+        "streaming": "Transmitiendo"
       },
       "jsonTree": {
         "viewRaw": "Ver JSON sin formato",
@@ -3797,8 +3849,14 @@
           "inputAvailable": "En ejecución",
           "inputStreaming": "Pendiente",
           "outputAvailable": "Completado",
-          "outputError": "Error de salida"
-        }
+          "outputError": "Error de salida",
+          "approvalRequested": "Esperando aprobación",
+          "approvalResponded": "Respondido",
+          "outputDenied": "Denegado"
+        },
+        "parameters": "Parámetros",
+        "error": "Error de herramienta",
+        "result": "Resultado"
       },
       "delegation": {
         "unknownAgent": "Sub-agente",
@@ -3844,7 +3902,10 @@
           }
         },
         "unknownAssistant": "Asistente #{id}",
-        "deletedAssistant": "(eliminado)"
+        "deletedAssistant": "(eliminado)",
+        "subAgentRunning": "Subagente en ejecución…",
+        "noDetail": "No detail available yet.",
+        "resumeDetail": "Detalles de reanudación"
       },
       "contentParts": {
         "offset": "Desplazamiento: {offset}",
@@ -3885,7 +3946,8 @@
             "budgetLimited": "presupuesto limitado",
             "complete": "completo",
             "limited": "límite alcanzado"
-          }
+          },
+          "titleWithStatus": "Objetivo {status}"
         },
         "search": {
           "noMatches": "Sin coincidencias",
@@ -3904,7 +3966,15 @@
         "backgroundTask": {
           "polledTimes": "Consultada {count} veces",
           "launchNote": "Ejecutándose en segundo plano · {id}",
-          "monitorNote": "Supervisando en segundo plano · {id}"
+          "monitorNote": "Supervisando en segundo plano · {id}",
+          "title": "Tarea en segundo plano",
+          "titleWithId": "Tarea en segundo plano · {id}",
+          "running": "En ejecución",
+          "completed": "Completada",
+          "failed": "Fallida",
+          "stopped": "Detenida",
+          "exitCode": "salida {code}",
+          "runningInBackground": "Segundo plano"
         },
         "codexScript": {
           "outputMissing": "Codex truncó la salida del script y eliminó el separador de este comando, por lo que no se le pudo atribuir ninguna salida.",
@@ -3925,7 +3995,119 @@
         "visualizeFrameTitle": "Visualización de Codex",
         "htmlPreviewOpen": "Vista previa",
         "htmlPreviewOpenAria": "Vista previa de {name}",
-        "htmlPreviewHide": "Ocultar vista previa"
+        "htmlPreviewHide": "Ocultar vista previa",
+        "showingTailOutput": "Mostrando la salida final durante el streaming para mejorar el rendimiento.",
+        "result": "Resultado",
+        "unknown": "desconocido",
+        "inputTruncated": "La entrada fue truncada — el diff puede estar incompleto.",
+        "replaceAll": "REEMPLAZAR TODO",
+        "filesCount": "Archivos: {count}",
+        "update": "actualizar",
+        "moreFiles": "+{count} archivos más",
+        "timeoutMs": "Tiempo de espera: {timeout}ms",
+        "backgroundTrue": "Segundo plano: true",
+        "scriptToolCalls": "{count, plural, one {# llamada a herramienta} other {# llamadas a herramientas}}",
+        "limit": "Límite: {limit}",
+        "mode": "Modo: {mode}",
+        "cell": "Celda: {cell}",
+        "pathLabel": "Ruta:",
+        "globLabel": "Patrón glob:",
+        "typeLabel": "Tipo:",
+        "outputLabel": "Salida:",
+        "caseInsensitive": "Sin distinguir mayúsculas/minúsculas",
+        "multiline": "Multilínea",
+        "promptLabel": "Instrucción",
+        "subjectLabel": "Asunto",
+        "taskLabel": "Tarea",
+        "nameLabel": "Nombre:",
+        "agentRunning": "Ejecutando...",
+        "agentLiveTranscript": "Actividad en vivo",
+        "agentProcessCount": "{count, plural, one {Actividad del subagente · # paso} other {Actividad del subagente · # pasos}}",
+        "agentProcessDuration": "Actividad del subagente · {duration}",
+        "agentSubagentDone": "Terminado",
+        "agentSubagentInterrupted": "Interrumpido",
+        "agentSubagentUnknown": "Desenlace desconocido",
+        "agentStatsBash": "Comandos",
+        "agentStatsRead": "Archivos leídos",
+        "agentStatsSearch": "Búsquedas",
+        "agentStatsEdit": "Ediciones",
+        "agentStatsOther": "Otros",
+        "field": {
+          "file": "Archivo",
+          "notebook": "Cuaderno",
+          "command": "Comando",
+          "old": "Anterior",
+          "new": "Nuevo",
+          "pattern": "Patrón",
+          "path": "Ruta",
+          "query": "Consulta",
+          "url": "URL:",
+          "description": "Descripción",
+          "content": "Contenido",
+          "source": "Fuente",
+          "prompt": "Instrucción",
+          "subject": "Asunto",
+          "taskId": "ID de tarea",
+          "status": "Estado",
+          "skill": "Skill",
+          "args": "Argumentos",
+          "offset": "Desplazamiento",
+          "limit": "Límite",
+          "glob": "Patrón glob",
+          "type": "Tipo",
+          "output": "Salida",
+          "replaceAll": "Reemplazar todo",
+          "language": "Idioma",
+          "timeout": "Tiempo de espera",
+          "background": "Segundo plano",
+          "agentType": "Tipo de agente",
+          "library": "Biblioteca",
+          "libraryId": "ID de biblioteca"
+        },
+        "title": {
+          "edit": "Editar",
+          "command": "Comando",
+          "script": "Script",
+          "waitCommand": "Esperar {command}",
+          "waitCell": "Esperar sesión {id}",
+          "terminateCommand": "Terminar {command}",
+          "terminateCell": "Terminar sesión {id}",
+          "stdinChars": "Entrada {chars}",
+          "todoWrite": "TodoWrite (actualización de tareas)",
+          "read": "Leer",
+          "write": "Escribir",
+          "notebookEdit": "NotebookEdit (edición de cuaderno)",
+          "editFiles": "Editar ({count} archivos)",
+          "editWithTarget": "Editar {target}",
+          "readWithTarget": "Leer {target}",
+          "writeWithTarget": "Escribir {target}",
+          "notebookEditWithTarget": "NotebookEdit ({target})",
+          "globWithPattern": "Patrón glob {pattern}",
+          "listFilesWithPath": "Listar archivos {path}",
+          "grepWithPattern": "Patrón grep {pattern}",
+          "taskCreateWithSubject": "Crear tarea: {subject}",
+          "taskUpdateWithStatus": "Actualizar tarea #{id} -> {status}",
+          "taskUpdate": "Actualizar tarea #{id}",
+          "webFetchWithUrl": "WebFetch ({url})",
+          "webSearchWithQuery": "Búsqueda web: {query}",
+          "todosProgress": "Tareas ({done}/{total})",
+          "skillWithName": "Skill: {name}",
+          "genericWithContext": "{tool} ({context})"
+        },
+        "toolGroup": {
+          "search": "{count, plural, one {Exploró # búsqueda} other {Exploró # búsquedas}}",
+          "command": "{count, plural, one {Ejecutó # comando} other {Ejecutó # comandos}}",
+          "read": "{count, plural, one {Leyó archivos # vez} other {Leyó archivos # veces}}",
+          "memory": "{count, plural, one {Recordó # memoria} other {Recordó # memorias}}",
+          "edit": "{count, plural, one {Editó archivos # vez} other {Editó archivos # veces}}",
+          "fetch": "{count, plural, one {Recuperó # recurso} other {Recuperó # recursos}}",
+          "think": "{count, plural, one {Pensó # vez} other {Pensó # veces}}",
+          "todo": "{count, plural, one {Actualizó # tarea} other {Actualizó # tareas}}",
+          "task": "{count, plural, one {Ejecutó # tarea} other {Ejecutó # tareas}}",
+          "other": "{count, plural, one {Usó # herramienta} other {Usó # herramientas}}",
+          "errorSuffix": "{count, plural, one {# falló} other {# fallaron}}",
+          "joiner": " · "
+        }
       },
       "activity": {
         "header": {
@@ -4102,7 +4284,15 @@
         "openFile": "Abrir {filePath}",
         "collapse": "Contraer",
         "currentMessage": "Mensaje actual",
-        "scrollToCurrent": "Desplazarse al mensaje actual (#{ordinal})"
+        "scrollToCurrent": "Desplazarse al mensaje actual (#{ordinal})",
+        "collapsedSummary": "Mensajes {count}",
+        "remove": "Quitar",
+        "noDiffDataAvailable": "No hay datos de diff disponibles para {filePath}",
+        "tickRail": "Prompt ticks",
+        "jumpTo": "Jump to prompt {n}: {label}",
+        "openDirectory": "All {count} prompts",
+        "filterPlaceholder": "Filter prompts",
+        "filterAria": "Filter prompts by text"
       },
       "replyArtifacts": {
         "title": "Archivos modificados",
@@ -4142,7 +4332,9 @@
       },
       "feedbackCheckResult": {
         "count": "{count, plural, =1 {1 comentario} other {# comentarios}}",
-        "errorTitle": "Error al comprobar los comentarios"
+        "errorTitle": "Error al comprobar los comentarios",
+        "expand": "Mostrar todos los comentarios",
+        "collapse": "Contraer"
       },
       "codegMcpTool": {
         "getSessionInfo": "Leyendo la sesión {session}",
@@ -4220,7 +4412,16 @@
         "opWait": "Obteniendo resultado del subagente",
         "opClose": "Cerrando subagente",
         "opResume": "Reanudando subagente",
-        "opList": "Listando subagentes"
+        "opList": "Listando subagentes",
+        "errorTitle": "La tarea del subagente falló",
+        "statesLabel": "Subagentes",
+        "statusRunning": "En ejecución",
+        "statusCompleted": "Completado",
+        "statusFailed": "Fallido",
+        "statusPending": "Iniciando",
+        "statusInterrupted": "Interrumpido",
+        "statusClosed": "Cerrado",
+        "statusNotFound": "No encontrado"
       },
       "contextCompaction": {
         "compacting": "Compactando el contexto…",
@@ -4289,6 +4490,40 @@
       "proposedPlan": {
         "title": "Plan propuesto",
         "planning": "Planificando…"
+      },
+      "terminal": {
+        "title": "Consola",
+        "running": "En ejecución"
+      },
+      "reasoning": {
+        "thinking": "Pensando…",
+        "thoughtForFewSeconds": "Pensamiento",
+        "thoughtForSeconds": "Pensamiento"
+      },
+      "toolCallBlock": {
+        "tool": "Herramienta",
+        "error": "Error de ejecución",
+        "result": "Resultado"
+      },
+      "sessionDashboard": {
+        "stripAria": "Activity timeline",
+        "barAria": "Context window",
+        "legendRead": "Read",
+        "legendWrite": "Write",
+        "legendSearch": "Search",
+        "legendCommand": "Command",
+        "legendFetch": "Fetch",
+        "legendThink": "Think",
+        "legendTodo": "Todo",
+        "legendTask": "Task",
+        "legendError": "Error",
+        "legendText": "Text",
+        "legendOther": "Other",
+        "peekJumpUser": "Go to your prompt",
+        "peekJumpReply": "See reply",
+        "stickyAria": "Current round",
+        "toolsToggle": "Tool output",
+        "thinkingToggle": "Thinking"
       }
     },
     "diffPreview": {
@@ -4350,6 +4585,37 @@
     },
     "toasts": {
       "cloneFailed": "No se pudo clonar el repositorio"
+    },
+    "cluster": {
+      "rename": "Rename theme",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "Continuar con {agent}",
+      "currentSession": "Esta sesión"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -6677,7 +6943,8 @@
         "config_changed": "La configuración de Codex cambió mientras se guardaba; inténtalo de nuevo.",
         "database": "No se pudo leer la configuración: {message}"
       }
-    }
+    },
+    "officialsTitle": "Modelos oficiales"
   },
   "ProviderModels": {
     "fetch": "Obtener modelos",
@@ -7356,7 +7623,20 @@
     "moveRunningBlocked": "Cannot move a conversation while its agent is running",
     "hideProjectFromShelf": "Remove this project from the shelf",
     "addToShelf": "Add this conversation to the shelf",
-    "showShelfConversations": "Shelf conversations"
+    "showShelfConversations": "Shelf conversations",
+    "scrollToTop": "Jump to top",
+    "scrollToBottom": "Jump to bottom",
+    "shelfOutline": "Shelf",
+    "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
+    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineTitle": "Edit shelf",
+    "shelfOutlineEmpty": "No matching projects or conversations",
+    "shelfMoveUp": "Move up",
+    "shelfMoveDown": "Move down",
+    "shelfSessionRail": "Sessions",
+    "shelfSessionRailExpand": "Show session list",
+    "shelfSessionRailCollapse": "Hide session list",
+    "shelfBackToSource": "Back to source"
   },
   "Browser": {
     "toolbar": {
@@ -7660,6 +7940,21 @@
         "bypassed": "El motor del navegador de este equipo envía algunas direcciones por fuera del túnel, así que las páginas del host remoto no se abren para no cargarlas desde este equipo.",
         "probeFailed": "El navegador integrado no pudo confirmar que llega al host remoto a través del túnel. Vuelve a intentarlo en un momento."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

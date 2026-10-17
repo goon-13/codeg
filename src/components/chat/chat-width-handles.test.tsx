@@ -405,6 +405,14 @@ describe("ChatWidthHandles wheel", () => {
   })
 })
 
+describe("ChatWidthHandles vs prompt-tick rail", () => {
+  it("hangs the left handle into the gutter, not over the 24px rail", () => {
+    const { left, right } = setup()
+    expect(left.className).toMatch(/-translate-x-full/)
+    expect(right.className).toMatch(/-translate-x-full/)
+  })
+})
+
 describe("ChatWidthHandles accessibility", () => {
   it("reports the width and its range once focused, and after each key", () => {
     const { right } = setup()

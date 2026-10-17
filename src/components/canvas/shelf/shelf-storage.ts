@@ -127,3 +127,67 @@ export function loadShelfShowAllConversationFolderIds(): number[] {
 export function saveShelfShowAllConversationFolderIds(ids: number[]): void {
   writeJson(SHOW_ALL_CONVERSATIONS_KEY, [...ids])
 }
+
+export function loadShelfFolderOrder(): number[] | null {
+  const parsed = readJson(FOLDER_ORDER_KEY)
+  if (parsed == null) return null
+  if (!Array.isArray(parsed)) return null
+  return parsed.filter((id): id is number => Number.isInteger(id))
+}
+
+export function saveShelfFolderOrder(ids: number[] | null): void {
+  if (ids == null) {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.removeItem(FOLDER_ORDER_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  writeJson(FOLDER_ORDER_KEY, [...ids])
+}
+
+export function loadShelfConversationOrder(): Record<number, number[]> | null {
+  const parsed = readJson(CONVERSATION_ORDER_KEY)
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null
+  }
+  const out: Record<number, number[]> = {}
+  for (const [key, value] of Object.entries(parsed)) {
+    const folderId = Number(key)
+    if (!Number.isInteger(folderId) || !Array.isArray(value)) continue
+    out[folderId] = value.filter((id): id is number => Number.isInteger(id))
+  }
+  return out
+}
+
+export function saveShelfConversationOrder(
+  byFolder: Record<number, number[]> | null
+): void {
+  if (byFolder == null) {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.removeItem(CONVERSATION_ORDER_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  const serialized: Record<string, number[]> = {}
+  for (const [folderId, ids] of Object.entries(byFolder)) {
+    serialized[folderId] = [...ids]
+  }
+  writeJson(CONVERSATION_ORDER_KEY, serialized)
+}
+
+/** Shelf session rail. Missing or unreadable storage stays collapsed. */
+const SESSION_RAIL_OPEN_KEY = "codeg.shelf.sessionRailOpen"
+
+export function loadShelfSessionRailOpen(): boolean {
+  return readJson(SESSION_RAIL_OPEN_KEY) === true
+}
+
+export function saveShelfSessionRailOpen(open: boolean): void {
+  writeJson(SESSION_RAIL_OPEN_KEY, open)
+}

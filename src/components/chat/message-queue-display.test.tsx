@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import enMessages from "@/i18n/messages/en.json"
 import type { QueuedMessage } from "@/hooks/use-message-queue"
+import { SIDE_SEED_PREFIX } from "@/lib/side-seed"
 
 import { MessageQueueDisplay } from "./message-queue-display"
 
@@ -64,6 +65,19 @@ function renderDisplay(
 }
 
 afterEach(cleanup)
+
+describe("MessageQueueDisplay side seed", () => {
+  it("hides the seed row and still shows the question", () => {
+    renderDisplay({
+      queue: [item("seed", `${SIDE_SEED_PREFIX}\n用户：hi`), item("q", "why")],
+    })
+    expect(screen.queryByText(/旁问/)).toBeNull()
+    expect(screen.queryByText(/用户：hi/)).toBeNull()
+    expect(screen.getByText("why")).toBeInTheDocument()
+    expect(screen.getByText("#1")).toBeInTheDocument()
+    expect(screen.queryByText("#2")).toBeNull()
+  })
+})
 
 describe("MessageQueueDisplay click-to-insert", () => {
   it("offers no insert button without a steering handler", () => {
