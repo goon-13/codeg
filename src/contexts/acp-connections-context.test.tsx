@@ -72,6 +72,8 @@ const h = vi.hoisted(() => {
     // Stable across renders so tests can assert on what the error handler
     // routes to the OS notification.
     notifyDesktop: vi.fn(async () => true),
+    notifySession: vi.fn(),
+    dismissSessionNotify: vi.fn(),
     // The taskbar / Dock request that rides along with every OS notification.
     requestWindowAttention: vi.fn(async () => true),
     toastWarning: vi.fn(),
@@ -116,6 +118,11 @@ vi.mock("@/lib/desktop-notification", () => ({
   // Snapshot replay wraps its dispatch in this; the real one only sets a
   // depth counter, so running the body straight through is faithful.
   withDesktopNotificationsSuppressed: (fn: () => unknown) => fn(),
+}))
+
+vi.mock("@/lib/in-app-session-notify", () => ({
+  notifySession: h.notifySession,
+  dismissSessionNotify: h.dismissSessionNotify,
 }))
 
 vi.mock("@/lib/window-attention", () => ({

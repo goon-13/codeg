@@ -5851,7 +5851,8 @@
     "eventsTitle": "Events",
     "eventsHint": "Turn off any event that should not interrupt you. Repeats of the same event within a few seconds collapse into one notification. Permission requests include plan approvals.",
     "eventBackgroundTask": "Background task",
-    "eventWorkTask": "Work task"
+    "eventWorkTask": "Work task",
+    "eventPlanApproval": "Plan approval"
   },
   "WindowAttentionSettings": {
     "title": "Taskbar and Dock alerts",
@@ -7976,5 +7977,17 @@
       "notRegular": "Source is not a regular session",
       "notFound": "Conversation not found"
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

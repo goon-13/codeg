@@ -24,7 +24,7 @@ type EventLabel =
       source: "channel"
       key: "turnComplete" | "permissionRequest" | "questionRequest" | "error"
     }
-  | { source: "local"; key: "eventBackgroundTask" | "eventWorkTask" }
+  | { source: "local"; key: "eventBackgroundTask" | "eventWorkTask" | "eventPlanApproval" }
 
 const EVENT_LABELS = {
   turn_complete: { source: "channel", key: "turnComplete" },
@@ -33,6 +33,7 @@ const EVENT_LABELS = {
   error: { source: "channel", key: "error" },
   background_task: { source: "local", key: "eventBackgroundTask" },
   work_task: { source: "local", key: "eventWorkTask" },
+  plan_approval_request: { source: "local", key: "eventPlanApproval" },
 } as const satisfies Record<NotifyEventId, EventLabel>
 
 /** The localized name of a desktop-alert event. */

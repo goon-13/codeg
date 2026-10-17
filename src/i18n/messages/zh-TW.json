@@ -5851,7 +5851,8 @@
     "eventsTitle": "事件",
     "eventsHint": "關掉不想被打斷的事件。同一事件在數秒內重複觸發時只通知一次。權限請求包含計畫核准。",
     "eventBackgroundTask": "背景任務",
-    "eventWorkTask": "待辦任務"
+    "eventWorkTask": "待辦任務",
+    "eventPlanApproval": "Plan approval"
   },
   "WindowAttentionSettings": {
     "title": "工作列 / Dock 提醒",
@@ -7976,5 +7977,17 @@
       "notRegular": "Source is not a regular session",
       "notFound": "Conversation not found"
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

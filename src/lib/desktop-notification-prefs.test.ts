@@ -31,6 +31,7 @@ describe("defaults", () => {
         turn_complete: true,
         permission_request: true,
         question_request: true,
+        plan_approval_request: true,
         error: true,
         background_task: true,
         work_task: true,
@@ -65,6 +66,14 @@ describe("parseDesktopNotificationPrefs", () => {
     expect(parsed.hideBody).toBe(false)
     expect(parsed.events.question_request).toBe(true)
     expect(parsed).not.toHaveProperty("bogus")
+  })
+
+  it("upgrades a blob missing plan_approval_request to true", () => {
+    const parsed = parseDesktopNotificationPrefs({
+      enabled: true,
+      events: { turn_complete: true },
+    })
+    expect(parsed.events.plan_approval_request).toBe(true)
   })
 
   it("keeps an unknown event out of the parsed set", () => {

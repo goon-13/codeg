@@ -5851,7 +5851,8 @@
     "eventsTitle": "事件",
     "eventsHint": "关掉不想被打断的事件。同一事件在数秒内重复触发时只通知一次。权限请求包含计划审批。",
     "eventBackgroundTask": "后台任务",
-    "eventWorkTask": "待办任务"
+    "eventWorkTask": "待办任务",
+    "eventPlanApproval": "计划批准"
   },
   "WindowAttentionSettings": {
     "title": "任务栏 / Dock 提醒",
@@ -7976,5 +7977,17 @@
       "notRegular": "源不是普通会话",
       "notFound": "找不到会话"
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "应用内提醒",
+    "description": "看别的会话时在右下角出条。只记在这台浏览器，不会向系统申请通知权限。",
+    "hideBody": "隐藏条上内容",
+    "hideBodyHint": "用一句通用话代替会话标题。",
+    "eventsTitle": "事件",
+    "eventsHint": "关掉你不想在看别的会话时弹出的事件。",
+    "sendTest": "发送测试",
+    "testTitle": "Codeg",
+    "testBody": "应用内提醒可用。",
+    "testSent": "测试条已发出。"
   }
 }

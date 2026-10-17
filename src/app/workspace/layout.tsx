@@ -94,6 +94,7 @@ import {
   DeepLinkBootstrap,
   PetFocusBridge,
 } from "@/components/workspace/deep-link-bootstrap"
+import { SessionNotifyLandBridge } from "@/components/workspace/session-notify-land-bridge"
 import { WorkspaceOpenFolderListener } from "@/components/workspace/workspace-open-folder-listener"
 import { WorkspaceRestoreNotices } from "@/components/workspace/workspace-restore-notices"
 import { HeavyPluginsWarmup } from "@/components/ai-elements/heavy-plugins-warmup"
@@ -1474,6 +1475,7 @@ function FolderLayoutShell({ children }: { children: React.ReactNode }) {
         duration={TOAST_DURATION_MS}
         closeButton
       />
+      <SessionNotifyLandBridge />
     </div>
   )
 }

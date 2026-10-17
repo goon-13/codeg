@@ -36,6 +36,7 @@ describe("defaults", () => {
         turn_complete: "informational",
         permission_request: "critical",
         question_request: "critical",
+        plan_approval_request: "critical",
         error: "informational",
         background_task: "informational",
         work_task: "informational",

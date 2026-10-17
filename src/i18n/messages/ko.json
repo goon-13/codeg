@@ -5851,7 +5851,8 @@
     "eventsTitle": "이벤트",
     "eventsHint": "방해받고 싶지 않은 이벤트를 끕니다. 몇 초 이내의 동일 이벤트는 하나로 합쳐집니다. 권한 요청에는 계획 승인도 포함됩니다.",
     "eventBackgroundTask": "백그라운드 작업",
-    "eventWorkTask": "작업 항목"
+    "eventWorkTask": "작업 항목",
+    "eventPlanApproval": "Plan approval"
   },
   "WindowAttentionSettings": {
     "title": "작업 표시줄 / Dock 알림",
@@ -7976,5 +7977,17 @@
       "notRegular": "Source is not a regular session",
       "notFound": "Conversation not found"
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }
