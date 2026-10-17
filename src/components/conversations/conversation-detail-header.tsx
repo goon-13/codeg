@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import {
   ChevronRight,
   Circle,
@@ -21,6 +21,7 @@ import {
   updateConversationTitle,
 } from "@/lib/api"
 import { formatConversationTitle } from "@/lib/conversation-title"
+import { normalizeTitle, SESSION_TITLE_MAX_CHARS } from "@/lib/normalize-title"
 import { ConversationHeaderFolderPicker } from "@/components/chat/conversation-context-bar"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { useTabActions } from "@/contexts/tab-context"
@@ -63,6 +64,10 @@ import {
 } from "./active-session-details"
 import { SessionDetailsDialog } from "./session-details-dialog"
 import { ConversationHeaderTags } from "./conversation-tag-picker"
+import {
+  InlineTitleEditor,
+  type InlineTitleEditorHandle,
+} from "@/components/shared/inline-title-editor"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface ConversationDetailHeaderProps {
@@ -170,6 +175,21 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
   const persisted = conversationId != null
   const displayTitle =
     formatConversationTitle(title) || t("untitledConversation")
+  const editorRef = useRef<InlineTitleEditorHandle>(null)
+  const [editing, setEditing] = useState(false)
+
+  // Live tab, not a dialog snapshot: discard the inline draft. Do not commit it.
+  useEffect(() => {
+    editorRef.current?.cancel()
+    setEditing(false)
+  }, [conversationId])
+
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key !== "F2") return
+    if (editing) return
+    event.preventDefault()
+    editorRef.current?.start()
+  }
 
   const handleTogglePin = useCallback(() => {
     if (conversationId == null) return
@@ -193,19 +213,25 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
 
   const handleRenameOpen = useCallback(() => {
     if (conversationId == null) return
+    editorRef.current?.cancel()
     setRenameValue(title || "")
     setRenameTarget({ id: conversationId, title })
   }, [conversationId, title])
 
   const handleRenameConfirm = useCallback(async () => {
     if (renameTarget == null) return
-    const trimmed = renameValue.trim()
-    if (trimmed && trimmed !== renameTarget.title) {
-      try {
-        await updateConversationTitle(renameTarget.id, trimmed)
-        refreshConversations()
-      } catch (err) {
-        console.error("[ConversationDetailHeader] rename:", err)
+    const unchanged =
+      renameValue === renameTarget.title ||
+      renameValue.trim() === renameTarget.title.trim()
+    if (!unchanged) {
+      const next = normalizeTitle(renameValue, SESSION_TITLE_MAX_CHARS)
+      if (next != null) {
+        try {
+          await updateConversationTitle(renameTarget.id, next)
+          refreshConversations()
+        } catch (err) {
+          console.error("[ConversationDetailHeader] rename:", err)
+        }
       }
     }
     setRenameTarget(null)
@@ -277,12 +303,32 @@ export const ConversationDetailHeader = memo(function ConversationDetailHeader({
         {/* The title takes the ellipsis, so the folder crumb on the left stays
             fully visible — but grows only as far as its own text
             (`max-w-max`), so the tags follow it instead of the far edge. */}
-        <span
+        <div className="min-w-0 max-w-max flex-1" onKeyDown={handleTitleKeyDown}>
+        <InlineTitleEditor
+          ref={editorRef}
+          value={title || ""}
+          restLabel={displayTitle}
+          maxChars={SESSION_TITLE_MAX_CHARS}
+          editing={editing}
+          onEditingChange={setEditing}
+          restOpensEditor
+          disabled={!persisted}
+          tabIndex={persisted ? 0 : undefined}
+          onCommit={async (next) => {
+            if (conversationId == null) return
+            try {
+              await updateConversationTitle(conversationId, next)
+              refreshConversations()
+            } catch (err) {
+              console.error("[ConversationDetailHeader] rename:", err)
+              throw err
+            }
+          }}
           className="min-w-0 max-w-max flex-1 truncate text-sm text-foreground/90"
-          title={title}
-        >
-          {displayTitle}
-        </span>
+          aria-label={t("editTitle")}
+          data-testid="conversation-header-title"
+        />
+        </div>
         {/* Capped at half the row so a long tag list squeezes its own chips
             (they truncate) before it squeezes the title. */}
         {taggable && conversationId != null ? (
