@@ -7049,7 +7049,7 @@
     "scrollToBottom": "回到最下",
     "shelfOutline": "货架",
     "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
-    "shelfOutlineShort": "目录 {projects}·{sessions}",
+    "shelfOutlineShort": "目录",
     "shelfOutlineTitle": "编辑货架",
     "shelfOutlineEmpty": "没有匹配的项目或会话",
     "shelfMoveUp": "上移",
@@ -7057,7 +7057,13 @@
     "shelfSessionRail": "会话",
     "shelfSessionRailExpand": "展开会话树",
     "shelfSessionRailCollapse": "收起会话树",
-    "shelfBackToSource": "回本线"
+    "shelfBackToSource": "回本线",
+    "recentConversations": "最近对话",
+    "recentMore": "更多",
+    "recentMoreCount": "… 更多 · {count}",
+    "recentCollapse": "收起",
+    "shelfMiniExpand": "展开成一行三张",
+    "shelfMiniCollapse": "收起成一行"
   },
   "Browser": {
     "toolbar": {

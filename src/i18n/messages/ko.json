@@ -7049,7 +7049,7 @@
     "scrollToBottom": "맨 아래로",
     "shelfOutline": "Shelf",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
-    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineShort": "목록",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
@@ -7057,7 +7057,13 @@
     "shelfSessionRail": "Sessions",
     "shelfSessionRailExpand": "Show session list",
     "shelfSessionRailCollapse": "Hide session list",
-    "shelfBackToSource": "Back to source"
+    "shelfBackToSource": "Back to source",
+    "recentConversations": "최근",
+    "recentMore": "더보기",
+    "recentMoreCount": "… 더보기 · {count}",
+    "recentCollapse": "접기",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

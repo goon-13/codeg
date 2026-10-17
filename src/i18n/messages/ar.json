@@ -7049,7 +7049,7 @@
     "scrollToBottom": "Jump to bottom",
     "shelfOutline": "Shelf",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
-    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineShort": "مخطط",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
@@ -7057,7 +7057,13 @@
     "shelfSessionRail": "Sessions",
     "shelfSessionRailExpand": "Show session list",
     "shelfSessionRailCollapse": "Hide session list",
-    "shelfBackToSource": "Back to source"
+    "shelfBackToSource": "Back to source",
+    "recentConversations": "الأخيرة",
+    "recentMore": "المزيد",
+    "recentMoreCount": "… المزيد · {count}",
+    "recentCollapse": "أقل",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

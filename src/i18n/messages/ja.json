@@ -7049,7 +7049,7 @@
     "scrollToBottom": "一番下へ",
     "shelfOutline": "Shelf",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
-    "shelfOutlineShort": "Directory {projects}·{sessions}",
+    "shelfOutlineShort": "目次",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
@@ -7057,7 +7057,13 @@
     "shelfSessionRail": "Sessions",
     "shelfSessionRailExpand": "Show session list",
     "shelfSessionRailCollapse": "Hide session list",
-    "shelfBackToSource": "Back to source"
+    "shelfBackToSource": "Back to source",
+    "recentConversations": "最近",
+    "recentMore": "さらに表示",
+    "recentMoreCount": "… さらに表示 · {count}",
+    "recentCollapse": "閉じる",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

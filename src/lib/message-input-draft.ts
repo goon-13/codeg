@@ -359,3 +359,31 @@ export function clearMessageInputDraftV2(draftKey: string): void {
     /* ignore */
   }
 }
+
+export function surfaceComposerDraftStorageKey(args: {
+  conversationId: number | null
+  contextKey: string
+}): string {
+  if (args.conversationId != null) {
+    return buildConversationDraftStorageKey(args.conversationId)
+  }
+  return `canvas-draft:${args.contextKey}`
+}
+
+export function adoptCanvasDraftToConversation(
+  contextKey: string,
+  conversationId: number
+): void {
+  const to = buildConversationDraftStorageKey(conversationId)
+  if (loadMessageInputDraftV2(to)) return
+  moveMessageInputDraft(`canvas-draft:${contextKey}`, to)
+}
+
+export function adoptLegacyShelfConversationDraft(
+  conversationId: number
+): void {
+  const to = buildConversationDraftStorageKey(conversationId)
+  if (loadMessageInputDraftV2(to)) return
+  moveMessageInputDraft(`canvas-draft:shelf:${conversationId}`, to)
+}
+

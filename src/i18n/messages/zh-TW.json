@@ -7049,7 +7049,7 @@
     "scrollToBottom": "回到最下",
     "shelfOutline": "Shelf",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
-    "shelfOutlineShort": "目錄 {projects}·{sessions}",
+    "shelfOutlineShort": "目錄",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
@@ -7057,7 +7057,13 @@
     "shelfSessionRail": "會話",
     "shelfSessionRailExpand": "展開會話樹",
     "shelfSessionRailCollapse": "收起會話樹",
-    "shelfBackToSource": "回本線"
+    "shelfBackToSource": "回本線",
+    "recentConversations": "最近對話",
+    "recentMore": "更多",
+    "recentMoreCount": "… 更多 · {count}",
+    "recentCollapse": "收起",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

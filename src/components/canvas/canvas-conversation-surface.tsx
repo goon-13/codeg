@@ -12,6 +12,9 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { shelfContextKey } from "@/components/canvas/shelf/shelf-model"
 import { AgentSelector } from "@/components/chat/agent-selector"
+import { QuickActions } from "@/components/chat/quick-actions"
+import { WelcomeHero } from "@/components/chat/welcome-hero"
+import type { ComposerInjectContent } from "@/components/chat/message-input"
 import { ConversationShell } from "@/components/chat/conversation-shell"
 import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
 import { MessageListView } from "@/components/message/message-list-view"
@@ -36,6 +39,11 @@ import {
   type AppErrorTranslator,
 } from "@/lib/app-error"
 import { notify } from "@/lib/notify"
+import {
+  adoptCanvasDraftToConversation,
+  adoptLegacyShelfConversationDraft,
+  surfaceComposerDraftStorageKey,
+} from "@/lib/message-input-draft"
 import { getAgentLabel } from "@/lib/custom-agents"
 import {
   extractUserImagesFromDraft,
@@ -71,6 +79,7 @@ import {
 } from "@/lib/side-open-handoff"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { makeConversationTabId, useTabStore } from "@/stores/tab-store"
+import { wouldBindForeignSession } from "@/lib/session-bind-guard"
 import {
   getTimelineTurns,
   useConversationRuntimeActions,
@@ -150,6 +159,20 @@ interface CanvasConversationSurfaceProps {
   folderPickerOverride?: ConversationFolderPickerOverride
   /** Focus/priority hint for the connection lifecycle and the transcript. */
   isActive?: boolean
+  /**
+   * Composer caret / auto-focus. Defaults to `isActive` so canvas cards stay
+   * one-prop. Shelf passes this separately so several live cards do not all
+   * call `editor.focus()` when a turn ends.
+   */
+  composerActive?: boolean
+  /**
+   * Read at unmount: true when this surface is being taken down because the
+   * shelf card collapsed (or a tab reparented), not because the user left.
+   * The remounted surface re-attaches to the same connection.
+   */
+  isTransientUnmount?: () => boolean
+  /** Shelf drafts reuse the sidebar welcome column. Canvas drafts stay thin. */
+  showWelcome?: boolean
   className?: string
 }
 
@@ -205,6 +228,9 @@ export function CanvasConversationSurface({
   onSaveSelectionAsNote,
   folderPickerOverride,
   isActive = true,
+  composerActive,
+  isTransientUnmount,
+  showWelcome = false,
   className,
 }: CanvasConversationSurfaceProps) {
   const t = useTranslations("Canvas")
@@ -254,6 +280,10 @@ export function CanvasConversationSurface({
   const dbConversationIdRef = useRef(dbConversationId)
   useEffect(() => {
     dbConversationIdRef.current = dbConversationId
+  }, [dbConversationId])
+  useEffect(() => {
+    if (dbConversationId == null) return
+    adoptLegacyShelfConversationDraft(dbConversationId)
   }, [dbConversationId])
 
   /**
@@ -756,9 +786,21 @@ export function CanvasConversationSurface({
             sendFolderId = draftTarget.folderId
           }
           dbConversationIdRef.current = newId
-          setExternalId(effectiveConversationId, connSessionId ?? null)
+          const holder = connSessionId
+            ? (useAppWorkspaceStore
+                .getState()
+                .conversations.find((c) => c.external_id === connSessionId)?.id ??
+              null)
+            : null
+          if (
+            connSessionId &&
+            !wouldBindForeignSession(newId, holder)
+          ) {
+            setExternalId(effectiveConversationId, connSessionId)
+          }
           setDbConversationId(effectiveConversationId, newId)
           setCreatedConversationId(newId)
+          adoptCanvasDraftToConversation(contextKey, newId)
           refreshConversations()
           onConversationCreated?.(newId, sendFolderId)
           lifecycleSend(draft, selectedModeIdArg, {
@@ -956,6 +998,8 @@ export function CanvasConversationSurface({
       ? null
       : (s.conversations.find((c) => c.id === dbConversationId) ?? null)
   )
+  const [composerInject, setComposerInject] =
+    useState<ComposerInjectContent | null>(null)
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -1011,14 +1055,46 @@ export function CanvasConversationSurface({
           agentType={agentType}
           availableCommands={connectionCommands ?? []}
           draftStorageKey={`canvas-draft:${contextKey}`}
+          agentType={selectedAgent}
+          availableCommands={conn.availableCommands ?? []}
+          draftStorageKey={surfaceComposerDraftStorageKey({
+            conversationId: dbConversationId,
+            contextKey,
+          })}
           getSentHistory={getSentHistory}
           // The card's own connection key doubles as its composer scope: the
           // context-usage ring and connection dot in the picker row read it as
           // a contextKey (they showed nothing at all while it was undefined).
           attachmentTabId={contextKey}
           folderPickerOverride={folderPickerOverride}
-          isActive={isActive}
+          isActive={composerActive ?? isActive}
+          injectContent={composerInject}
+          onInjectConsumed={() => setComposerInject(null)}
         >
+          {isDraft && showWelcome && onAgentTypeChange ? (
+            <div
+              data-testid="draft-welcome"
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4"
+            >
+              <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+                <WelcomeHero />
+                <QuickActions
+                  onSelect={(payload) => setComposerInject(payload)}
+                  agentType={selectedAgent}
+                />
+                <div className="flex justify-center">
+                  <AgentSelector
+                    align="center"
+                    defaultAgentType={selectedAgent}
+                    onSelect={onAgentTypeChange}
+                    onFallback={onAgentTypeChange}
+                    disabled={conn.status === "connecting"}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
           {isDraft && onAgentTypeChange && (
             <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
               <AgentSelector
@@ -1049,6 +1125,8 @@ export function CanvasConversationSurface({
             hideEmptyState={isDraft}
             onSaveNoteSelection={onSaveSelectionAsNote}
           />
+            </>
+          )}
         </ConversationShell>
       </div>
     </div>
