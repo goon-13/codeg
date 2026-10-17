@@ -719,7 +719,7 @@ it("gates the no-tab draft creation effect on folder-tabs mode", () => {
 describe("composer agent chip", () => {
   it("keeps the canvas and shelf draft on one AgentSelector chip", () => {
     const start = canvasSurfaceSource.indexOf(
-      "{isDraft && onAgentTypeChange && ("
+      "{showAgentTypePicker && onAgentTypeChange && ("
     )
     const end = canvasSurfaceSource.indexOf("<MessageListView", start)
     expect(start).toBeGreaterThan(-1)

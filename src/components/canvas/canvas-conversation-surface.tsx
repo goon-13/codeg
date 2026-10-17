@@ -97,8 +97,10 @@ import {
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import { makeConversationTabId, useTabStore } from "@/stores/tab-store"
 import { wouldBindForeignSession } from "@/lib/session-bind-guard"
+import { shouldShowAgentTypePicker } from "@/lib/agent-type-lock"
 import {
   getTimelineTurns,
+  selectTimelineTurns,
   useConversationRuntimeActions,
   useConversationRuntimeStore,
 } from "@/stores/conversation-runtime-store"
@@ -1171,6 +1173,15 @@ export function CanvasConversationSurface({
   )
 
   const isDraft = dbConversationId == null
+  const transcriptCount = useConversationRuntimeStore(
+    (s) => selectTimelineTurns(s, effectiveConversationId).length
+  )
+  const showAgentTypePicker = shouldShowAgentTypePicker({
+    canPick: onAgentTypeChange != null,
+    isDraft,
+    hasTranscript: transcriptCount > 0,
+    hasStartedSend: creating || connStatus === "prompting",
+  })
   const handoffSummary = useAppWorkspaceStore((s) =>
     dbConversationId == null
       ? null
@@ -1260,7 +1271,7 @@ export function CanvasConversationSurface({
           injectContent={composerInject}
           onInjectConsumed={() => setComposerInject(null)}
         >
-          {isDraft && showWelcome && onAgentTypeChange ? (
+          {showAgentTypePicker && showWelcome && onAgentTypeChange ? (
             <div
               data-testid="draft-welcome"
               className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4"
@@ -1298,7 +1309,7 @@ export function CanvasConversationSurface({
             </div>
           ) : (
             <>
-          {isDraft && onAgentTypeChange && (
+          {showAgentTypePicker && onAgentTypeChange && (
             <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-border/60 px-3 py-2">
               <AgentSelector
                 align="center"
