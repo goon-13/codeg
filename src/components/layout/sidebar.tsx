@@ -13,6 +13,8 @@ import {
   Eye,
   ListChevronsDownUp,
   ListChevronsUpDown,
+  CalendarDays,
+  Inbox,
   LayoutTemplate,
   ListTodo,
   Map as MapIcon,
@@ -121,6 +123,8 @@ const RECENT_HIDDEN: ReadonlySet<SidebarSectionId> = new Set(["recent"])
 // of the nav block rather than three bare labels.
 const NAV_ITEM_ICONS: Record<SidebarNavItemId, LucideIcon> = {
   automations: Zap,
+  calendar: CalendarDays,
+  pool: Inbox,
   tasks: ListTodo,
   forge: LayoutTemplate,
   canvas: MapIcon,
@@ -578,6 +582,28 @@ export function Sidebar() {
                 </span>
               ) : null
             }
+          />
+        )}
+        {isNavItemVisible(navItems, "calendar") && (
+          <SidebarNavButton
+            icon={CalendarDays}
+            label={t("calendar")}
+            active={routeId === "calendar"}
+            onClick={() => {
+              if (isMobile) toggle()
+              setRoute("calendar")
+            }}
+          />
+        )}
+        {isNavItemVisible(navItems, "pool") && (
+          <SidebarNavButton
+            icon={Inbox}
+            label={t("pool")}
+            active={routeId === "pool"}
+            onClick={() => {
+              if (isMobile) toggle()
+              setRoute("pool")
+            }}
           />
         )}
         {isNavItemVisible(navItems, "tasks") && (

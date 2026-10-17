@@ -44,6 +44,7 @@ mod network;
 pub mod office_watch;
 pub mod parsers;
 pub mod paths;
+pub mod plan;
 pub mod pet_sessions;
 pub mod pet_state_mapper;
 pub mod pets;
@@ -109,7 +110,7 @@ mod tauri_app {
         session_info as session_info_commands,
         system_settings, terminal as terminal_commands,
         token_usage as token_usage_commands,
-        forge as forge_commands, version_control, windows, work_task as work_task_commands,
+        forge as forge_commands, plan as plan_commands, version_control, windows, work_task as work_task_commands,
         workspace_state as workspace_state_commands, workspace_windows,
     };
     use crate::terminal::manager::TerminalManager;
@@ -2114,6 +2115,9 @@ mod tauri_app {
                 token_usage_commands::token_usage_facets,
                 token_usage_commands::token_usage_status,
                 token_usage_commands::token_usage_sync,
+                plan_commands::plan_status,
+                plan_commands::plan_read_text,
+                plan_commands::plan_write_text,
                 work_task_commands::work_task_list,
                 work_task_commands::work_task_get,
                 work_task_commands::work_task_events,
