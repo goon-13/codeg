@@ -33,7 +33,14 @@ import {
   isComposerEmpty,
 } from "@/components/chat/composer/composer-commands"
 import { commandToReference } from "@/components/chat/composer/invocation-reference"
+import { selectPlaceholderInEditor } from "@/components/prompt-library/select-placeholder"
+import type { PromptFormRequest } from "@/components/prompt-library/use-prompt-form-insert"
 import type { RichComposerHandle } from "@/components/chat/composer/rich-composer"
+import {
+  isPromptListable,
+  planPromptFill,
+  promptDisplayTitle,
+} from "@/lib/prompt-library/prompt-model"
 
 export type { OfficeAction }
 
@@ -81,6 +88,8 @@ export interface ComposerShortcutsOptions {
   /** Run after a skill badge lands — hosts that mirror the editor's empty state
    *  (the conversation composer's send button) resync it here. */
   onAfterInsert?: () => void
+  /** ≥3 blanks: host opens the fill dialog. Without it, those prompts do not insert. */
+  onPromptForm?: (request: PromptFormRequest) => void
   logLabel?: string
 }
 
@@ -88,6 +97,7 @@ export function useComposerShortcuts({
   editorRef,
   agentType,
   onAfterInsert,
+  onPromptForm,
   logLabel = "Composer",
 }: ComposerShortcutsOptions): ComposerShortcuts {
   const locale = useLocale()
@@ -112,6 +122,10 @@ export function useComposerShortcuts({
   useEffect(() => {
     onAfterInsertRef.current = onAfterInsert
   }, [onAfterInsert])
+  const onPromptFormRef = useRef(onPromptForm)
+  useEffect(() => {
+    onPromptFormRef.current = onPromptForm
+  }, [onPromptForm])
 
   const refreshQuickMessages = useCallback(() => {
     setQuickMessagesLoading(true)
@@ -123,10 +137,30 @@ export function useComposerShortcuts({
       .finally(() => setQuickMessagesLoading(false))
   }, [logLabel])
 
+  useEffect(() => {
+    refreshQuickMessages()
+  }, [refreshQuickMessages])
+
   const insertQuickMessage = useCallback(
     (message: QuickMessage) => {
-      if (!message.content) return
-      editorRef.current?.insertTextAtCursor(message.content)
+      if (!isPromptListable(message.content)) return
+      const plan = planPromptFill(message.content)
+      if (plan.mode === "form") {
+        onPromptFormRef.current?.({
+          title: promptDisplayTitle(message.title),
+          template: plan.template,
+          vars: plan.vars,
+        })
+        return
+      }
+      editorRef.current?.insertTextAtCursor(plan.text)
+      if (plan.mode === "tab") {
+        requestAnimationFrame(() => {
+          const editor = editorRef.current?.getEditor()
+          if (editor) selectPlaceholderInEditor(editor, 1)
+        })
+      }
+      onAfterInsertRef.current?.()
     },
     [editorRef]
   )

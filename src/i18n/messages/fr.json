@@ -3550,7 +3550,13 @@
         "mentionGroupCommit": "Commits",
         "mentionGroupSkill": "Compétences",
         "mentionGroupAssistant": "Assistants",
-        "hermesRoleLabel": "Rôle"
+        "hermesRoleLabel": "Rôle",
+        "slashGroupCommands": "Commandes",
+        "slashGroupPrompts": "Prompts",
+        "slashGroupSkills": "Skills",
+        "promptFillTitle": "Remplir les champs",
+        "promptFillInsert": "Insérer",
+        "promptFillCancel": "Annuler"
       },
       "messageQueue": {
         "addToQueue": "Mettre en file",
@@ -5182,7 +5188,7 @@
   },
   "QuickMessagesSettings": {
     "title": "Messages rapides",
-    "description": "Gérez des extraits de messages réutilisables. Glissez pour réorganiser.",
+    "description": "Ce sont des prompts que vous insérez à la main. L’agent ne les prendra jamais tout seul. S’il doit agir de lui-même, créez une skill.",
     "loading": "Chargement des messages rapides…",
     "emptyList": "Aucun message rapide. Cliquez sur « Nouveau » pour en créer un.",
     "emptySelection": "Sélectionnez un message rapide à modifier.",
@@ -5199,7 +5205,13 @@
       "title": "Titre",
       "titlePlaceholder": "Donnez un titre court à ce message",
       "content": "Contenu",
-      "contentPlaceholder": "Saisissez ici le contenu du message"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "Supprimer le message rapide ?",

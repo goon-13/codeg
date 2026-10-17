@@ -3550,7 +3550,13 @@
         "mentionGroupCommit": "Commits",
         "mentionGroupSkill": "Fähigkeiten",
         "mentionGroupAssistant": "Assistenten",
-        "hermesRoleLabel": "Rolle"
+        "hermesRoleLabel": "Rolle",
+        "slashGroupCommands": "Befehle",
+        "slashGroupPrompts": "Prompts",
+        "slashGroupSkills": "Skills",
+        "promptFillTitle": "Leerstellen ausfüllen",
+        "promptFillInsert": "Einfügen",
+        "promptFillCancel": "Abbrechen"
       },
       "messageQueue": {
         "addToQueue": "Zur Warteschlange",
@@ -5182,7 +5188,7 @@
   },
   "QuickMessagesSettings": {
     "title": "Schnellnachrichten",
-    "description": "Verwalte wiederverwendbare Nachrichtenbausteine. Ziehe zum Neuordnen.",
+    "description": "Diese Prompts fügst du von Hand ein. Der Agent greift sie nie selbst auf. Soll er selbst handeln, erstelle eine Skill.",
     "loading": "Schnellnachrichten werden geladen…",
     "emptyList": "Noch keine Schnellnachrichten. Klicke auf \"Neu\", um eine zu erstellen.",
     "emptySelection": "Wähle eine Schnellnachricht zum Bearbeiten aus.",
@@ -5199,7 +5205,13 @@
       "title": "Titel",
       "titlePlaceholder": "Gib dieser Nachricht einen kurzen Titel",
       "content": "Inhalt",
-      "contentPlaceholder": "Gib hier den Nachrichteninhalt ein"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "Schnellnachricht löschen?",

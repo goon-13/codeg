@@ -43,6 +43,11 @@ import {
 } from "@/lib/api"
 import type { QuickMessage } from "@/lib/types"
 import { toErrorMessage } from "@/lib/app-error"
+import {
+  isReservedPromptSlug,
+  planPromptFill,
+  promptSlug,
+} from "@/lib/prompt-library/prompt-model"
 
 const LEFT_MIN_WIDTH = 280
 const RIGHT_MIN_WIDTH = 420
@@ -219,6 +224,13 @@ export function QuickMessagesSettings() {
       draftContent !== selectedMessage.content
     )
   }, [selectedMessage, draftTitle, draftContent])
+
+  const draftSlug = promptSlug(draftTitle)
+  const draftPlan = planPromptFill(draftContent)
+  const draftVarNames =
+    draftPlan.mode === "plain"
+      ? ""
+      : draftPlan.vars.map((item) => item.name).join("、")
 
   const persistReorder = useCallback(
     async (ids: number[]) => {
@@ -483,6 +495,16 @@ export function QuickMessagesSettings() {
                         onChange={(event) => setDraftTitle(event.target.value)}
                         placeholder={t("fields.titlePlaceholder")}
                       />
+                      <p className="text-2xs text-muted-foreground">
+                        {draftSlug
+                          ? t("fields.slashHint", { slug: draftSlug })
+                          : t("fields.slashHintSearch")}
+                      </p>
+                      {isReservedPromptSlug(draftSlug) && (
+                        <p className="text-2xs text-amber-600 dark:text-amber-400">
+                          {t("fields.reservedSlug", { slug: draftSlug ?? "" })}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label
@@ -500,6 +522,16 @@ export function QuickMessagesSettings() {
                         placeholder={t("fields.contentPlaceholder")}
                         className="min-h-[16.25rem]"
                       />
+                      <p className="text-2xs text-muted-foreground">
+                        {draftPlan.mode === "plain"
+                          ? t("fields.varsNone")
+                          : t(
+                              draftPlan.mode === "tab"
+                                ? "fields.varsTab"
+                                : "fields.varsForm",
+                              { names: draftVarNames }
+                            )}
+                      </p>
                     </div>
                   </div>
                   <div className="border-t px-4 py-3 flex items-center justify-between gap-2">

@@ -25,6 +25,7 @@ import {
   ComposerInvocationsPopup,
   useComposerInvocations,
 } from "./composer-invocations"
+import { usePromptFormInsert } from "@/components/prompt-library/use-prompt-form-insert"
 import { CronBuilderDialog } from "./cron-builder-dialog"
 import { useAgentOptions } from "./use-agent-options"
 import { Button } from "@/components/ui/button"
@@ -178,6 +179,7 @@ export function AutomationEditor({
     configValues
   )
   const booleanLabels = useBooleanOptionLabels()
+  const promptForm = usePromptFormInsert(editorRef)
   const invocations = useComposerInvocations({
     editorRef,
     agentType,
@@ -382,6 +384,7 @@ export function AutomationEditor({
         className="codeg-composer-chrome relative rounded-xl border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-ring/50"
       >
         <ComposerInvocationsPopup inv={invocations} />
+        {promptForm.dialog}
         <RichComposer
           ref={editorRef}
           defaultText={automation?.config?.display_text ?? ""}
