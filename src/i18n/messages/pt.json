@@ -6727,11 +6727,18 @@
     "scrollToTop": "Jump to top",
     "scrollToBottom": "Jump to bottom",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "Índice",
+    "recentConversations": "Recentes",
+    "recentMore": "Mais",
+    "recentMoreCount": "… Mais · {count}",
+    "recentCollapse": "Recolher",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
-    "shelfMoveDown": "Move down"
+    "shelfMoveDown": "Move down",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

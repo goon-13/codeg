@@ -6727,11 +6727,18 @@
     "scrollToTop": "回到最上",
     "scrollToBottom": "回到最下",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "目錄",
+    "recentConversations": "最近對話",
+    "recentMore": "更多",
+    "recentMoreCount": "… 更多 · {count}",
+    "recentCollapse": "收起",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
-    "shelfMoveDown": "Move down"
+    "shelfMoveDown": "Move down",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

@@ -573,21 +573,39 @@ export function MessageInput({
   // reload — a Markdown round-trip would downgrade them to plain links.
   const draftSaveTimerRef = useRef<number | null>(null)
   /** Persist (or clear) the draft from the document as it stands right now. */
-  const writeDraftNow = useCallback(() => {
+  const latestDraftRef = useRef<{
+    key: string
+    doc: ReturnType<typeof stripEmbeddedReferences> | null
+  } | null>(null)
+  const snapshotDraft = useCallback(() => {
     const ed = editorRef.current
     if (!ed || !effectiveDraftStorageKey) return
     if (ed.isEmpty()) {
-      clearMessageInputDraftV2(effectiveDraftStorageKey)
-    } else {
-      saveMessageInputDraftV2(
-        effectiveDraftStorageKey,
-        stripEmbeddedReferences(ed.getJSON())
-      )
+      latestDraftRef.current = { key: effectiveDraftStorageKey, doc: null }
+      return
+    }
+    latestDraftRef.current = {
+      key: effectiveDraftStorageKey,
+      doc: stripEmbeddedReferences(ed.getJSON()),
     }
   }, [effectiveDraftStorageKey])
+  const persistLatestDraft = useCallback(() => {
+    const snap = latestDraftRef.current
+    if (!snap) return
+    if (snap.doc == null) {
+      clearMessageInputDraftV2(snap.key)
+    } else {
+      saveMessageInputDraftV2(snap.key, snap.doc)
+    }
+  }, [])
+  const writeDraftNow = useCallback(() => {
+    snapshotDraft()
+    persistLatestDraft()
+  }, [snapshotDraft, persistLatestDraft])
   const scheduleDraftSave = useCallback(() => {
     if (typeof window === "undefined") return
     if (!effectiveDraftStorageKey || isEditingQueueItem) return
+    snapshotDraft()
     if (draftSaveTimerRef.current != null) {
       window.clearTimeout(draftSaveTimerRef.current)
     }
@@ -595,7 +613,7 @@ export function MessageInput({
       draftSaveTimerRef.current = null
       writeDraftNow()
     }, 300)
-  }, [effectiveDraftStorageKey, isEditingQueueItem, writeDraftNow])
+  }, [effectiveDraftStorageKey, isEditingQueueItem, writeDraftNow, snapshotDraft])
   /**
    * Land a *pending* debounced save immediately, before something other than
    * the user replaces the document. A save scheduled by the keystrokes that
@@ -610,10 +628,15 @@ export function MessageInput({
     writeDraftNow()
   }, [writeDraftNow])
 
+  const persistLatestDraftRef = useRef(persistLatestDraft)
+  persistLatestDraftRef.current = persistLatestDraft
   useEffect(() => {
     return () => {
-      if (draftSaveTimerRef.current != null && typeof window !== "undefined") {
+      if (typeof window === "undefined") return
+      if (draftSaveTimerRef.current != null) {
         window.clearTimeout(draftSaveTimerRef.current)
+        draftSaveTimerRef.current = null
+        persistLatestDraftRef.current()
       }
     }
   }, [])

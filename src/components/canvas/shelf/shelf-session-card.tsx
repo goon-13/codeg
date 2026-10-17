@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -24,11 +25,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { formatConversationTitle } from "@/lib/conversation-title"
-import type { ConversationStatus, DbConversationSummary } from "@/lib/types"
+import type { AgentType, ConversationStatus, DbConversationSummary } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { CanvasConversationSurface } from "../canvas-conversation-surface"
-import { shelfContextKey } from "./shelf-model"
+import { shelfContextKey, shelfDraftContextKey } from "./shelf-model"
 
 // Same box as the board detail card. Duplicated so this file does not import
 // canvas-model.
@@ -37,12 +38,16 @@ const SHELF_EXPANDED_HEIGHT = 560
 
 type ShelfComposerFocus = {
   activeKey: string | null
+  liveKeys: ReadonlySet<string>
   claim: (key: string) => void
+  adopt: (keys: readonly string[]) => void
 }
 
 const ShelfComposerFocusContext = createContext<ShelfComposerFocus>({
   activeKey: null,
+  liveKeys: new Set(),
   claim: () => {},
+  adopt: () => {},
 })
 
 export function ShelfComposerFocusProvider({
@@ -51,12 +56,34 @@ export function ShelfComposerFocusProvider({
   children: ReactNode
 }) {
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  const [liveKeys, setLiveKeys] = useState<ReadonlySet<string>>(
+    () => new Set()
+  )
   const claim = useCallback((key: string) => {
     setActiveKey((current) => (current === key ? current : key))
+    setLiveKeys((current) => {
+      if (current.has(key)) return current
+      const next = new Set(current)
+      next.add(key)
+      return next
+    })
+  }, [])
+  const adopt = useCallback((keys: readonly string[]) => {
+    setLiveKeys((current) => {
+      let changed = false
+      const next = new Set(current)
+      for (const key of keys) {
+        if (!next.has(key)) {
+          next.add(key)
+          changed = true
+        }
+      }
+      return changed ? next : current
+    })
   }, [])
   const value = useMemo(
-    () => ({ activeKey, claim }),
-    [activeKey, claim]
+    () => ({ activeKey, liveKeys, claim, adopt }),
+    [activeKey, liveKeys, claim, adopt]
   )
   return (
     <ShelfComposerFocusContext.Provider value={value}>
@@ -65,7 +92,7 @@ export function ShelfComposerFocusProvider({
   )
 }
 
-function useShelfComposerFocus() {
+export function useShelfComposerFocus() {
   return useContext(ShelfComposerFocusContext)
 }
 
@@ -84,6 +111,7 @@ interface ShelfSessionCardProps {
   onHideFromShelf: () => void
   onAddToShelf: () => void
   isTransientUnmount?: () => boolean
+  contextKey?: string
 }
 
 export function ShelfSessionCard({
@@ -96,11 +124,13 @@ export function ShelfSessionCard({
   onHideFromShelf,
   onAddToShelf,
   isTransientUnmount: _isTransientUnmount,
+  contextKey,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
-  const { activeKey, claim } = useShelfComposerFocus()
-  const surfaceKey = shelfContextKey(conversation.id)
+  const { activeKey, liveKeys, claim } = useShelfComposerFocus()
+  const surfaceKey = contextKey ?? shelfContextKey(conversation.id)
   const composerActive = expanded && activeKey === surfaceKey
+  const live = liveKeys.has(surfaceKey)
   const status = conversation.status as ConversationStatus
   const running = status === "in_progress"
   const title = conversation.title
@@ -245,10 +275,11 @@ export function ShelfSessionCard({
       </div>
       <CanvasConversationSurface
         key={conversation.id}
-        contextKey={shelfContextKey(conversation.id)}
+        contextKey={surfaceKey}
         conversationId={conversation.id}
         agentType={conversation.agent_type}
-        isActive={composerActive}
+        isActive={live}
+        composerActive={composerActive}
         // Bound conversation: show its own folder and do not move the
         // workspace tab. The chip is display-only (`editable: false`).
         folderPickerOverride={{
@@ -259,6 +290,85 @@ export function ShelfSessionCard({
         }}
         className="min-h-0 flex-1"
       />
+    </div>
+  )
+}
+
+interface ShelfDraftCardProps {
+  folderId: number
+  folderPath: string
+  nonce: string
+  agentType: AgentType
+  onAgentTypeChange: (agentType: AgentType) => void
+  onDiscard: () => void
+  onCreated: (conversationId: number, folderId: number) => void
+}
+
+export function ShelfDraftCard({
+  folderId,
+  folderPath,
+  nonce,
+  agentType,
+  onAgentTypeChange,
+  onDiscard,
+  onCreated,
+}: ShelfDraftCardProps) {
+  const t = useTranslations("Canvas")
+  const surfaceKey = shelfDraftContextKey(folderId, nonce)
+  const { activeKey, liveKeys, claim } = useShelfComposerFocus()
+  useLayoutEffect(() => {
+    claim(surfaceKey)
+  }, [claim, surfaceKey])
+  return (
+    <div
+      data-testid="shelf-draft-card"
+      className="flex w-[520px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card ring-2 ring-primary/25"
+      style={{ width: SHELF_EXPANDED_WIDTH, height: SHELF_EXPANDED_HEIGHT }}
+      onPointerDownCapture={() => claim(surfaceKey)}
+      onFocusCapture={() => claim(surfaceKey)}
+    >
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-2.5 py-1.5">
+        <AgentIcon agentType={agentType} className="size-3.5 shrink-0" />
+        <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
+          {t("newConversation")}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={t("discardDraft")}
+          onClick={onDiscard}
+        >
+          <X />
+        </Button>
+      </div>
+      <div
+        data-testid="shelf-expanded-body"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <CanvasConversationSurface
+          contextKey={surfaceKey}
+          conversationId={null}
+          agentType={agentType}
+          isActive={liveKeys.has(surfaceKey)}
+          composerActive={activeKey === surfaceKey}
+          showWelcome
+          onAgentTypeChange={onAgentTypeChange}
+          draftTarget={{
+            kind: "folder",
+            folderId,
+            workingDir: folderPath,
+          }}
+          onConversationCreated={onCreated}
+          folderPickerOverride={{
+            folderId,
+            editable: false,
+            onSelectFolder: () => {},
+            onSelectChatMode: () => {},
+          }}
+          className="h-full min-h-0"
+        />
+      </div>
     </div>
   )
 }

@@ -44,6 +44,10 @@ import {
   getConversationIdByExternalIdFromStore,
   useConversationRuntimeStore,
 } from "@/stores/conversation-runtime-store"
+import {
+  shouldRekeyNamedSession,
+  wouldBindForeignSession,
+} from "@/lib/session-bind-guard"
 import type {
   AgentType,
   AcpAgentStatus,
@@ -6767,18 +6771,21 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
           let orphanKey: string | null = null
           let orphanConn: ConnectionState | null = null
           if (sessionId) {
-            for (const [key, conn] of storeRef.current.connections) {
-              if (key === contextKey) continue
-              if (
-                conn.sessionId === sessionId &&
-                conn.agentType === agentType &&
-                conn.workingDir === nextWorkingDir &&
-                conn.status !== "disconnected" &&
-                conn.status !== "error"
-              ) {
-                orphanKey = key
-                orphanConn = conn
-                break
+            const holder = getConversationIdByExternalIdFromStore(sessionId)
+            if (shouldRekeyNamedSession(conversationId, holder)) {
+              for (const [key, conn] of storeRef.current.connections) {
+                if (key === contextKey) continue
+                if (
+                  conn.sessionId === sessionId &&
+                  conn.agentType === agentType &&
+                  conn.workingDir === nextWorkingDir &&
+                  conn.status !== "disconnected" &&
+                  conn.status !== "error"
+                ) {
+                  orphanKey = key
+                  orphanConn = conn
+                  break
+                }
               }
             }
           } else if (
@@ -6805,7 +6812,15 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
                 continue
               }
               if (conn.isViewer || conn.isDelegationChild) continue
-              if (conn.sessionId) continue
+              // session_started can land before the remount. A named draft
+              // still belongs to THIS first send; skip only if another row
+              // already holds the session.
+              if (conn.sessionId) {
+                const holder = getConversationIdByExternalIdFromStore(
+                  conn.sessionId
+                )
+                if (!shouldRekeyNamedSession(conversationId, holder)) continue
+              }
               candidates.push([key, conn])
             }
             const prompting = candidates.filter(
@@ -7509,6 +7524,14 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
       const conn = storeRef.current.connections.get(contextKey)
       if (!conn) return
       lastActivityRef.current.set(contextKey, Date.now())
+      if (conn.sessionId) {
+        const holder = getConversationIdByExternalIdFromStore(conn.sessionId)
+        if (wouldBindForeignSession(opts?.conversationId, holder)) {
+          throw new Error(
+            `agent session is already bound to conversation ${holder}; refusing to move it onto conversation ${opts?.conversationId}`
+          )
+        }
+      }
       try {
         await acpPrompt(
           conn.connectionId,
@@ -7570,6 +7593,14 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
     async (contextKey: string) => {
       const conn = storeRef.current.connections.get(contextKey)
       if (!conn) return
+      // Stop on this card must not cancel a session another conversation
+      // already holds — that is the crossed-key "stop A, kill B" failure.
+      if (conn.sessionId) {
+        const dest =
+          lastConnectParamsRef.current.get(contextKey)?.conversationId
+        const holder = getConversationIdByExternalIdFromStore(conn.sessionId)
+        if (wouldBindForeignSession(dest, holder)) return
+      }
       try {
         await acpCancel(conn.connectionId)
       } catch (e) {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import enMessages from "@/i18n/messages/en.json"
@@ -86,6 +86,9 @@ vi.mock("@/contexts/acp-connections-context", () => ({
   useAcpActions: () => ({
     registerLiveSurfaceKeys: h.registerLiveSurfaceKeys,
   }),
+  useConnectionStore: () => ({
+    getConnection: () => undefined,
+  }),
 }))
 
 vi.mock("@/stores/app-workspace-store", () => ({
@@ -125,9 +128,10 @@ describe("ShelfView", () => {
     expect(screen.queryByText("Beta")).toBeNull()
     expect(screen.getByText("1 in progress")).toBeTruthy()
     expect(screen.getByText("1 pending review")).toBeTruthy()
-    expect(screen.getByText("Fix the flaky test")).toBeTruthy()
-    expect(screen.getByText("Review the patch")).toBeTruthy()
-    expect(screen.queryByText("Ship the shelf")).toBeNull()
+    expect(screen.getAllByText("Fix the flaky test").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Review the patch").length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-shelf-card="9"]')).toBeNull()
+    expect(screen.getByTestId("shelf-recent-chip-9")).toBeTruthy()
     expect(document.querySelector(".react-flow")).toBeNull()
     expect(screen.getByTestId("shelf-view")).toBeTruthy()
     expect(screen.getByTestId("shelf-row").className).toMatch(/shrink-0/)
@@ -135,7 +139,8 @@ describe("ShelfView", () => {
 
   it("lists off-shelf conversations in the outline, not on the canvas", () => {
     renderShelf()
-    expect(screen.queryByText("Ship the shelf")).toBeNull()
+    expect(document.querySelector('[data-shelf-card="9"]')).toBeNull()
+    expect(screen.getByTestId("shelf-recent-chip-9")).toBeTruthy()
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
     expect(screen.getByRole("checkbox", { name: "Ship the shelf" })).toBeTruthy()
   })
@@ -147,8 +152,9 @@ describe("ShelfView", () => {
         name: "Remove this conversation from the shelf",
       })[0]
     )
-    expect(screen.queryByText("Fix the flaky test")).toBeNull()
-    expect(screen.getByText("Review the patch")).toBeTruthy()
+    expect(document.querySelector('[data-shelf-card="7"]')).toBeNull()
+    expect(screen.getByTestId("shelf-recent-chip-7")).toBeTruthy()
+    expect(document.querySelector('[data-shelf-card="8"]')).toBeTruthy()
     expect(
       JSON.parse(
         localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
@@ -171,12 +177,77 @@ describe("ShelfView", () => {
     ).toEqual([7, 8, 9])
   })
 
-  it("creates a conversation in the project row", async () => {
+  it("opens a draft in the project row so the agent can be chosen", async () => {
     renderShelf()
     fireEvent.click(screen.getByRole("button", { name: "New conversation" }))
-    await waitFor(() =>
-      expect(h.createConversation).toHaveBeenCalledWith(10, "claude_code")
+    expect(h.createConversation).not.toHaveBeenCalled()
+    expect(screen.getByTestId("shelf-draft-card")).toBeTruthy()
+    expect(screen.getByTestId("shelf-row").className).toMatch(/min-h-\[560px\]/)
+    expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
+      conversationId: null,
+      agentType: "grok",
+      isActive: true,
+      showWelcome: true,
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].contextKey).toMatch(
+      /^shelf-draft:10:/
     )
+    expect(h.surfaceRendered.mock.lastCall![0].draftTarget).toEqual({
+      kind: "folder",
+      folderId: 10,
+      workingDir: "/tmp/Alpha",
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].onAgentTypeChange).toEqual(
+      expect.any(Function)
+    )
+
+    await waitFor(() => {
+      const keys = h.registerLiveSurfaceKeys.mock.calls.map(
+        (call) => call[1] as Set<string>
+      )
+      expect(
+        keys.some((set) =>
+          [...set].some((key) => key.startsWith("shelf-draft:10:"))
+        )
+      ).toBe(true)
+    })
+
+    act(() => {
+      ;(
+        h.surfaceRendered.mock.lastCall![0].onAgentTypeChange as (
+          agent: string
+        ) => void
+      )("codex")
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].agentType).toBe("codex")
+
+    act(() => {
+      ;(
+        h.surfaceRendered.mock.lastCall![0].onConversationCreated as (
+          id: number,
+          folderId: number
+        ) => void
+      )(42, 10)
+    })
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "[]"
+      )
+    ).toEqual(expect.arrayContaining([7, 8, 42]))
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-expanded-conversations") ?? "[]"
+      )
+    ).toEqual(expect.arrayContaining([42]))
+    expect(screen.queryByTestId("shelf-draft-card")).toBeNull()
+    const leaked = h.surfaceRendered.mock.calls
+      .map((call) => call[0] as { conversationId?: number; contextKey?: string })
+      .filter(
+        (props) =>
+          props.conversationId === 42 &&
+          String(props.contextKey).startsWith("shelf-draft:")
+      )
+    expect(leaked).toEqual([])
   })
 
   it("adds a hidden project from the outline", () => {
@@ -206,7 +277,7 @@ describe("ShelfView", () => {
     renderShelf()
     const row = screen.getByTestId("shelf-row")
     expect(row.className).toMatch(/min-h-\[148px\]/)
-    fireEvent.click(screen.getByText("Fix the flaky test"))
+    clickShelfCard(7)
     expect(row.className).toMatch(/min-h-\[560px\]/)
     expect(row.className).not.toMatch(/overflow-y-hidden/)
   })
@@ -214,7 +285,7 @@ describe("ShelfView", () => {
   it("expands two cards and hands each surface its shelf key", () => {
     renderShelf()
 
-    fireEvent.click(screen.getByText("Fix the flaky test"))
+    clickShelfCard(7)
     expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
       contextKey: "shelf:7",
       conversationId: 7,
@@ -231,7 +302,7 @@ describe("ShelfView", () => {
       h.surfaceRendered.mock.lastCall![0].onSaveSelectionAsNote
     ).toBeUndefined()
 
-    fireEvent.click(screen.getByText("Review the patch"))
+    clickShelfCard(8)
     expect(screen.getAllByTestId("conversation-surface")).toHaveLength(2)
     const keys = h.surfaceRendered.mock.calls.map(
       (call) => (call[0] as { contextKey: string }).contextKey
@@ -241,8 +312,8 @@ describe("ShelfView", () => {
 
   it("closes one expanded card and leaves the other mounted", () => {
     renderShelf()
-    fireEvent.click(screen.getByText("Fix the flaky test"))
-    fireEvent.click(screen.getByText("Review the patch"))
+    clickShelfCard(7)
+    clickShelfCard(8)
 
     const closeButtons = screen.getAllByRole("button", { name: "Close" })
     fireEvent.click(closeButtons[0])
@@ -252,9 +323,7 @@ describe("ShelfView", () => {
 
   it("hides a project's cards when its title is collapsed", () => {
     renderShelf()
-    expect(
-      screen.getByRole("button", { name: /Fix the flaky test/ })
-    ).toBeTruthy()
+    expect(document.querySelector('[data-shelf-card="7"]')).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "Alpha" }))
 
@@ -262,9 +331,8 @@ describe("ShelfView", () => {
       "aria-expanded",
       "false"
     )
-    expect(
-      screen.queryByRole("button", { name: /Fix the flaky test/ })
-    ).toBeNull()
+    expect(screen.getByTestId("shelf-row-cards")).toHaveAttribute("hidden")
+    expect(screen.getByTestId("shelf-recent-chip-7")).toBeTruthy()
   })
 
   it("hydrates expanded cards and persists a new one", () => {
@@ -279,9 +347,10 @@ describe("ShelfView", () => {
       contextKey: "shelf:8",
       conversationId: 8,
       isActive: false,
+      composerActive: false,
     })
 
-    fireEvent.click(screen.getByText("Fix the flaky test"))
+    clickShelfCard(7)
     expect(
       JSON.parse(
         localStorage.getItem("workspace:shelf-expanded-conversations") ?? "[]"
@@ -312,7 +381,7 @@ describe("ShelfView", () => {
 
   it("registers expanded shown cards under source shelf", async () => {
     renderShelf()
-    fireEvent.click(screen.getByText("Fix the flaky test"))
+    clickShelfCard(7)
     await waitFor(() => {
       expect(h.registerLiveSurfaceKeys).toHaveBeenCalled()
     })
@@ -321,22 +390,52 @@ describe("ShelfView", () => {
     expect([...(last?.[1] ?? [])].sort()).toEqual(["shelf:7"])
   })
 
-  it("only the last opened card is the active composer", () => {
+  it("keeps the first expanded card live when a second is opened", () => {
     renderShelf()
-    fireEvent.click(screen.getByText("Fix the flaky test"))
-    fireEvent.click(screen.getByText("Review the patch"))
-    const latestById = new Map<number, boolean>()
+    clickShelfCard(7)
+    clickShelfCard(8)
+    const latest = new Map<
+      number,
+      { isActive?: boolean; composerActive?: boolean }
+    >()
     for (const [props] of h.surfaceRendered.mock.calls) {
-      latestById.set(props.conversationId as number, props.isActive as boolean)
+      latest.set(props.conversationId as number, {
+        isActive: props.isActive as boolean,
+        composerActive: props.composerActive as boolean | undefined,
+      })
     }
-    expect(latestById.get(7)).toBe(false)
-    expect(latestById.get(8)).toBe(true)
+    expect(latest.get(7)).toMatchObject({
+      isActive: true,
+      composerActive: false,
+    })
+    expect(latest.get(8)).toMatchObject({
+      isActive: true,
+      composerActive: true,
+    })
+  })
+
+  it("registers only claimed live keys, not a restored shell", async () => {
+    localStorage.setItem(
+      "workspace:shelf-expanded-conversations",
+      JSON.stringify([8])
+    )
+    renderShelf()
+    await waitFor(() => {
+      expect(h.registerLiveSurfaceKeys).toHaveBeenCalled()
+    })
+    const restored = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+    expect([...(restored?.[1] ?? [])]).not.toContain("shelf:8")
+    clickShelfCard(7)
+    await waitFor(() => {
+      const last = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+      expect([...(last?.[1] ?? [])].sort()).toEqual(["shelf:7"])
+    })
   })
 
   it("drops a live-surface key when that card collapses", () => {
     renderShelf()
-    fireEvent.click(screen.getByText("Fix the flaky test"))
-    fireEvent.click(screen.getByText("Review the patch"))
+    clickShelfCard(7)
+    clickShelfCard(8)
     fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0])
     const last =
       h.registerLiveSurfaceKeys.mock.calls[
@@ -348,7 +447,7 @@ describe("ShelfView", () => {
 
   it("clears the shelf live-surface source on unmount", () => {
     const view = renderShelf()
-    fireEvent.click(screen.getByText("Fix the flaky test"))
+    clickShelfCard(7)
     view.unmount()
     const last =
       h.registerLiveSurfaceKeys.mock.calls[
@@ -356,6 +455,26 @@ describe("ShelfView", () => {
       ]
     expect(last[0]).toBe("shelf")
     expect(last[1].size).toBe(0)
+  })
+
+  it("anchors the outline on the left edge and keeps jump on the rail", () => {
+    renderShelf()
+    const anchor = screen.getByTestId("shelf-outline-anchor")
+    const jump = screen.getByTestId("shelf-jump")
+    expect(anchor.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
+      true
+    )
+    expect(jump.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
+      false
+    )
+    expect(screen.queryByTestId("shelf-nav")).toBeNull()
+    expect(anchor.closest('[data-testid="shelf-chrome"]')).toBeTruthy()
+    expect(anchor.className).toMatch(/w-\[188px\]/)
+    expect(jump.className).toMatch(/bottom-3/)
+    expect(jump.className).toMatch(/w-\[188px\]/)
+    expect(
+      screen.getByTestId("shelf-view").querySelector(".border-b.border-border.px-3")
+    ).toBeNull()
   })
 
   it("shows both jump buttons side by side in the middle of the shelf", () => {
@@ -443,7 +562,130 @@ describe("ShelfView", () => {
     fireEvent.wheel(film, { deltaX: 0, deltaY: 80 })
     expect(left).toBe(120)
   })
+
+  it("puts the recent row above project rows and live-bumps only that row", () => {
+    const view = renderShelf()
+    const chrome = screen.getByTestId("shelf-chrome")
+    expect(chrome.querySelector('[data-testid="shelf-recent-row"]')).toBeTruthy()
+    expect(
+      chrome.querySelector('[data-testid="shelf-outline-anchor"]')
+    ).toBeTruthy()
+    const scroller = screen.getByTestId("shelf-scroller")
+    expect(
+      scroller.querySelector('[data-testid="shelf-recent-row"]')
+    ).toBeNull()
+    const recentChips = screen.getAllByTestId(/shelf-recent-chip-/)
+    expect(recentChips[0]).toHaveAttribute("data-testid", "shelf-recent-chip-7")
+    expect(screen.getAllByTestId("shelf-row")[0]).toHaveTextContent("Alpha")
+
+    const original = h.conversations
+    h.conversations = [
+      { ...original[0], updated_at: "2026-10-02T00:00:00Z" },
+      { ...original[1], updated_at: "2026-10-20T00:00:00Z" },
+      original[2],
+    ]
+    view.rerender(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ShelfView />
+      </NextIntlClientProvider>
+    )
+    const bumped = screen.getAllByTestId(/shelf-recent-chip-/)
+    expect(bumped[0]).toHaveAttribute("data-testid", "shelf-recent-chip-8")
+    expect(screen.getAllByTestId("shelf-row")[0]).toHaveTextContent("Alpha")
+    const titles = screen
+      .getAllByTestId("shelf-card-title")
+      .map((el) => el.textContent)
+    expect(titles[0]).toMatch(/Fix the flaky test/)
+    expect(titles[1]).toMatch(/Review the patch/)
+    h.conversations = original
+  })
+
+  it("does not steal composer focus when recency live-bumps", () => {
+    const view = renderShelf()
+    clickShelfCard(7)
+    expect(readActive("shelf:7")).toBe(true)
+
+    const original = h.conversations
+    h.conversations = [
+      original[0],
+      { ...original[1], updated_at: "2026-10-21T00:00:00Z" },
+      original[2],
+    ]
+    view.rerender(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ShelfView />
+      </NextIntlClientProvider>
+    )
+    expect(readActive("shelf:7")).toBe(true)
+    expect(readActive("shelf:8")).not.toBe(true)
+    expect(screen.getAllByTestId("conversation-surface")).toHaveLength(1)
+    h.conversations = original
+  })
+
+  it("opens an off-shelf conversation from a recent chip", () => {
+    renderShelf()
+    expect(document.querySelector('[data-shelf-card="9"]')).toBeNull()
+    fireEvent.click(screen.getByTestId("shelf-recent-chip-9"))
+    expect(document.querySelector('[data-shelf-card="9"]')).toBeTruthy()
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
+      )
+    ).toEqual(expect.arrayContaining([9]))
+  })
+
+  it("opens the outline panel below chrome, not inside the 188px rail", () => {
+    renderShelf()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    const panel = screen.getByTestId("shelf-outline-panel")
+    const anchor = screen.getByTestId("shelf-outline-anchor")
+    const layer = screen.getByTestId("shelf-outline-layer")
+    expect(anchor.contains(panel)).toBe(false)
+    expect(layer.contains(panel)).toBe(true)
+    expect(panel.className).toMatch(/w-\[24rem\]/)
+  })
+
+  it("grows chrome to three chip rows when Recent expands", () => {
+    const original = h.conversations
+    h.conversations = [
+      ...original,
+      ...Array.from({ length: 10 }, (_, i) => ({
+        ...original[0],
+        id: 100 + i,
+        title: `Extra ${i + 1}`,
+        status: "completed",
+        updated_at: `2026-09-${String(i + 10).padStart(2, "0")}T00:00:00Z`,
+      })),
+    ]
+    try {
+      renderShelf()
+      const chrome = screen.getByTestId("shelf-chrome")
+      expect(chrome.className).toMatch(/h-\[52px\]/)
+      fireEvent.click(screen.getByTestId("shelf-recent-more"))
+      expect(chrome.className).toMatch(/h-\[112px\]/)
+      expect(chrome.className).not.toMatch(/h-\[140px\]/)
+      expect(chrome.className).toMatch(/overflow-hidden/)
+      expect(chrome.className).not.toMatch(/h-\[52px\]/)
+    } finally {
+      h.conversations = original
+    }
+  })
 })
+
+function clickShelfCard(id: number) {
+  const el = document.querySelector(
+    `[data-testid="shelf-card-title"][data-shelf-card="${id}"]`
+  )
+  expect(el).toBeTruthy()
+  fireEvent.click(el as HTMLElement)
+}
+
+function readActive(key: string) {
+  return h.surfaceRendered.mock.calls
+    .map((call) => call[0] as { contextKey: string; isActive?: boolean })
+    .filter((props) => props.contextKey === key)
+    .at(-1)?.isActive
+}
 
 function setScrollerMetrics(
   scroller: HTMLElement,

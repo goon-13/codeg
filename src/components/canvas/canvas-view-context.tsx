@@ -99,6 +99,13 @@ export interface CanvasViewContextValue {
   setDraftColor: (draftId: string, color: string) => void
   /** The draft's first send created a row: persist the card in its place. */
   materializeDraft: (draftId: string, conversationId: number) => Promise<void>
+  /**
+   * True while `materializeDraft` is swapping this draft for a pinned card
+   * that inherits the same connection key. The draft's unmount must not
+   * disconnect — frontend status can still read `connected` after
+   * session_started, and acpDisconnect would kill the in-flight prompt.
+   */
+  isDraftHandoff: (draftId: string) => boolean
 }
 
 const CanvasViewContext = createContext<CanvasViewContextValue | null>(null)

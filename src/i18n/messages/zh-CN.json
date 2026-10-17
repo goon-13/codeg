@@ -6727,11 +6727,18 @@
     "scrollToTop": "回到最上",
     "scrollToBottom": "回到最下",
     "shelfOutline": "货架",
+    "shelfOutlineShort": "目录",
+    "recentConversations": "最近对话",
+    "recentMore": "更多",
+    "recentMoreCount": "… 更多 · {count}",
+    "recentCollapse": "收起",
     "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
     "shelfOutlineTitle": "编辑货架",
     "shelfOutlineEmpty": "没有匹配的项目或会话",
     "shelfMoveUp": "上移",
-    "shelfMoveDown": "下移"
+    "shelfMoveDown": "下移",
+    "shelfMiniExpand": "展开成一行三张",
+    "shelfMiniCollapse": "收起成一行"
   },
   "Browser": {
     "toolbar": {

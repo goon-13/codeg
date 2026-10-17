@@ -6,10 +6,14 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { useAcpActions } from "@/contexts/acp-connections-context"
-import { createConversation, moveConversation } from "@/lib/api"
+import {
+  useAcpActions,
+  useConnectionStore,
+} from "@/contexts/acp-connections-context"
+import { moveConversation } from "@/lib/api"
 import type { AgentType } from "@/lib/types"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
+import { cn } from "@/lib/utils"
 
 import { ShelfOutline } from "./shelf-outline"
 import {
@@ -19,13 +23,23 @@ import {
   defaultVisibleFolderIds,
   mergePersistedShelfOrder,
   moveShelfOrderId,
+  recentShelfConversations,
+  SHELF_RECENT_CHROME_HEIGHT,
+  SHELF_RECENT_OPEN_HEIGHT,
+  newShelfDraftNonce,
+  intersectShelfLiveKeys,
+  shelfDraftContextKey,
   shelfLiveSurfaceKeys,
   type ShelfOrderSnapshot,
   type ShelfProjectRow,
 } from "./shelf-model"
 import { ShelfProjectRowView } from "./shelf-project-row"
+import { ShelfRecentRow } from "./shelf-recent-row"
 import { jumpButtonsFromMetrics, type ShelfJumpButtons } from "./shelf-scroll"
-import { ShelfComposerFocusProvider } from "./shelf-session-card"
+import {
+  ShelfComposerFocusProvider,
+  useShelfComposerFocus,
+} from "./shelf-session-card"
 import {
   loadShelfCollapsedFolderIds,
   loadShelfConversationOrder,
@@ -46,7 +60,7 @@ function toggleMember(ids: number[], id: number): number[] {
 }
 
 function agentForFolder(defaultAgent: AgentType | null): AgentType {
-  return defaultAgent ?? "claude_code"
+  return defaultAgent ?? "grok"
 }
 
 function workingConversationIds(
@@ -65,9 +79,46 @@ function scrollShelfTarget(selector: string) {
 
 const EMPTY_JUMP: ShelfJumpButtons = { showTop: false, showBottom: false }
 
+function ShelfHeldKeysRegistrar({
+  mountedKeys,
+}: {
+  mountedKeys: ReadonlySet<string>
+}) {
+  const { liveKeys } = useShelfComposerFocus()
+  const { registerLiveSurfaceKeys } = useAcpActions()
+  useEffect(() => {
+    const held = intersectShelfLiveKeys(liveKeys, mountedKeys)
+    registerLiveSurfaceKeys("shelf", held)
+    return () => registerLiveSurfaceKeys("shelf", new Set())
+  }, [liveKeys, mountedKeys, registerLiveSurfaceKeys])
+  return null
+}
+
+function ShelfAdoptLive({ mountedKeys }: { mountedKeys: ReadonlySet<string> }) {
+  const { adopt } = useShelfComposerFocus()
+  const connectionStore = useConnectionStore()
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current) return
+    done.current = true
+    const alive: string[] = []
+    for (const key of mountedKeys) {
+      const status = connectionStore.getConnection(key)?.status
+      if (
+        status === "connected" ||
+        status === "prompting" ||
+        status === "connecting"
+      ) {
+        alive.push(key)
+      }
+    }
+    if (alive.length > 0) adopt(alive)
+  }, [adopt, connectionStore, mountedKeys])
+  return null
+}
+
 export function ShelfView() {
   const t = useTranslations("Canvas")
-  const { registerLiveSurfaceKeys } = useAcpActions()
   const folders = useAppWorkspaceStore((s) => s.folders)
   const conversations = useAppWorkspaceStore((s) => s.conversations)
   const [folderOrder, setFolderOrder] = useState(loadShelfFolderOrder)
@@ -101,8 +152,16 @@ export function ShelfView() {
   const [visibleConversationIds, setVisibleConversationIds] = useState<
     number[] | null
   >(loadShelfVisibleConversationIds)
+  const [drafts, setDrafts] = useState<
+    { folderId: number; nonce: string; agentType: AgentType }[]
+  >([])
+  const [draftContextByConversation, setDraftContextByConversation] = useState<
+    Record<number, string>
+  >({})
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [jump, setJump] = useState<ShelfJumpButtons>(EMPTY_JUMP)
+  const [recentOpen, setRecentOpen] = useState(false)
+  const outlineLayerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -144,16 +203,31 @@ export function ShelfView() {
     id: row.folder.id,
     name: row.folder.name,
   }))
+  const recentConversations = useMemo(
+    () => recentShelfConversations(conversations),
+    [conversations]
+  )
 
-  useEffect(() => {
+  const mountedKeys = useMemo(() => {
     const keys = shelfLiveSurfaceKeys(
       shownRows,
       expanded,
       visibleConversationIds
     )
-    registerLiveSurfaceKeys("shelf", keys)
-    return () => registerLiveSurfaceKeys("shelf", new Set())
-  }, [shownRows, expanded, visibleConversationIds, registerLiveSurfaceKeys])
+    for (const draft of drafts) {
+      keys.add(shelfDraftContextKey(draft.folderId, draft.nonce))
+    }
+    for (const key of Object.values(draftContextByConversation)) {
+      keys.add(key)
+    }
+    return keys
+  }, [
+    shownRows,
+    expanded,
+    visibleConversationIds,
+    drafts,
+    draftContextByConversation,
+  ])
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current
@@ -185,90 +259,122 @@ export function ShelfView() {
     setVisibleConversationIds(nextConversations)
   }
 
+  function jumpToConversation(conversationId: number, folderId: number) {
+    const nextFolders = workingIds.includes(folderId)
+      ? workingIds
+      : [...workingIds, folderId]
+    const nextConversations = conversationWorkingIds.includes(conversationId)
+      ? conversationWorkingIds
+      : [...conversationWorkingIds, conversationId]
+    if (
+      nextFolders !== workingIds ||
+      nextConversations !== conversationWorkingIds
+    ) {
+      setMembersAndUnfreeze(nextFolders, nextConversations)
+    }
+    setExpandedIds((ids) =>
+      ids.includes(conversationId) ? ids : [...ids, conversationId]
+    )
+    requestAnimationFrame(() =>
+      scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
+    )
+  }
+
   return (
     <ShelfComposerFocusProvider>
+      <ShelfHeldKeysRegistrar mountedKeys={mountedKeys} />
+      <ShelfAdoptLive mountedKeys={mountedKeys} />
       <div
         data-testid="shelf-view"
         className="relative flex h-full min-h-0 flex-col bg-background"
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-          <ShelfOutline
-            rows={rows}
-            visibleFolderIds={workingIds}
-            visibleConversationIds={conversationWorkingIds}
-            folderOrder={folderOrder ?? shownRows.map((row) => row.folder.id)}
-            conversationOrderByFolder={conversationOrder ?? {}}
-            onToggleFolder={(folderId) => {
-              setMembersAndUnfreeze(
-                toggleMember(workingIds, folderId),
-                conversationWorkingIds
-              )
-            }}
-            onToggleConversation={(conversationId) => {
-              setMembersAndUnfreeze(
-                workingIds,
-                toggleMember(conversationWorkingIds, conversationId)
-              )
-            }}
-            onMoveFolder={(folderId, delta) => {
-              snapshotRef.current = null
-              setFolderOrder(
-                moveShelfOrderId(
-                  shownRows.map((row) => row.folder.id),
-                  folderId,
-                  delta
-                )
-              )
-            }}
-            onMoveConversation={(conversationId, folderId, delta) => {
-              const row = shownRows.find((item) => item.folder.id === folderId)
-              if (!row) return
-              snapshotRef.current = null
-              const current =
-                conversationOrder?.[folderId] ??
-                row.conversations
-                  .filter((item) => conversationWorkingIds.includes(item.id))
-                  .map((item) => item.id)
-              setConversationOrder({
-                ...(conversationOrder ?? {}),
-                [folderId]: moveShelfOrderId(current, conversationId, delta),
-              })
-            }}
-            onJumpFolder={(folderId) => {
-              if (!workingIds.includes(folderId)) {
+        <div
+          data-testid="shelf-chrome"
+          className={cn(
+            "sticky top-0 z-20 flex shrink-0 items-stretch overflow-hidden border-b border-border bg-background",
+            recentOpen ? "h-[112px]" : "h-[52px]"
+          )}
+        >
+          <div
+            data-testid="shelf-outline-anchor"
+            className={cn(
+              "relative z-30 flex w-[188px] shrink-0 overflow-visible border-r border-border bg-muted/30 px-3",
+              recentOpen ? "items-start pt-1.5" : "items-center"
+            )}
+          >
+            <ShelfOutline
+              portalTarget={outlineLayerRef}
+              rows={rows}
+              visibleFolderIds={workingIds}
+              visibleConversationIds={conversationWorkingIds}
+              folderOrder={folderOrder ?? shownRows.map((row) => row.folder.id)}
+              conversationOrderByFolder={conversationOrder ?? {}}
+              onToggleFolder={(folderId) => {
                 setMembersAndUnfreeze(
-                  [...workingIds, folderId],
+                  toggleMember(workingIds, folderId),
                   conversationWorkingIds
                 )
-              }
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
-              )
-            }}
-            onJumpConversation={(conversationId, folderId) => {
-              const nextFolders = workingIds.includes(folderId)
-                ? workingIds
-                : [...workingIds, folderId]
-              const nextConversations = conversationWorkingIds.includes(
-                conversationId
-              )
-                ? conversationWorkingIds
-                : [...conversationWorkingIds, conversationId]
-              if (
-                nextFolders !== workingIds ||
-                nextConversations !== conversationWorkingIds
-              ) {
-                setMembersAndUnfreeze(nextFolders, nextConversations)
-              }
-              setExpandedIds((ids) =>
-                ids.includes(conversationId) ? ids : [...ids, conversationId]
-              )
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
-              )
-            }}
+              }}
+              onToggleConversation={(conversationId) => {
+                setMembersAndUnfreeze(
+                  workingIds,
+                  toggleMember(conversationWorkingIds, conversationId)
+                )
+              }}
+              onMoveFolder={(folderId, delta) => {
+                snapshotRef.current = null
+                setFolderOrder(
+                  moveShelfOrderId(
+                    shownRows.map((row) => row.folder.id),
+                    folderId,
+                    delta
+                  )
+                )
+              }}
+              onMoveConversation={(conversationId, folderId, delta) => {
+                const row = shownRows.find((item) => item.folder.id === folderId)
+                if (!row) return
+                snapshotRef.current = null
+                const current =
+                  conversationOrder?.[folderId] ??
+                  row.conversations
+                    .filter((item) => conversationWorkingIds.includes(item.id))
+                    .map((item) => item.id)
+                setConversationOrder({
+                  ...(conversationOrder ?? {}),
+                  [folderId]: moveShelfOrderId(current, conversationId, delta),
+                })
+              }}
+              onJumpFolder={(folderId) => {
+                if (!workingIds.includes(folderId)) {
+                  setMembersAndUnfreeze(
+                    [...workingIds, folderId],
+                    conversationWorkingIds
+                  )
+                }
+                requestAnimationFrame(() =>
+                  scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
+                )
+              }}
+              onJumpConversation={jumpToConversation}
+            />
+          </div>
+          <ShelfRecentRow
+            conversations={recentConversations}
+            onOpenConversation={jumpToConversation}
+            onExpandedChange={setRecentOpen}
           />
         </div>
+        <div
+          ref={outlineLayerRef}
+          data-testid="shelf-outline-layer"
+          className="pointer-events-none absolute left-3 z-40"
+          style={{
+            top: recentOpen
+              ? SHELF_RECENT_OPEN_HEIGHT
+              : SHELF_RECENT_CHROME_HEIGHT,
+          }}
+        />
         <div
           ref={scrollerRef}
           data-testid="shelf-scroller"
@@ -319,22 +425,65 @@ export function ShelfView() {
                     : [...conversationWorkingIds, conversationId]
                 )
               }
-              onNewConversation={async () => {
-                const id = await createConversation(
-                  row.folder.id,
-                  agentForFolder(row.folder.default_agent_type)
+              onNewConversation={() => {
+                setDrafts((current) =>
+                  current.some((draft) => draft.folderId === row.folder.id)
+                    ? current
+                    : [
+                        ...current,
+                        {
+                          folderId: row.folder.id,
+                          nonce: newShelfDraftNonce(),
+                          agentType: agentForFolder(
+                            row.folder.default_agent_type
+                          ),
+                        },
+                      ]
                 )
-                setMembersAndUnfreeze(
-                  workingIds,
-                  conversationWorkingIds.includes(id)
-                    ? conversationWorkingIds
-                    : [...conversationWorkingIds, id]
-                )
-                setExpandedIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
                 setCollapsedFolderIds((ids) =>
                   ids.filter((item) => item !== row.folder.id)
                 )
               }}
+              draft={
+                drafts.find((draft) => draft.folderId === row.folder.id) ??
+                null
+              }
+              onDraftAgentChange={(agentType) =>
+                setDrafts((current) =>
+                  current.map((draft) =>
+                    draft.folderId === row.folder.id
+                      ? { ...draft, agentType }
+                      : draft
+                  )
+                )
+              }
+              onDiscardDraft={() =>
+                setDrafts((current) =>
+                  current.filter((draft) => draft.folderId !== row.folder.id)
+                )
+              }
+              onDraftCreated={(conversationId, folderId) => {
+                setDrafts((current) =>
+                  current.filter((draft) => draft.folderId !== folderId)
+                )
+                setDraftContextByConversation((current) => {
+                  const next = { ...current }
+                  delete next[conversationId]
+                  return next
+                })
+                setMembersAndUnfreeze(
+                  workingIds,
+                  conversationWorkingIds.includes(conversationId)
+                    ? conversationWorkingIds
+                    : [...conversationWorkingIds, conversationId]
+                )
+                setExpandedIds((ids) =>
+                  ids.includes(conversationId)
+                    ? ids
+                    : [...ids, conversationId]
+                )
+              }}
+              contextKeys={draftContextByConversation}
               onMove={async (conversationId, toFolderId) => {
                 try {
                   await moveConversation(conversationId, toFolderId)

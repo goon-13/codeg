@@ -1,4 +1,5 @@
 import type { DbConversationSummary, FolderDetail } from "@/lib/types"
+import { randomUUID } from "@/lib/utils"
 
 export type ShelfCounts = { running: number; waiting: number }
 
@@ -102,6 +103,15 @@ export function shelfContextKey(conversationId: number): string {
   return `shelf:${conversationId}`
 }
 
+/** Per-draft ACP key. Must not call crypto.randomUUID() — LAN HTTP is not a secure context. */
+export function newShelfDraftNonce(): string {
+  return randomUUID()
+}
+
+export function shelfDraftContextKey(folderId: number, nonce: string): string {
+  return `shelf-draft:${folderId}:${nonce}`
+}
+
 export type ShelfOrderSnapshot = {
   folderIds: number[]
   conversationIdsByFolder: Record<number, number[]>
@@ -198,6 +208,17 @@ export function moveShelfOrderId(
   return next
 }
 
+export function intersectShelfLiveKeys(
+  liveKeys: ReadonlySet<string>,
+  mountedKeys: ReadonlySet<string>
+): Set<string> {
+  const held = new Set<string>()
+  for (const key of liveKeys) {
+    if (mountedKeys.has(key)) held.add(key)
+  }
+  return held
+}
+
 export function shelfLiveSurfaceKeys(
   rows: ShelfProjectRow[],
   expandedIds: ReadonlySet<number>,
@@ -234,4 +255,77 @@ export function filterShelfMiniRows(
     if (conversations.length === 0) return []
     return [{ ...row, conversations }]
   })
+}
+
+export const SHELF_RECENT_COLLAPSED_COUNT = 8
+export const SHELF_RECENT_PANEL_PAGE = 20
+export const SHELF_RECENT_CHROME_HEIGHT = 52
+export const SHELF_RECENT_CHIP_HEIGHT = 32
+export const SHELF_RECENT_CHIP_GAP = 8
+export const SHELF_RECENT_OPEN_ROWS = 3
+/** Exactly 3 chip rows: no partial 4th row in the lock. */
+export const SHELF_RECENT_OPEN_HEIGHT =
+  SHELF_RECENT_OPEN_ROWS * SHELF_RECENT_CHIP_HEIGHT +
+  (SHELF_RECENT_OPEN_ROWS - 1) * SHELF_RECENT_CHIP_GAP
+
+export function recentShelfConversations(
+  conversations: DbConversationSummary[]
+): DbConversationSummary[] {
+  return conversations
+    .filter(isShelfConversation)
+    .slice()
+    .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
+}
+
+export function nextRecentPage(
+  ids: number[],
+  alreadyShown: number[],
+  offset: number,
+  page = SHELF_RECENT_PANEL_PAGE
+): { ids: number[]; nextOffset: number; done: boolean } {
+  const skip = new Set(alreadyShown)
+  const rest = ids.filter((id) => !skip.has(id))
+  const slice = rest.slice(offset, offset + page)
+  const nextOffset = offset + slice.length
+  return {
+    ids: slice,
+    nextOffset,
+    done: nextOffset >= rest.length,
+  }
+}
+
+export function fitRecentStrip(args: {
+  ids: number[]
+  chipWidths: number[]
+  containerWidth: number
+  moreWidth: number
+  gap?: number
+  expanded: boolean
+}): { visibleCount: number; overflowCount: number } {
+  const { ids, chipWidths, containerWidth, moreWidth, expanded } = args
+  const gap = args.gap ?? 8
+  const n = ids.length
+  if (n === 0) return { visibleCount: 0, overflowCount: 0 }
+  if (expanded) return { visibleCount: n, overflowCount: 0 }
+  if (containerWidth <= 0) {
+    const visibleCount = Math.min(SHELF_RECENT_COLLAPSED_COUNT, n)
+    return { visibleCount, overflowCount: n - visibleCount }
+  }
+  let total = 0
+  for (let i = 0; i < n; i++) {
+    total += chipWidths[i] ?? 0
+    if (i > 0) total += gap
+  }
+  if (total <= containerWidth) {
+    return { visibleCount: n, overflowCount: 0 }
+  }
+  let used = 0
+  let k = 0
+  for (; k < n; k++) {
+    const next = used + (k > 0 ? gap : 0) + (chipWidths[k] ?? 0)
+    const withMore = next + gap + moreWidth
+    if (withMore > containerWidth) break
+    used = next
+  }
+  return { visibleCount: k, overflowCount: n - k }
 }

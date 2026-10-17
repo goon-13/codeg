@@ -12,11 +12,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import type { AgentType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { visibleShelfConversations, type ShelfProjectRow } from "./shelf-model"
 import { horizontalWheelDelta, isNestedVerticalScroller } from "./shelf-scroll"
-import { ShelfSessionCard } from "./shelf-session-card"
+import { ShelfDraftCard, ShelfSessionCard } from "./shelf-session-card"
 
 interface MoveTarget {
   id: number
@@ -37,6 +38,11 @@ interface ShelfProjectRowViewProps {
   onNewConversation: () => void | Promise<void>
   onMove: (conversationId: number, toFolderId: number) => void | Promise<void>
   isTransientUnmount?: (conversationId: number) => boolean
+  draft?: { agentType: AgentType; nonce: string } | null
+  onDraftAgentChange?: (agentType: AgentType) => void
+  onDiscardDraft?: () => void
+  onDraftCreated?: (conversationId: number, folderId: number) => void
+  contextKeys?: Record<number, string>
 }
 
 export function ShelfProjectRowView({
@@ -53,6 +59,11 @@ export function ShelfProjectRowView({
   onNewConversation,
   onMove,
   isTransientUnmount,
+  draft,
+  onDraftAgentChange,
+  onDiscardDraft,
+  onDraftCreated,
+  contextKeys,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
   const filmRef = useRef<HTMLDivElement>(null)
@@ -68,7 +79,8 @@ export function ShelfProjectRowView({
       false
     ).map((c) => c.id)
   )
-  const hasExpanded = shown.some((c) => expandedIds.has(c.id))
+  const hasExpanded =
+    shown.some((c) => expandedIds.has(c.id)) || Boolean(draft)
 
   useEffect(() => {
     const el = filmRef.current
@@ -167,6 +179,17 @@ export function ShelfProjectRowView({
           collapsed && "hidden"
         )}
       >
+        {draft && onDraftAgentChange && onDiscardDraft && onDraftCreated ? (
+          <ShelfDraftCard
+            folderId={row.folder.id}
+            folderPath={row.folder.path}
+            nonce={draft.nonce}
+            agentType={draft.agentType}
+            onAgentTypeChange={onDraftAgentChange}
+            onDiscard={onDiscardDraft}
+            onCreated={onDraftCreated}
+          />
+        ) : null}
         {shown.map((conversation) => (
           <ShelfSessionCard
             key={conversation.id}
@@ -174,6 +197,7 @@ export function ShelfProjectRowView({
             expanded={expandedIds.has(conversation.id)}
             onShelf={shelfIds.has(conversation.id)}
             moveTargets={moveTargets}
+            contextKey={contextKeys?.[conversation.id]}
             onToggleExpand={() => onToggleExpand(conversation.id)}
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
             onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
@@ -185,7 +209,7 @@ export function ShelfProjectRowView({
             }
           />
         ))}
-        {shown.length === 0 ? (
+        {shown.length === 0 && !draft ? (
           <p className="px-1 py-2 text-sm text-muted-foreground">
             {t("emptyRegion")}
           </p>

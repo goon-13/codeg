@@ -133,4 +133,66 @@ describe("ShelfOutline", () => {
     expect(screen.queryByTestId("shelf-mini-card-7")).toBeNull()
     expect(screen.getByTestId("shelf-mini-card-9")).toBeTruthy()
   })
+
+  it("uses a short trigger and a left-edge panel that closes outside", () => {
+    renderOutline()
+    const trigger = screen.getByTestId("shelf-outline-trigger")
+    expect(trigger.textContent).toMatch(/Outline/)
+    expect(trigger.textContent).toMatch(/1·2/)
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.queryByTestId("shelf-outline-panel")).toBeNull()
+    fireEvent.click(trigger)
+    expect(screen.getByTestId("shelf-outline-panel")).toBeTruthy()
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByTestId("shelf-outline-panel")).toBeNull()
+  })
+
+  it("keeps the panel open when toggling a card inside it", () => {
+    renderOutline()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    fireEvent.click(screen.getByRole("checkbox", { name: "Ship the shelf" }))
+    expect(screen.getByTestId("shelf-outline-panel")).toBeTruthy()
+  })
+
+  it("expands a mini track to three columns with the double-chevron, not Move up", () => {
+    const fat = {
+      ...rows[0],
+      conversations: [
+        conv(7, 10, "A"),
+        conv(8, 10, "B"),
+        conv(11, 10, "C"),
+        conv(12, 10, "D"),
+      ],
+    }
+    const props = renderOutline({
+      rows: [fat, rows[1]],
+      folderOrder: [20, 10],
+      visibleConversationIds: [7, 8, 11, 12],
+    })
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    const track = screen.getByTestId("shelf-mini-track-10")
+    expect(track.className).toMatch(/overflow-x-auto/)
+    expect(screen.queryByTestId("shelf-mini-expand-20")).toBeNull()
+    const exp = screen.getByTestId("shelf-mini-expand-10")
+    expect(exp.textContent?.trim()).toBe("")
+    fireEvent.click(exp)
+    expect(track.className).toMatch(/grid-cols-3/)
+    fireEvent.click(screen.getAllByRole("button", { name: "Move up" })[0])
+    expect(props.onMoveFolder).toHaveBeenCalled()
+    expect(track.className).toMatch(/grid-cols-3/)
+  })
+
+  it("labels a cancelled status dot so red is not mistaken for an error", () => {
+    const cancelled = { ...conv(7, 10, "Fix the flaky test"), status: "cancelled" as const }
+    renderOutline({
+      rows: [
+        { ...rows[0], conversations: [cancelled, rows[0].conversations[1]] },
+        rows[1],
+      ],
+    })
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    const card = screen.getByTestId("shelf-mini-card-7")
+    expect(card.querySelector('[title="cancelled"]')).toBeTruthy()
+  })
 })

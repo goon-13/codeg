@@ -6727,11 +6727,18 @@
     "scrollToTop": "맨 위로",
     "scrollToBottom": "맨 아래로",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "목록",
+    "recentConversations": "최근",
+    "recentMore": "더보기",
+    "recentMoreCount": "… 더보기 · {count}",
+    "recentCollapse": "접기",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
     "shelfMoveUp": "Move up",
-    "shelfMoveDown": "Move down"
+    "shelfMoveDown": "Move down",
+    "shelfMiniExpand": "Expand to three columns",
+    "shelfMiniCollapse": "Collapse to one row"
   },
   "Browser": {
     "toolbar": {

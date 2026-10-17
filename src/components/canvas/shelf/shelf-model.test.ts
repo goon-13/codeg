@@ -7,12 +7,20 @@ import {
   defaultVisibleFolderIds,
   defaultVisibleConversationIds,
   filterShelfMiniRows,
+  fitRecentStrip,
   isActiveShelfConversation,
   mergePersistedShelfOrder,
   moveShelfOrderId,
+  recentShelfConversations,
+  SHELF_RECENT_OPEN_HEIGHT,
+  SHELF_RECENT_PANEL_PAGE,
+  nextRecentPage,
+  newShelfDraftNonce,
   visibleShelfConversations,
   isShelfConversation,
   shelfContextKey,
+  shelfDraftContextKey,
+  intersectShelfLiveKeys,
   shelfLiveSurfaceKeys,
   sortShelfConversations,
 } from "./shelf-model"
@@ -182,6 +190,44 @@ describe("shelf-model", () => {
     expect(shelfContextKey(7)).toBe("shelf:7")
     expect(shelfContextKey(8)).toBe("shelf:8")
   })
+
+  it("shelfDraftContextKey includes a per-draft nonce", () => {
+    expect(shelfDraftContextKey(10, "aaa")).toBe("shelf-draft:10:aaa")
+    expect(shelfDraftContextKey(10, "bbb")).not.toBe(
+      shelfDraftContextKey(10, "aaa")
+    )
+    expect(shelfDraftContextKey(20, "aaa")).toBe("shelf-draft:20:aaa")
+  })
+
+  it("newShelfDraftNonce returns two different values", () => {
+    expect(newShelfDraftNonce()).not.toBe(newShelfDraftNonce())
+  })
+
+  it("newShelfDraftNonce works when crypto.randomUUID is missing (LAN HTTP)", () => {
+    const cryptoObj = globalThis.crypto as Crypto & {
+      randomUUID?: () => `${string}-${string}-${string}-${string}-${string}`
+    }
+    const original = cryptoObj.randomUUID
+    Object.defineProperty(cryptoObj, "randomUUID", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    try {
+      const a = newShelfDraftNonce()
+      const b = newShelfDraftNonce()
+      expect(a).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      )
+      expect(a).not.toBe(b)
+    } finally {
+      Object.defineProperty(cryptoObj, "randomUUID", {
+        configurable: true,
+        writable: true,
+        value: original,
+      })
+    }
+  })
 })
 
 describe("applyShelfOrder", () => {
@@ -233,6 +279,22 @@ describe("moveShelfOrderId", () => {
   })
 })
 
+describe("intersectShelfLiveKeys", () => {
+  it("keeps only keys that are both live and mounted", () => {
+    const held = intersectShelfLiveKeys(
+      new Set(["shelf:7", "shelf:8"]),
+      new Set(["shelf:8", "shelf:9"])
+    )
+    expect([...held].sort()).toEqual(["shelf:8"])
+  })
+
+  it("is empty when liveKeys was never claimed this visit", () => {
+    expect([
+      ...intersectShelfLiveKeys(new Set(), new Set(["shelf:8"])),
+    ]).toEqual([])
+  })
+})
+
 describe("shelfLiveSurfaceKeys", () => {
   it("claims only expanded conversations that are currently shown", () => {
     const rows = buildShelfRows(
@@ -273,5 +335,118 @@ describe("filterShelfMiniRows", () => {
     const hit = filterShelfMiniRows(rows, "shelf")
     expect(hit.map((r) => r.folder.id)).toEqual([20])
     expect(hit[0].conversations.map((c) => c.id)).toEqual([9])
+  })
+})
+
+describe("recentShelfConversations", () => {
+  it("orders regular conversations newest-left and drops non-regular", () => {
+    const list = recentShelfConversations([
+      conv(1, { updated_at: "2026-10-01T00:00:00Z" }),
+      conv(2, { kind: "chat", updated_at: "2026-10-09T00:00:00Z" }),
+      conv(3, { updated_at: "2026-10-08T00:00:00Z" }),
+      conv(4, { kind: "loop", updated_at: "2026-10-10T00:00:00Z" }),
+    ])
+    expect(list.map((c) => c.id)).toEqual([3, 1])
+  })
+
+  it("moves a bumped conversation to index 0 without dropping others", () => {
+    const first = recentShelfConversations([
+      conv(1, { updated_at: "2026-10-02T00:00:00Z" }),
+      conv(2, { updated_at: "2026-10-01T00:00:00Z" }),
+    ])
+    expect(first.map((c) => c.id)).toEqual([1, 2])
+    const bumped = recentShelfConversations([
+      conv(1, { updated_at: "2026-10-02T00:00:00Z" }),
+      conv(2, { updated_at: "2026-10-03T00:00:00Z" }),
+    ])
+    expect(bumped.map((c) => c.id)).toEqual([2, 1])
+  })
+
+  it("does not cap the recency list", () => {
+    const many = Array.from({ length: SHELF_RECENT_PANEL_PAGE + 5 }, (_, i) =>
+      conv(i + 1, {
+        updated_at: `2026-10-01T00:${String(i).padStart(2, "0")}:00Z`,
+      })
+    )
+    expect(recentShelfConversations(many)).toHaveLength(
+      SHELF_RECENT_PANEL_PAGE + 5
+    )
+    expect(recentShelfConversations(many)[0].id).toBe(
+      SHELF_RECENT_PANEL_PAGE + 5
+    )
+  })
+})
+
+it("locks the expanded recent chrome to three chip rows", () => {
+  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(32 * 3 + 8 * 2)
+  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(112)
+})
+
+describe("nextRecentPage", () => {
+  it("skips chip ids and pages 20", () => {
+    const ids = Array.from({ length: 30 }, (_, i) => i + 1)
+    const first = nextRecentPage(ids, [1, 2, 3], 0)
+    expect(first.ids).toHaveLength(20)
+    expect(first.ids[0]).toBe(4)
+    expect(first.done).toBe(false)
+    const second = nextRecentPage(ids, [1, 2, 3], first.nextOffset)
+    expect(second.ids).toEqual([24, 25, 26, 27, 28, 29, 30])
+    expect(second.done).toBe(true)
+  })
+})
+
+describe("fitRecentStrip", () => {
+  const ids = [1, 2, 3, 4, 5]
+  const chipWidths = [80, 80, 80, 80, 80]
+
+  it("shows every chip and no overflow when they fit", () => {
+    expect(
+      fitRecentStrip({
+        ids,
+        chipWidths,
+        containerWidth: 500,
+        moreWidth: 72,
+        gap: 8,
+        expanded: false,
+      })
+    ).toEqual({ visibleCount: 5, overflowCount: 0 })
+  })
+
+  it("reserves space for the more control when they do not fit", () => {
+    expect(
+      fitRecentStrip({
+        ids,
+        chipWidths,
+        containerWidth: 340,
+        moreWidth: 72,
+        gap: 8,
+        expanded: false,
+      })
+    ).toEqual({ visibleCount: 3, overflowCount: 2 })
+  })
+
+  it("reveals all chips when expanded", () => {
+    expect(
+      fitRecentStrip({
+        ids,
+        chipWidths,
+        containerWidth: 200,
+        moreWidth: 72,
+        expanded: true,
+      })
+    ).toEqual({ visibleCount: 5, overflowCount: 0 })
+  })
+
+  it("falls back to 8 chips when the track is unmeasured", () => {
+    const many = Array.from({ length: 12 }, (_, i) => i + 1)
+    expect(
+      fitRecentStrip({
+        ids: many,
+        chipWidths: many.map(() => 80),
+        containerWidth: 0,
+        moreWidth: 72,
+        expanded: false,
+      })
+    ).toEqual({ visibleCount: 8, overflowCount: 4 })
   })
 })

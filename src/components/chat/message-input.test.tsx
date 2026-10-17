@@ -261,6 +261,33 @@ describe("MessageInput (RichComposer integration)", () => {
     expect(textbox).toHaveAttribute("aria-multiline", "true")
   })
 
+  it("flushes a pending draft when the composer unmounts before the debounce", async () => {
+    const draftKey = "conv:flush-unmount"
+    const user = userEvent.setup()
+    const view = renderInput({
+      draftStorageKey: draftKey,
+      isActive: true,
+    })
+    await waitFor(() =>
+      expect(view.container.querySelector('[role="textbox"]')).not.toBeNull()
+    )
+    const textbox = view.container.querySelector('[role="textbox"]')
+    expect(textbox).not.toBeNull()
+    await user.click(textbox!)
+    await user.type(textbox!, "keep me")
+    view.unmount()
+    const loaded = loadMessageInputDraftV2(draftKey)
+    expect(loaded?.kind).toBe("doc")
+    const text =
+      loaded?.kind === "doc"
+        ? JSON.stringify(loaded.doc)
+        : loaded?.kind === "legacyMarkdown"
+          ? loaded.markdown
+          : ""
+    expect(text).toContain("keep me")
+    clearMessageInputDraftV2(draftKey)
+  })
+
   it("disables Send while the composer is empty and has no attachments", async () => {
     const { container } = renderInput({})
     await waitFor(() =>

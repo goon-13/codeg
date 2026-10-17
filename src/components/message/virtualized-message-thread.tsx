@@ -1,6 +1,14 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import type { CSSProperties, ReactNode, RefObject } from "react"
 import { Virtualizer, type VirtualizerHandle } from "virtua"
 import { useStickToBottomContext } from "use-stick-to-bottom"
@@ -14,6 +22,7 @@ import {
   MessageScrollProvider,
   type MessageScrollContextValue,
 } from "@/components/message/message-scroll-context"
+import { syncVirtuaToViewport } from "@/components/message/virtua-scroll-sync"
 
 /**
  * Scroll offset (px from the top) under which a reverse-infinite-scroll load
@@ -318,6 +327,38 @@ function VirtualizedMessageThreadImpl<T>({
       clearPointerFocus()
     }
   }, [scrollRef])
+
+  // StickToBottom instant-scrolls the viewport to the tail before virtua
+  // observes it, so the internal offset can stay 0 while the user is already
+  // looking at the bottom. Align once the viewport has a height; again on
+  // the next frame and when that height appears (0 → N). Never writes
+  // scrollTop and never releases the stick-to-bottom lock.
+  useLayoutEffect(() => {
+    const viewport = scrollRef.current
+    if (!viewport) return
+
+    const sync = () => {
+      syncVirtuaToViewport(
+        virtualizerHandleRef.current,
+        viewport,
+        items.length
+      )
+    }
+
+    sync()
+    const frame = window.requestAnimationFrame(sync)
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (viewport.clientHeight > 0) sync()
+          })
+    observer?.observe(viewport)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+    }
+  }, [scrollRef, items.length])
 
   // Pre-compute the three possible padding styles so every render reuses
   // the same object references (avoids allocating per-item on each frame).
