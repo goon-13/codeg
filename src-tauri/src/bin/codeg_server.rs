@@ -523,6 +523,20 @@ async fn async_main() -> ExitCode {
         state.acp_event_bus.clone(),
         state.data_dir.clone(),
     ) {
+        // `Some` means this process holds the data-dir lock, so no other
+        // process has a live turn on this DB. Await before bind: a sweep
+        // racing the accept loop could cancel a turn that just started.
+        match codeg_lib::db::service::conversation_service::boot_cancel_orphaned_in_progress(
+            &state.db.conn,
+        )
+        .await
+        {
+            Ok(n) if n > 0 => tracing::info!(
+                "[boot] cancelled {n} conversation(s) left in_progress by the previous process"
+            ),
+            Ok(_) => {}
+            Err(e) => tracing::warn!("[boot] cancel orphaned in-progress conversations: {e}"),
+        }
         tokio::spawn(codeg_lib::automation::run_automation_engine(engine));
     }
 

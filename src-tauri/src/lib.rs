@@ -1237,6 +1237,17 @@ mod tauri_app {
                         .clone(),
                     effective_data_dir.clone(),
                 ) {
+                    // Same gate and order as `codeg_server`: the engine lock
+                    // proves we own this data dir, and the sweep finishes
+                    // before the window can send a prompt.
+                    let db_conn = app.state::<crate::db::AppDatabase>().conn.clone();
+                    if let Err(err) = tauri::async_runtime::block_on(
+                        crate::db::service::conversation_service::boot_cancel_orphaned_in_progress(
+                            &db_conn,
+                        ),
+                    ) {
+                        tracing::warn!("[boot] cancel orphaned in-progress conversations: {err}");
+                    }
                     tauri::async_runtime::spawn(crate::automation::run_automation_engine(engine));
                 }
 
