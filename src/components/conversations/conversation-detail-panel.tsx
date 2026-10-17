@@ -71,6 +71,8 @@ import { AgentDiagnosticsDialog } from "@/components/settings/agent-diagnostics-
 import { useFeedbackEnabled } from "@/hooks/use-feedback-enabled"
 import { useSessionFeedback } from "@/hooks/use-session-feedback"
 import { AgentSelector } from "@/components/chat/agent-selector"
+import { ThemeSeatRecipeChip } from "@/components/theme-seat/recipe-chip"
+import { type RecipeId } from "@/lib/theme-seat-recipe"
 import { ChatInput } from "@/components/chat/chat-input"
 import { WelcomeTip } from "@/components/chat/welcome-hero"
 import { QuickActions } from "@/components/chat/quick-actions"
@@ -431,6 +433,8 @@ const ConversationTabView = memo(function ConversationTabView({
     useState<ComposerInjectContent | null>(null)
 
   const hasPersistedConversation = dbConversationId != null
+  const [themeSeatRecipe, setThemeSeatRecipe] = useState<RecipeId>("code")
+  const tThemeSeat = useTranslations("ThemeSeat")
 
   // A folderless chat draft before its first send (chat tab, not yet persisted).
   // Used to trigger the eager scratch-dir prepare below, which gives the draft a
@@ -2686,7 +2690,7 @@ const ConversationTabView = memo(function ConversationTabView({
                 onSelect={handleQuickAction}
                 agentType={selectedAgent}
               />
-              <div className="flex justify-center">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <AgentSelector
                   // The selector spans the row it is given (it has to measure
                   // how much room it has), so the centring lives inside it now
@@ -2707,6 +2711,20 @@ const ConversationTabView = memo(function ConversationTabView({
                   // conversations retain the agent they were created with.
                   disabled={dbConversationId != null}
                 />
+                {dbConversationId == null ? (
+                  <ThemeSeatRecipeChip
+                    value={themeSeatRecipe}
+                    onChange={setThemeSeatRecipe}
+                    labels={{
+                      name: tThemeSeat("recipe.name"),
+                      group: tThemeSeat("recipe.group"),
+                      code: tThemeSeat("recipe.code"),
+                      council: tThemeSeat("recipe.council"),
+                      debate: tThemeSeat("recipe.debate"),
+                      relay: tThemeSeat("recipe.relay"),
+                    }}
+                  />
+                ) : null}
               </div>
               {composerBlockedMessage ? (
                 <div className="flex w-full items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
@@ -2773,6 +2791,7 @@ const ConversationTabView = memo(function ConversationTabView({
       ) : showDraftHeader ? (
         <div className="flex h-full min-h-0 flex-col">
           <div className="px-4 pt-3 pb-2">
+            <div className="flex flex-wrap items-center gap-2">
             <AgentSelector
               defaultAgentType={selectedAgent}
               onSelect={handleAgentSelect}
@@ -2788,6 +2807,21 @@ const ConversationTabView = memo(function ConversationTabView({
               // Same draft/saved rule as the welcome-mode picker above.
               disabled={dbConversationId != null}
             />
+                {dbConversationId == null ? (
+                  <ThemeSeatRecipeChip
+                    value={themeSeatRecipe}
+                    onChange={setThemeSeatRecipe}
+                    labels={{
+                      name: tThemeSeat("recipe.name"),
+                      group: tThemeSeat("recipe.group"),
+                      code: tThemeSeat("recipe.code"),
+                      council: tThemeSeat("recipe.council"),
+                      debate: tThemeSeat("recipe.debate"),
+                      relay: tThemeSeat("recipe.relay"),
+                    }}
+                  />
+                ) : null}
+            </div>
             {composerBlockedMessage ? (
               <div className="mt-2 flex w-full items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                 <button

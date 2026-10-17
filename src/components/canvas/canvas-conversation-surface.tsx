@@ -12,6 +12,8 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { shelfContextKey } from "@/components/canvas/shelf/shelf-model"
 import { AgentSelector } from "@/components/chat/agent-selector"
+import { ThemeSeatRecipeChip } from "@/components/theme-seat/recipe-chip"
+import { type RecipeId } from "@/lib/theme-seat-recipe"
 import { QuickActions } from "@/components/chat/quick-actions"
 import { WelcomeHero } from "@/components/chat/welcome-hero"
 import type { ComposerInjectContent } from "@/components/chat/message-input"
@@ -1177,6 +1179,9 @@ export function CanvasConversationSurface({
   const [composerInject, setComposerInject] =
     useState<ComposerInjectContent | null>(null)
 
+  const [themeSeatRecipe, setThemeSeatRecipe] = useState<RecipeId>("code")
+  const tThemeSeat = useTranslations("ThemeSeat")
+
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
       {/* `nowheel` keeps the transcript's own scroll from being eaten by the
@@ -1262,11 +1267,13 @@ export function CanvasConversationSurface({
             >
               <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
                 <WelcomeHero />
+                {themeSeatRecipe === "code" ? (
                 <QuickActions
                   onSelect={(payload) => setComposerInject(payload)}
                   agentType={selectedAgent}
                 />
-                <div className="flex justify-center">
+                ) : null}
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <AgentSelector
                     align="center"
                     defaultAgentType={selectedAgent}
@@ -1274,19 +1281,43 @@ export function CanvasConversationSurface({
                     onFallback={onAgentTypeChange}
                     disabled={conn.status === "connecting"}
                   />
+                  <ThemeSeatRecipeChip
+                    value={themeSeatRecipe}
+                    onChange={setThemeSeatRecipe}
+                    labels={{
+                      name: tThemeSeat("recipe.name"),
+                      group: tThemeSeat("recipe.group"),
+                      code: tThemeSeat("recipe.code"),
+                      council: tThemeSeat("recipe.council"),
+                      debate: tThemeSeat("recipe.debate"),
+                      relay: tThemeSeat("recipe.relay"),
+                    }}
+                  />
                 </div>
               </div>
             </div>
           ) : (
             <>
           {isDraft && onAgentTypeChange && (
-            <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-border/60 px-3 py-2">
               <AgentSelector
                 align="center"
                 defaultAgentType={agentType}
                 onSelect={onAgentTypeChange}
                 onFallback={onAgentTypeChange}
                 // Draft cards can change agents during connection startup.
+              />
+              <ThemeSeatRecipeChip
+                value={themeSeatRecipe}
+                onChange={setThemeSeatRecipe}
+                labels={{
+                  name: tThemeSeat("recipe.name"),
+                  group: tThemeSeat("recipe.group"),
+                  code: tThemeSeat("recipe.code"),
+                  council: tThemeSeat("recipe.council"),
+                  debate: tThemeSeat("recipe.debate"),
+                  relay: tThemeSeat("recipe.relay"),
+                }}
               />
             </div>
           )}
