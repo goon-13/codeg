@@ -6727,6 +6727,7 @@
     "scrollToTop": "Jump to top",
     "scrollToBottom": "Jump to bottom",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "Plan",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",

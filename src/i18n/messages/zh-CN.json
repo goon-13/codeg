@@ -6727,6 +6727,7 @@
     "scrollToTop": "回到最上",
     "scrollToBottom": "回到最下",
     "shelfOutline": "货架",
+    "shelfOutlineShort": "目录",
     "shelfOutlineSummary": "货架 · {projects} 项目 · {sessions} 会话",
     "shelfOutlineTitle": "编辑货架",
     "shelfOutlineEmpty": "没有匹配的项目或会话",

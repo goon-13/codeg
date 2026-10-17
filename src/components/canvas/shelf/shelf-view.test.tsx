@@ -358,6 +358,26 @@ describe("ShelfView", () => {
     expect(last[1].size).toBe(0)
   })
 
+  it("anchors the outline on the left edge and keeps jump on the rail", () => {
+    renderShelf()
+    const anchor = screen.getByTestId("shelf-outline-anchor")
+    const jump = screen.getByTestId("shelf-jump")
+    expect(anchor.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
+      true
+    )
+    expect(jump.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
+      false
+    )
+    expect(screen.queryByTestId("shelf-nav")).toBeNull()
+    expect(anchor.className).toMatch(/top-3/)
+    expect(anchor.className).toMatch(/left-3/)
+    expect(jump.className).toMatch(/bottom-3/)
+    expect(jump.className).toMatch(/w-\[188px\]/)
+    expect(
+      screen.getByTestId("shelf-view").querySelector(".border-b.border-border.px-3")
+    ).toBeNull()
+  })
+
   it("shows both jump buttons side by side in the middle of the shelf", () => {
     renderShelf()
     const scroller = screen.getByTestId("shelf-scroller")

@@ -6727,6 +6727,7 @@
     "scrollToTop": "回到最上",
     "scrollToBottom": "回到最下",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "目錄",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",

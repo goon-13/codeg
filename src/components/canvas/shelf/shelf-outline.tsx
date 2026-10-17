@@ -1,17 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { ChevronDown, ChevronUp, ListTree } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { AgentIcon } from "@/components/agent-icon"
 import { ConversationStatusDot } from "@/components/conversations/conversation-status-dot"
 import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { formatConversationTitle } from "@/lib/conversation-title"
 import type { ConversationStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -63,8 +58,30 @@ export function ShelfOutline({
 }) {
   const t = useTranslations("Canvas")
   const untitled = t("untitled")
+  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [jumpedId, setJumpedId] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      const root = rootRef.current
+      if (!root) return
+      if (event.target instanceof Node && !root.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [open])
   const folderSet = new Set(visibleFolderIds)
   const conversationSet = new Set(visibleConversationIds)
   const visibleRows = useMemo(
@@ -76,25 +93,30 @@ export function ShelfOutline({
     : rows.map((item) => item.folder.id)
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          data-testid="shelf-outline-trigger"
-          className="gap-1.5 text-[0.8125rem]"
-        >
-          {t("shelfOutlineSummary", {
-            projects: visibleFolderIds.length,
-            sessions: visibleConversationIds.length,
-          })}
-          <ChevronDown className="size-3.5 text-muted-foreground/60" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-[32rem] overflow-hidden rounded-2xl p-0"
+    <div ref={rootRef} className="flex flex-col items-start">
+      <Button
+        type="button"
+        variant="outline"
+        size="xs"
+        data-testid="shelf-outline-trigger"
+        aria-expanded={open}
+        aria-label={t("shelfOutlineSummary", {
+          projects: visibleFolderIds.length,
+          sessions: visibleConversationIds.length,
+        })}
+        className="gap-1.5 rounded-full bg-background/90 text-[0.8125rem] hover:bg-muted/90"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ListTree className="size-3.5 text-muted-foreground" />
+        {t("shelfOutlineShort")}
+        <span className="tabular-nums text-muted-foreground">
+          {visibleFolderIds.length}·{visibleConversationIds.length}
+        </span>
+      </Button>
+      {open ? (
+      <div
+        data-testid="shelf-outline-panel"
+        className="mt-1.5 w-[24rem] max-h-[min(36rem,70vh)] overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"
       >
         <div className="border-b border-border px-3 py-2">
           <input
@@ -240,6 +262,7 @@ export function ShelfOutline({
                             <ConversationStatusDot
                               status={status}
                               size="sm"
+                              title={status}
                               className={cn(
                                 running && "motion-safe:animate-pulse"
                               )}
@@ -308,7 +331,8 @@ export function ShelfOutline({
             })
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </div>
+      ) : null}
+    </div>
   )
 }

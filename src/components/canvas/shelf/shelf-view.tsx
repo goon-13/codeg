@@ -191,84 +191,6 @@ export function ShelfView() {
         data-testid="shelf-view"
         className="relative flex h-full min-h-0 flex-col bg-background"
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-          <ShelfOutline
-            rows={rows}
-            visibleFolderIds={workingIds}
-            visibleConversationIds={conversationWorkingIds}
-            folderOrder={folderOrder ?? shownRows.map((row) => row.folder.id)}
-            conversationOrderByFolder={conversationOrder ?? {}}
-            onToggleFolder={(folderId) => {
-              setMembersAndUnfreeze(
-                toggleMember(workingIds, folderId),
-                conversationWorkingIds
-              )
-            }}
-            onToggleConversation={(conversationId) => {
-              setMembersAndUnfreeze(
-                workingIds,
-                toggleMember(conversationWorkingIds, conversationId)
-              )
-            }}
-            onMoveFolder={(folderId, delta) => {
-              snapshotRef.current = null
-              setFolderOrder(
-                moveShelfOrderId(
-                  shownRows.map((row) => row.folder.id),
-                  folderId,
-                  delta
-                )
-              )
-            }}
-            onMoveConversation={(conversationId, folderId, delta) => {
-              const row = shownRows.find((item) => item.folder.id === folderId)
-              if (!row) return
-              snapshotRef.current = null
-              const current =
-                conversationOrder?.[folderId] ??
-                row.conversations
-                  .filter((item) => conversationWorkingIds.includes(item.id))
-                  .map((item) => item.id)
-              setConversationOrder({
-                ...(conversationOrder ?? {}),
-                [folderId]: moveShelfOrderId(current, conversationId, delta),
-              })
-            }}
-            onJumpFolder={(folderId) => {
-              if (!workingIds.includes(folderId)) {
-                setMembersAndUnfreeze(
-                  [...workingIds, folderId],
-                  conversationWorkingIds
-                )
-              }
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
-              )
-            }}
-            onJumpConversation={(conversationId, folderId) => {
-              const nextFolders = workingIds.includes(folderId)
-                ? workingIds
-                : [...workingIds, folderId]
-              const nextConversations = conversationWorkingIds.includes(
-                conversationId
-              )
-                ? conversationWorkingIds
-                : [...conversationWorkingIds, conversationId]
-              if (
-                nextFolders !== workingIds ||
-                nextConversations !== conversationWorkingIds
-              ) {
-                setMembersAndUnfreeze(nextFolders, nextConversations)
-              }
-              setExpandedIds((ids) =>
-                ids.includes(conversationId) ? ids : [...ids, conversationId]
-              )
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
-              )
-            }}
-          />
-        </div>
         <div
           ref={scrollerRef}
           data-testid="shelf-scroller"
@@ -348,6 +270,87 @@ export function ShelfView() {
               }}
             />
           ))}
+        </div>
+        <div
+          data-testid="shelf-outline-anchor"
+          className="absolute top-3 left-3 z-20"
+        >
+            <ShelfOutline
+              rows={rows}
+              visibleFolderIds={workingIds}
+              visibleConversationIds={conversationWorkingIds}
+              folderOrder={folderOrder ?? shownRows.map((row) => row.folder.id)}
+              conversationOrderByFolder={conversationOrder ?? {}}
+              onToggleFolder={(folderId) => {
+                setMembersAndUnfreeze(
+                  toggleMember(workingIds, folderId),
+                  conversationWorkingIds
+                )
+              }}
+              onToggleConversation={(conversationId) => {
+                setMembersAndUnfreeze(
+                  workingIds,
+                  toggleMember(conversationWorkingIds, conversationId)
+                )
+              }}
+              onMoveFolder={(folderId, delta) => {
+                snapshotRef.current = null
+                setFolderOrder(
+                  moveShelfOrderId(
+                    shownRows.map((row) => row.folder.id),
+                    folderId,
+                    delta
+                  )
+                )
+              }}
+              onMoveConversation={(conversationId, folderId, delta) => {
+                const row = shownRows.find((item) => item.folder.id === folderId)
+                if (!row) return
+                snapshotRef.current = null
+                const current =
+                  conversationOrder?.[folderId] ??
+                  row.conversations
+                    .filter((item) => conversationWorkingIds.includes(item.id))
+                    .map((item) => item.id)
+                setConversationOrder({
+                  ...(conversationOrder ?? {}),
+                  [folderId]: moveShelfOrderId(current, conversationId, delta),
+                })
+              }}
+              onJumpFolder={(folderId) => {
+                if (!workingIds.includes(folderId)) {
+                  setMembersAndUnfreeze(
+                    [...workingIds, folderId],
+                    conversationWorkingIds
+                  )
+                }
+                requestAnimationFrame(() =>
+                  scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
+                )
+              }}
+              onJumpConversation={(conversationId, folderId) => {
+                const nextFolders = workingIds.includes(folderId)
+                  ? workingIds
+                  : [...workingIds, folderId]
+                const nextConversations = conversationWorkingIds.includes(
+                  conversationId
+                )
+                  ? conversationWorkingIds
+                  : [...conversationWorkingIds, conversationId]
+                if (
+                  nextFolders !== workingIds ||
+                  nextConversations !== conversationWorkingIds
+                ) {
+                  setMembersAndUnfreeze(nextFolders, nextConversations)
+                }
+                setExpandedIds((ids) =>
+                  ids.includes(conversationId) ? ids : [...ids, conversationId]
+                )
+                requestAnimationFrame(() =>
+                  scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
+                )
+              }}
+            />
         </div>
         <div
           data-testid="shelf-jump"

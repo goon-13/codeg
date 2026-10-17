@@ -6727,6 +6727,7 @@
     "scrollToTop": "맨 위로",
     "scrollToBottom": "맨 아래로",
     "shelfOutline": "Shelf",
+    "shelfOutlineShort": "목록",
     "shelfOutlineSummary": "Shelf · {projects} projects · {sessions} conversations",
     "shelfOutlineTitle": "Edit shelf",
     "shelfOutlineEmpty": "No matching projects or conversations",
