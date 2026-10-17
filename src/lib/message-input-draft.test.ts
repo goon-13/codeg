@@ -2,7 +2,10 @@ import type { JSONContent } from "@tiptap/core"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  adoptCanvasDraftToConversation,
   adoptLegacyNewConversationDraft,
+  adoptLegacyShelfConversationDraft,
+  buildConversationDraftStorageKey,
   buildNewConversationDraftStorageKey,
   clearMessageInputDraftV2,
   loadMessageInputDraftV2,
@@ -10,6 +13,7 @@ import {
   resetLegacyDraftAdoptionForTests,
   saveMessageInputDraft,
   saveMessageInputDraftV2,
+  surfaceComposerDraftStorageKey,
   sweepOrphanDraftKeys,
 } from "./message-input-draft"
 
@@ -237,5 +241,66 @@ describe("per-draft-tab composer drafts", () => {
 
     expect(loadMessageInputDraftV2(late)).toEqual({ kind: "doc", doc: DOC })
     expect(loadMessageInputDraftV2(dead)).toBeNull()
+  })
+})
+
+describe("surface composer draft keys", () => {
+  it("uses conv:id once the conversation exists", () => {
+    expect(
+      surfaceComposerDraftStorageKey({
+        conversationId: 12,
+        contextKey: "shelf:12",
+      })
+    ).toBe(buildConversationDraftStorageKey(12))
+  })
+
+  it("uses canvas-draft:contextKey while unbound", () => {
+    expect(
+      surfaceComposerDraftStorageKey({
+        conversationId: null,
+        contextKey: "shelf-draft:10",
+      })
+    ).toBe("canvas-draft:shelf-draft:10")
+  })
+
+  it("moves an unbound surface draft onto conv:id", () => {
+    saveMessageInputDraftV2("canvas-draft:shelf-draft:10", DOC)
+    adoptCanvasDraftToConversation("shelf-draft:10", 99)
+    expect(loadMessageInputDraftV2(buildConversationDraftStorageKey(99))).toEqual(
+      {
+        kind: "doc",
+        doc: DOC,
+      }
+    )
+    expect(loadMessageInputDraftV2("canvas-draft:shelf-draft:10")).toBeNull()
+  })
+
+  it("does not overwrite an existing conv:id draft", () => {
+    const conv = buildConversationDraftStorageKey(7)
+    saveMessageInputDraftV2(conv, DOC)
+    const other: JSONContent = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "old" }] },
+      ],
+    }
+    saveMessageInputDraftV2("canvas-draft:shelf:7", other)
+    adoptLegacyShelfConversationDraft(7)
+    expect(loadMessageInputDraftV2(conv)).toEqual({ kind: "doc", doc: DOC })
+  })
+
+  it("adopts canvas-draft:shelf:id when conv:id is empty", () => {
+    const other: JSONContent = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "shelf" }] },
+      ],
+    }
+    saveMessageInputDraftV2("canvas-draft:shelf:8", other)
+    adoptLegacyShelfConversationDraft(8)
+    expect(
+      loadMessageInputDraftV2(buildConversationDraftStorageKey(8))
+    ).toEqual({ kind: "doc", doc: other })
+    expect(loadMessageInputDraftV2("canvas-draft:shelf:8")).toBeNull()
   })
 })

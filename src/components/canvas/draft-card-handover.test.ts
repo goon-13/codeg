@@ -120,6 +120,19 @@ describe("a draft card's runtime session", () => {
     expect(body).not.toContain("dismissDraft(draftId)")
     expect(body).toContain("setDraftsPersisted((prev) =>")
   })
+
+  it("marks the draft unmount as a hand-off so it cannot acpDisconnect", () => {
+    // session_started can land while React still says connected. Unmount of
+    // the draft then looks like an idle named owner and kills the prompt.
+    // materializeDraft records the id; the draft surface reads it as
+    // isTransientUnmount.
+    const body = materializeDraft(read(VIEW))
+    expect(body).toContain("draftHandoffKeysRef.current.add(draftId)")
+    const node = read("src/components/canvas/nodes/conversation-detail-node.tsx")
+    expect(node).toContain(
+      "isTransientUnmount={() => isDraftHandoff(data.draftId)}"
+    )
+  })
 })
 
 describe("a draft card's body", () => {
@@ -134,3 +147,4 @@ describe("a draft card's body", () => {
     )
   })
 })
+

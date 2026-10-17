@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Plus, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -11,13 +12,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import type { AgentType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-import {
-  visibleShelfConversations,
-  type ShelfProjectRow,
-} from "./shelf-model"
-import { ShelfSessionCard } from "./shelf-session-card"
+import { visibleShelfConversations, type ShelfProjectRow } from "./shelf-model"
+import { horizontalWheelDelta, isNestedVerticalScroller } from "./shelf-scroll"
+import { ShelfDraftCard, ShelfSessionCard } from "./shelf-session-card"
 
 interface MoveTarget {
   id: number
@@ -29,18 +29,20 @@ interface ShelfProjectRowViewProps {
   collapsed: boolean
   expandedIds: ReadonlySet<number>
   visibleConversationIds: number[] | null
-  showAllConversations: boolean
-  surfaceByCard: Record<number, number>
-  onBackToSource: (cardId: number) => void
   moveTargets: MoveTarget[]
   onToggleCollapsed: () => void
   onToggleExpand: (conversationId: number) => void
   onHideProjectFromShelf: () => void
-  onShowAllConversations: (showAll: boolean) => void
   onHideConversationFromShelf: (conversationId: number) => void
   onAddConversationToShelf: (conversationId: number) => void
   onNewConversation: () => void | Promise<void>
   onMove: (conversationId: number, toFolderId: number) => void | Promise<void>
+  isTransientUnmount?: (conversationId: number) => boolean
+  draft?: { agentType: AgentType; nonce: string } | null
+  onDraftAgentChange?: (agentType: AgentType) => void
+  onDiscardDraft?: () => void
+  onDraftCreated?: (conversationId: number, folderId: number) => void
+  contextKeys?: Record<number, string>
 }
 
 export function ShelfProjectRowView({
@@ -48,35 +50,62 @@ export function ShelfProjectRowView({
   collapsed,
   expandedIds,
   visibleConversationIds,
-  showAllConversations,
-  surfaceByCard,
-  onBackToSource,
   moveTargets,
   onToggleCollapsed,
   onToggleExpand,
   onHideProjectFromShelf,
-  onShowAllConversations,
   onHideConversationFromShelf,
   onAddConversationToShelf,
   onNewConversation,
   onMove,
+  isTransientUnmount,
+  draft,
+  onDraftAgentChange,
+  onDiscardDraft,
+  onDraftCreated,
+  contextKeys,
 }: ShelfProjectRowViewProps) {
   const t = useTranslations("Canvas")
+  const filmRef = useRef<HTMLDivElement>(null)
   const shown = visibleShelfConversations(
     row.conversations,
     visibleConversationIds,
-    showAllConversations
+    false
   )
   const shelfIds = new Set(
-    visibleShelfConversations(row.conversations, visibleConversationIds, false).map(
-      (c) => c.id
-    )
+    visibleShelfConversations(
+      row.conversations,
+      visibleConversationIds,
+      false
+    ).map((c) => c.id)
   )
-  const hasExpanded = shown.some((c) => expandedIds.has(c.id))
+  const hasExpanded =
+    shown.some((c) => expandedIds.has(c.id)) || Boolean(draft)
+
+  useEffect(() => {
+    const el = filmRef.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      const delta = horizontalWheelDelta({
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        scrollLeft: el.scrollLeft,
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+        nestedVerticalScrollable: isNestedVerticalScroller(event.target, el),
+      })
+      if (delta == null) return
+      event.preventDefault()
+      el.scrollLeft += delta
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [])
 
   return (
     <div
       data-testid="shelf-row"
+      data-shelf-folder={row.folder.id}
       className={cn(
         "flex shrink-0 items-stretch border-b border-border",
         hasExpanded ? "min-h-[560px]" : "min-h-[148px]"
@@ -86,7 +115,9 @@ export function ShelfProjectRowView({
       }}
       onDrop={(event) => {
         event.preventDefault()
-        const raw = event.dataTransfer.getData("application/x-codeg-conversation")
+        const raw = event.dataTransfer.getData(
+          "application/x-codeg-conversation"
+        )
         const conversationId = Number(raw)
         if (!Number.isInteger(conversationId) || conversationId <= 0) return
         if (row.conversations.some((item) => item.id === conversationId)) return
@@ -125,26 +156,6 @@ export function ShelfProjectRowView({
               <ConversationStatusDot status="pending_review" size="sm" />
               {t("waitingCount", { count: row.counts.waiting })}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1">
-              <Button
-                type="button"
-                variant={showAllConversations ? "ghost" : "secondary"}
-                size="xs"
-                aria-pressed={!showAllConversations}
-                onClick={() => onShowAllConversations(false)}
-              >
-                {t("showShelfConversations")}
-              </Button>
-              <Button
-                type="button"
-                variant={showAllConversations ? "secondary" : "ghost"}
-                size="xs"
-                aria-pressed={showAllConversations}
-                onClick={() => onShowAllConversations(true)}
-              >
-                {t("showAllSessions")}
-              </Button>
-            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -157,12 +168,28 @@ export function ShelfProjectRowView({
         </ContextMenuContent>
       </ContextMenu>
       <div
+        ref={filmRef}
         hidden={collapsed}
+        data-testid="shelf-row-cards"
         className={cn(
-          "flex min-h-0 min-w-0 flex-1 items-start gap-2 overflow-x-auto p-2.5",
+          // overflow-y-hidden must be explicit: overflow-x-auto otherwise
+          // computes overflow-y to auto, and StickToBottom's height:100%
+          // transcript viewport collapses to 0 inside that nested scroller.
+          "flex min-h-0 min-w-0 flex-1 items-start gap-2 overflow-x-auto overflow-y-hidden p-2.5",
           collapsed && "hidden"
         )}
       >
+        {draft && onDraftAgentChange && onDiscardDraft && onDraftCreated ? (
+          <ShelfDraftCard
+            folderId={row.folder.id}
+            folderPath={row.folder.path}
+            nonce={draft.nonce}
+            agentType={draft.agentType}
+            onAgentTypeChange={onDraftAgentChange}
+            onDiscard={onDiscardDraft}
+            onCreated={onDraftCreated}
+          />
+        ) : null}
         {shown.map((conversation) => (
           <ShelfSessionCard
             key={conversation.id}
@@ -170,12 +197,11 @@ export function ShelfProjectRowView({
             expanded={expandedIds.has(conversation.id)}
             onShelf={shelfIds.has(conversation.id)}
             moveTargets={moveTargets}
+            contextKey={contextKeys?.[conversation.id]}
             onToggleExpand={() => onToggleExpand(conversation.id)}
             onMove={(toFolderId) => void onMove(conversation.id, toFolderId)}
             onHideFromShelf={() => onHideConversationFromShelf(conversation.id)}
             onAddToShelf={() => onAddConversationToShelf(conversation.id)}
-            surfaceId={surfaceByCard[conversation.id]}
-            onBackToSource={() => onBackToSource(conversation.id)}
             isTransientUnmount={
               isTransientUnmount
                 ? () => isTransientUnmount(conversation.id)
@@ -183,7 +209,7 @@ export function ShelfProjectRowView({
             }
           />
         ))}
-        {shown.length === 0 ? (
+        {shown.length === 0 && !draft ? (
           <p className="px-1 py-2 text-sm text-muted-foreground">
             {t("emptyRegion")}
           </p>

@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
+import { createPortal } from "react-dom"
+import { ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, ListTree } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { AgentIcon } from "@/components/agent-icon"
@@ -39,6 +40,7 @@ export function ShelfOutline({
   onMoveConversation,
   onJumpFolder,
   onJumpConversation,
+  portalTarget,
 }: {
   rows: ShelfProjectRow[]
   visibleFolderIds: number[]
@@ -55,12 +57,38 @@ export function ShelfOutline({
   ) => void
   onJumpFolder: (folderId: number) => void
   onJumpConversation: (conversationId: number, folderId: number) => void
+  portalTarget?: RefObject<HTMLElement | null>
 }) {
   const t = useTranslations("Canvas")
   const untitled = t("untitled")
-  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
   const [jumpedId, setJumpedId] = useState<number | null>(null)
+  const [expandedFolders, setExpandedFolders] = useState<Set<number>>(
+    () => new Set()
+  )
+  const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      const node = event.target
+      if (!(node instanceof Node)) return
+      if (rootRef.current?.contains(node)) return
+      if (panelRef.current?.contains(node)) return
+      setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [open])
   const folderSet = new Set(visibleFolderIds)
   const conversationSet = new Set(visibleConversationIds)
   const visibleRows = useMemo(
@@ -71,30 +99,39 @@ export function ShelfOutline({
     ? folderOrder.filter((id) => rows.some((item) => item.folder.id === id))
     : rows.map((item) => item.folder.id)
 
+  function mountPanel(panel: ReactNode) {
+    const target = portalTarget?.current
+    return target ? createPortal(panel, target) : panel
+  }
+
   return (
-    <div
-      data-testid="shelf-outline"
-      className={cn(
-        "flex shrink-0 flex-col self-stretch overflow-hidden border-r border-border",
-        open ? "w-[24rem]" : "w-12"
-      )}
-    >
+    <div ref={rootRef} className="flex flex-col items-start">
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="xs"
         data-testid="shelf-outline-trigger"
         aria-expanded={open}
-        className="h-8 w-full shrink-0 truncate px-1 text-[0.625rem]"
-        onClick={() => setOpen((value) => !value)}
-      >
-        {t("shelfOutlineShort", {
+        aria-label={t("shelfOutlineSummary", {
           projects: visibleFolderIds.length,
           sessions: visibleConversationIds.length,
         })}
+        className="gap-1.5 rounded-full bg-background/90 text-[0.8125rem] hover:bg-muted/90"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ListTree className="size-3.5 text-muted-foreground" />
+        {t("shelfOutlineShort")}
+        <span className="tabular-nums text-muted-foreground">
+          {visibleFolderIds.length}·{visibleConversationIds.length}
+        </span>
       </Button>
-      {open ? (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {open
+        ? mountPanel(
+      <div
+        ref={panelRef}
+        data-testid="shelf-outline-panel"
+        className="pointer-events-auto mt-1.5 w-[24rem] max-h-[min(36rem,70vh)] overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"
+      >
         <div className="border-b border-border px-3 py-2">
           <input
             type="search"
@@ -177,9 +214,15 @@ export function ShelfOutline({
                       <ChevronDown className="size-3.5" />
                     </button>
                   </div>
+                  <div className="relative">
                   <div
                     data-testid={`shelf-mini-track-${row.folder.id}`}
-                    className="flex gap-1.5 overflow-x-auto px-1 pb-1"
+                    className={cn(
+                      "gap-1.5 px-1 pb-1",
+                      expandedFolders.has(row.folder.id)
+                        ? "grid grid-cols-3 overflow-visible"
+                        : "flex overflow-x-auto"
+                    )}
                   >
                     {row.conversations.map((conversation) => {
                       const on = conversationSet.has(conversation.id)
@@ -191,12 +234,14 @@ export function ShelfOutline({
                       )
                       const convPos = convIds.indexOf(conversation.id)
                       const jumped = jumpedId === conversation.id
+                      const miniOpen = expandedFolders.has(row.folder.id)
                       return (
                         <div
                           key={conversation.id}
                           data-testid={`shelf-mini-card-${conversation.id}`}
                           className={cn(
-                            "group relative h-[4.5rem] w-[7rem] shrink-0 overflow-hidden rounded-lg border bg-card p-1.5",
+                            "group relative h-[4.5rem] overflow-hidden rounded-lg border bg-card p-1.5",
+                            miniOpen ? "min-w-0 w-auto" : "w-[7rem] shrink-0",
                             on
                               ? "border-foreground/15 hover:border-foreground/30"
                               : "border-foreground/10 opacity-50",
@@ -239,6 +284,7 @@ export function ShelfOutline({
                             <ConversationStatusDot
                               status={status}
                               size="sm"
+                              title={status}
                               className={cn(
                                 running && "motion-safe:animate-pulse"
                               )}
@@ -302,13 +348,45 @@ export function ShelfOutline({
                       )
                     })}
                   </div>
+                  {row.conversations.length > 3 ? (
+                    <button
+                      type="button"
+                      data-testid={`shelf-mini-expand-${row.folder.id}`}
+                      aria-label={
+                        expandedFolders.has(row.folder.id)
+                          ? t("shelfMiniCollapse")
+                          : t("shelfMiniExpand")
+                      }
+                      className={cn(
+                        MOVE_BUTTON_CLASS,
+                        "absolute top-0 right-1 z-10 bg-popover"
+                      )}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setExpandedFolders((current) => {
+                          const next = new Set(current)
+                          if (next.has(row.folder.id)) next.delete(row.folder.id)
+                          else next.add(row.folder.id)
+                          return next
+                        })
+                      }}
+                    >
+                      {expandedFolders.has(row.folder.id) ? (
+                        <ChevronsUp className="size-3.5" />
+                      ) : (
+                        <ChevronsDown className="size-3.5" />
+                      )}
+                    </button>
+                  ) : null}
+                  </div>
                 </div>
               )
             })
           )}
         </div>
       </div>
-      ) : null}
+        )
+        : null}
     </div>
   )
 }

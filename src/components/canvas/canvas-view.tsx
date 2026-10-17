@@ -789,6 +789,11 @@ function CanvasFlow({
    */
   const connectionStore = useConnectionStore()
   const adoptedLiveRef = useRef(false)
+  const draftHandoffKeysRef = useRef(new Set<string>())
+  const isDraftHandoff = useCallback(
+    (draftId: string) => draftHandoffKeysRef.current.has(draftId),
+    []
+  )
   useEffect(() => {
     if (adoptedLiveRef.current) return
     adoptedLiveRef.current = true
@@ -1036,6 +1041,7 @@ function CanvasFlow({
       })
       if (!created) return
       const key = draftSurfaceKey(draftId)
+      draftHandoffKeysRef.current.add(draftId)
       // Inheriting the key is also what carries the RUNTIME session across: the
       // message the user just sent, and the reply already answering it, are
       // filed under the id that key derives, and the arriving card adopts them
@@ -1186,6 +1192,7 @@ function CanvasFlow({
       openConversationDrawer,
       contextKeyForPin,
       draftSurfaceKey,
+      isDraftHandoff,
       saveSelectionAsNote,
       dismissDraft,
       sendingDrafts,
@@ -1213,6 +1220,7 @@ function CanvasFlow({
       openConversation,
       openConversationDrawer,
       contextKeyForPin,
+      isDraftHandoff,
       saveSelectionAsNote,
       dismissDraft,
       sendingDrafts,

@@ -1,5 +1,6 @@
 import type { ReactNode, Ref, RefObject } from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { MessageScrollContextValue } from "@/components/message/message-scroll-context"
 
@@ -7,6 +8,7 @@ const testState = vi.hoisted(() => ({
   scrollRef: { current: null as HTMLDivElement | null },
   stopScroll: vi.fn(),
   virtuaScrollToIndex: vi.fn(),
+  virtuaScrollTo: vi.fn(),
   // The virtua handle's geometry: where the view is, where each row starts.
   scrollOffset: 0,
   viewportSize: 500,
@@ -17,6 +19,7 @@ const testState = vi.hoisted(() => ({
   onScroll: undefined as undefined | ((offset: number) => void),
   // The rows virtua was last told to keep mounted.
   keepMounted: undefined as readonly number[] | undefined,
+  seedViewport: null as { clientHeight: number; scrollTop: number } | null,
 }))
 
 vi.mock("use-stick-to-bottom", () => ({
@@ -45,6 +48,10 @@ vi.mock("virtua", async () => {
       testState.keepMounted = keepMounted
       useImperativeHandle(ref, () => ({
         scrollToIndex: testState.virtuaScrollToIndex,
+        scrollTo: (offset: number) => {
+          testState.virtuaScrollTo(offset)
+          testState.scrollOffset = offset
+        },
         getItemOffset: (index: number) => testState.itemOffset(index),
         findItemIndex: (offset: number) => testState.findItemIndex(offset),
         get scrollOffset() {
@@ -73,6 +80,17 @@ vi.mock("@/components/ai-elements/message-thread", () => ({
     <div
       ref={(element) => {
         testState.scrollRef.current = element
+        if (element && testState.seedViewport) {
+          Object.defineProperty(element, "clientHeight", {
+            configurable: true,
+            value: testState.seedViewport.clientHeight,
+          })
+          Object.defineProperty(element, "scrollTop", {
+            configurable: true,
+            writable: true,
+            value: testState.seedViewport.scrollTop,
+          })
+        }
       }}
       className={scrollClassName}
       data-testid="viewport"
@@ -115,6 +133,7 @@ beforeEach(() => {
   testState.scrollRef.current = null
   testState.stopScroll.mockReset()
   testState.virtuaScrollToIndex.mockReset()
+  testState.virtuaScrollTo.mockReset()
   testState.scrollOffset = 0
   testState.viewportSize = 500
   testState.scrollSize = 5_000
@@ -122,6 +141,7 @@ beforeEach(() => {
   testState.findItemIndex.mockClear()
   testState.onScroll = undefined
   testState.keepMounted = undefined
+  testState.seedViewport = null
 })
 
 describe("VirtualizedMessageThread scroll API", () => {
@@ -516,5 +536,26 @@ describe("VirtualizedMessageThread focus origin", () => {
 
     expect(viewport).not.toHaveAttribute("data-focus-origin")
     expect(document.activeElement).not.toBe(viewport)
+  })
+})
+
+describe("VirtualizedMessageThread first-paint sync", () => {
+  it("aligns virtua to a viewport that StickToBottom already scrolled", async () => {
+    testState.seedViewport = { clientHeight: 400, scrollTop: 4800 }
+    testState.scrollOffset = 0
+    render(
+      <VirtualizedMessageThread
+        items={[{ id: "a" }, { id: "b" }, { id: "c" }]}
+        getItemKey={(item) => item.id}
+        renderItem={() => <div>row</div>}
+      />
+    )
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
+    expect(testState.virtuaScrollTo).toHaveBeenCalledWith(4800)
+    expect(testState.stopScroll).not.toHaveBeenCalled()
   })
 })

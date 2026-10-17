@@ -153,6 +153,7 @@ export const ConversationDraftNode = memo(function ConversationDraftNode({
     setDraftTarget,
     materializeDraft,
     draftSurfaceKey,
+    isDraftHandoff,
     liveSurfaces,
     activateSurface,
   } = useCanvasView()
@@ -208,6 +209,7 @@ export const ConversationDraftNode = memo(function ConversationDraftNode({
         conversationId={null}
         agentType={data.agentType}
         isActive={live}
+        isTransientUnmount={() => isDraftHandoff(data.draftId)}
         onCreatingChange={(sending) => setDraftSending(data.draftId, sending)}
         // Unsent: switching folder just re-points where the first message will
         // go, so the chip stays live right up until the send.
