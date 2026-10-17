@@ -7,7 +7,7 @@
  *     single-click in the sidebar takes the preview slot
  *
  * (The idle sweep enforces the same rule inline, alongside guards this
- * predicate can't express: `connecting`, viewers, delegation children.)
+ * predicate can't express: viewers, delegation children.)
  */
 
 import { extractAppCommandError, toErrorMessage } from "@/lib/app-error"
@@ -27,8 +27,10 @@ import { extractAppCommandError, toErrorMessage } from "@/lib/app-error"
 export function isConnectionBusy(conn: {
   status: string | null
   backgroundOutstanding: number
+  sessionId?: string | null
 }): boolean {
-  return conn.status === "prompting" || conn.backgroundOutstanding > 0
+  if (conn.status === "prompting" || conn.status === "connecting") return true
+  return conn.backgroundOutstanding > 0
 }
 
 // Must mirror `AcpError::ConnectionNotFound`'s code in

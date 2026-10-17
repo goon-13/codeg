@@ -7097,3 +7097,158 @@ describe("AcpConnectionsProvider remembers advertised commands", () => {
     expect(h.rememberAdvertisedCommands).toHaveBeenCalledTimes(1)
   })
 })
+
+// First-send remount: New Conversation starts under `new-*`, then the
+// persisted row remounts as `conv-{folder}-{agent}-{id}` while session_id is
+// still None. Official orphan rescue used to require sessionId, so the new
+// key spawned a second process and the old key's unmount killed the first
+// mid-prompt.
+describe("connect() first-send contextKey change", () => {
+  const DRAFT = "new-111-aaaaaa"
+  const CANONICAL = "conv-1-claude_code-99"
+
+  it("rekeys a sessionless prompting draft instead of spawning", async () => {
+    h.acpFindConnectionForConversation.mockResolvedValue(null)
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect(DRAFT, "claude_code", "/tmp/x")
+    })
+    expect(h.acpConnect).toHaveBeenCalledTimes(1)
+    const handlers = latestAttachHandlers()
+    emitAcpEvent(handlers, {
+      seq: 1,
+      connection_id: "spawned-conn",
+      type: "status_changed",
+      status: "prompting",
+    })
+    h.acpConnect.mockClear()
+    h.acpDisconnect.mockClear()
+
+    await act(async () => {
+      await h.actions!.connect(CANONICAL, "claude_code", "/tmp/x")
+    })
+
+    expect(h.acpConnect).not.toHaveBeenCalled()
+    expect(h.acpDisconnect).not.toHaveBeenCalled()
+    expect(h.store!.getConnection(DRAFT)).toBeUndefined()
+    expect(h.store!.getConnection(CANONICAL)?.connectionId).toBe("spawned-conn")
+    expect(h.store!.getConnection(CANONICAL)?.status).toBe("prompting")
+  })
+
+  it("does not steal a named session when the remount is still sessionless", async () => {
+    h.acpFindConnectionForConversation.mockResolvedValue(null)
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect(TAB, "claude_code", "/tmp/x", "sess-1")
+    })
+    const handlers = latestAttachHandlers()
+    emitAcpEvent(handlers, {
+      seq: 1,
+      connection_id: "spawned-conn",
+      type: "session_started",
+      session_id: "sess-1",
+    })
+    h.acpConnect.mockClear()
+    h.acpConnect.mockResolvedValue("fresh-conn")
+
+    await act(async () => {
+      await h.actions!.connect("new-222-bbbbbb", "claude_code", "/tmp/x")
+    })
+
+    expect(h.acpConnect).toHaveBeenCalledTimes(1)
+    expect(h.store!.getConnection(TAB)?.connectionId).toBe("spawned-conn")
+    expect(h.store!.getConnection("new-222-bbbbbb")?.connectionId).toBe(
+      "fresh-conn"
+    )
+  })
+
+  it("rekeys a sessionless canvas draft onto the pinned card key", async () => {
+    h.acpFindConnectionForConversation.mockResolvedValue(null)
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect("canvas-draft-abc", "claude_code", "/tmp/x")
+    })
+    const handlers = latestAttachHandlers()
+    emitAcpEvent(handlers, {
+      seq: 1,
+      connection_id: "spawned-conn",
+      type: "status_changed",
+      status: "prompting",
+    })
+    h.acpConnect.mockClear()
+    h.acpDisconnect.mockClear()
+
+    await act(async () => {
+      await h.actions!.connect("canvas-node-7", "claude_code", "/tmp/x")
+    })
+
+    expect(h.acpConnect).not.toHaveBeenCalled()
+    expect(h.acpDisconnect).not.toHaveBeenCalled()
+    expect(h.store!.getConnection("canvas-draft-abc")).toBeUndefined()
+    expect(h.store!.getConnection("canvas-node-7")?.connectionId).toBe(
+      "spawned-conn"
+    )
+  })
+
+  it("does not steal a sessionless draft when opening another new conversation", async () => {
+    h.acpFindConnectionForConversation.mockResolvedValue(null)
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect("new-aaa-111111", "claude_code", "/tmp/x")
+    })
+    await act(async () => {
+      await h.actions!.connect("new-bbb-222222", "claude_code", "/tmp/x")
+    })
+    expect(h.acpConnect).toHaveBeenCalledTimes(2)
+    expect(h.store!.getConnection("new-aaa-111111")?.connectionId).toBe(
+      "spawned-conn"
+    )
+    expect(h.store!.getConnection("new-bbb-222222")?.connectionId).toBe(
+      "spawned-conn"
+    )
+  })
+
+  it("rekeys the prompting draft when two sessionless drafts exist", async () => {
+    h.acpFindConnectionForConversation.mockResolvedValue(null)
+    h.acpConnect
+      .mockResolvedValueOnce("draft-a")
+      .mockResolvedValueOnce("draft-b")
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect("new-aaa-111111", "claude_code", "/tmp/x")
+    })
+    await act(async () => {
+      await h.actions!.connect("new-bbb-222222", "claude_code", "/tmp/x")
+    })
+    const handlersB = latestAttachHandlers()
+    emitAcpEvent(handlersB, {
+      seq: 1,
+      connection_id: "draft-b",
+      type: "status_changed",
+      status: "prompting",
+    })
+    expect(h.store!.getConnection("new-bbb-222222")?.status).toBe("prompting")
+    expect(h.store!.getConnection("new-aaa-111111")?.status).not.toBe(
+      "prompting"
+    )
+    h.acpConnect.mockClear()
+    h.acpDisconnect.mockClear()
+
+    await act(async () => {
+      await h.actions!.connect("conv-1-claude_code-100", "claude_code", "/tmp/x")
+    })
+
+    expect(h.acpConnect).not.toHaveBeenCalled()
+    expect(h.acpDisconnect).not.toHaveBeenCalled()
+    expect(h.store!.getConnection("new-aaa-111111")?.connectionId).toBe(
+      "draft-a"
+    )
+    expect(h.store!.getConnection("new-bbb-222222")).toBeUndefined()
+    expect(
+      h.store!.getConnection("conv-1-claude_code-100")?.connectionId
+    ).toBe("draft-b")
+    expect(h.store!.getConnection("conv-1-claude_code-100")?.status).toBe(
+      "prompting"
+    )
+  })
+})
