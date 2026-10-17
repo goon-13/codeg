@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "智能體",
         "mentionGroupSession": "工作階段",
         "mentionGroupCommit": "提交",
-        "mentionGroupSkill": "技能"
+        "mentionGroupSkill": "技能",
+        "slashGroupCommands": "命令",
+        "slashGroupPrompts": "提示詞",
+        "slashGroupSkills": "技能",
+        "promptFillTitle": "填寫空",
+        "promptFillInsert": "插入",
+        "promptFillCancel": "取消"
       },
       "messageQueue": {
         "addToQueue": "加入佇列",
@@ -4560,7 +4566,7 @@
   },
   "QuickMessagesSettings": {
     "title": "快捷訊息",
-    "description": "管理可重用的訊息片段。拖曳以調整順序。",
+    "description": "這些是人手點的提示詞。智能體不會自己拿去用。想讓它自己撿，去做技能。",
     "loading": "載入快捷訊息…",
     "emptyList": "尚無快捷訊息。點擊「新增」建立一條。",
     "emptySelection": "選擇一條快捷訊息進行編輯。",
@@ -4577,7 +4583,13 @@
       "title": "標題",
       "titlePlaceholder": "為此訊息取一個簡短的標題",
       "content": "內容",
-      "contentPlaceholder": "在此輸入訊息內容"
+      "contentPlaceholder": "在此輸入訊息。空用 '{{名字}}'。",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "打 / 時按標題搜尋",
+      "reservedSlug": "/{slug} 是保留命令名。Enter 仍會選中命令。",
+      "varsNone": "沒有空。按原文插入。",
+      "varsTab": "{names} · 1–2 個空：插入後按 Tab",
+      "varsForm": "{names} · 3 個以上空：先填表"
     },
     "confirmDelete": {
       "title": "刪除快捷訊息？",

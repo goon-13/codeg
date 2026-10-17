@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "Agentes",
         "mentionGroupSession": "Sessões",
         "mentionGroupCommit": "Commits",
-        "mentionGroupSkill": "Habilidades"
+        "mentionGroupSkill": "Habilidades",
+        "slashGroupCommands": "Comandos",
+        "slashGroupPrompts": "Prompts",
+        "slashGroupSkills": "Skills",
+        "promptFillTitle": "Preencher vazios",
+        "promptFillInsert": "Inserir",
+        "promptFillCancel": "Cancelar"
       },
       "messageQueue": {
         "addToQueue": "Adicionar à fila",
@@ -4560,7 +4566,7 @@
   },
   "QuickMessagesSettings": {
     "title": "Mensagens rápidas",
-    "description": "Gerencie trechos de mensagens reutilizáveis. Arraste para reordenar.",
+    "description": "São prompts que você insere à mão. O agente nunca os pega sozinho. Se ele deve agir sozinho, faça uma skill.",
     "loading": "Carregando mensagens rápidas…",
     "emptyList": "Ainda não há mensagens rápidas. Clique em \"Nova\" para criar uma.",
     "emptySelection": "Selecione uma mensagem rápida para editar.",
@@ -4577,7 +4583,13 @@
       "title": "Título",
       "titlePlaceholder": "Dê um título curto a esta mensagem",
       "content": "Conteúdo",
-      "contentPlaceholder": "Digite aqui o conteúdo da mensagem"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "Excluir mensagem rápida?",

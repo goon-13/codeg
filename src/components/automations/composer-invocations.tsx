@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
+import { useTranslations } from "next-intl"
 import { BookOpenText } from "lucide-react"
 import type { RichComposerHandle } from "@/components/chat/composer/rich-composer"
 import {
@@ -29,10 +30,21 @@ import { rankByTextMatch } from "@/lib/fuzzy-text-match"
 import { isImeCompositionKey } from "@/lib/ime-composition"
 import type { KnownInvocations } from "@/lib/invocation-token"
 import { cn } from "@/lib/utils"
+import { quickMessagesList } from "@/lib/api"
+import { selectPlaceholderInEditor } from "@/components/prompt-library/select-placeholder"
+import type { PromptFormRequest } from "@/components/prompt-library/use-prompt-form-insert"
+import {
+  isPromptListable,
+  planPromptFill,
+  promptDisplayTitle,
+  promptSearchText,
+  promptSlug,
+} from "@/lib/prompt-library/prompt-model"
 import type {
   AgentSkillItem,
   AgentType,
   AvailableCommandInfo,
+  QuickMessage,
 } from "@/lib/types"
 
 // Commit-synchronous in the browser so the panel is positioned before paint (no
@@ -48,6 +60,7 @@ interface UseComposerInvocationsArgs {
   folderPath: string | null
   /** Slash commands from the agent-options probe (empty if none / not yet ready). */
   availableCommands: AvailableCommandInfo[]
+  onPromptForm?: (request: PromptFormRequest) => void
 }
 
 export interface ComposerInvocations {
@@ -55,10 +68,11 @@ export interface ComposerInvocations {
   isOpen: boolean
   commands: AvailableCommandInfo[]
   skills: AgentSkillItem[]
+  prompts: QuickMessage[]
   /** Every invocation this menu could offer, for the composer's `knownInvocations`
    *  — so seeded / pasted text badges exactly what the menu would insert. */
   knownInvocations: KnownInvocations
-  /** Index into the merged [commands, skills] list. */
+  /** Index into the merged [commands, skills, prompts] list. */
   activeIndex: number
   /** Re-evaluate the trigger from the editor's current caret (call on change). */
   detect: () => void
@@ -66,6 +80,7 @@ export interface ComposerInvocations {
   onKeyDown: (event: KeyboardEvent) => boolean
   selectCommand: (cmd: AvailableCommandInfo) => void
   selectSkill: (skill: AgentSkillItem) => void
+  selectPrompt: (message: QuickMessage) => void
 }
 
 /**
@@ -81,14 +96,30 @@ export function useComposerInvocations({
   agentType,
   folderPath,
   availableCommands,
+  onPromptForm,
 }: UseComposerInvocationsArgs): ComposerInvocations {
   const isCodex = agentType === "codex"
   // Codex-only `$` skills (filesystem scan — no live session needed).
   const skills = useAgentSkills(isCodex ? "codex" : null, folderPath)
+  const [quickMessages, setQuickMessages] = useState<QuickMessage[]>([])
   const [open, setOpen] = useState(false)
   const [triggerChar, setTriggerChar] = useState<"/" | "$" | null>(null)
   const [filter, setFilter] = useState("")
   const [rawActiveIndex, setRawActiveIndex] = useState(0)
+  const onPromptFormRef = useRef(onPromptForm)
+  useEffect(() => {
+    onPromptFormRef.current = onPromptForm
+  }, [onPromptForm])
+  useEffect(() => {
+    quickMessagesList()
+      .then(setQuickMessages)
+      .catch((error) => {
+        console.error("[ComposerInvocations] load quick messages failed:", error)
+      })
+  }, [])
+  const hasListablePrompts = quickMessages.some((message) =>
+    isPromptListable(message.content)
+  )
 
   const close = useCallback(() => {
     setOpen(false)
@@ -100,7 +131,8 @@ export function useComposerInvocations({
   // menu — same rule as the chat composer's detectSlashTrigger.
   const detect = useCallback(() => {
     const editor = editorRef.current?.getEditor()
-    const hasSource = availableCommands.length > 0 || skills.length > 0
+    const hasSource =
+      availableCommands.length > 0 || skills.length > 0 || hasListablePrompts
     if (!editor || !hasSource) return close()
     const { selection } = editor.state
     if (!selection.empty) return close()
@@ -119,7 +151,14 @@ export function useComposerInvocations({
     setFilter(match[3])
     setRawActiveIndex(0)
     setOpen(true)
-  }, [editorRef, availableCommands.length, skills.length, isCodex, close])
+  }, [
+    editorRef,
+    availableCommands.length,
+    skills.length,
+    hasListablePrompts,
+    isCodex,
+    close,
+  ])
 
   const commands = useMemo(() => {
     if (!open || triggerChar !== "/" || availableCommands.length === 0)
@@ -139,6 +178,15 @@ export function useComposerInvocations({
     )
   }, [isCodex, open, triggerChar, skills, filter])
 
+  const matchedPrompts = useMemo(() => {
+    if (!open || triggerChar !== "/" || !hasListablePrompts) return []
+    return rankByTextMatch(
+      filter,
+      quickMessages.filter((message) => isPromptListable(message.content)),
+      (message) => promptSearchText(message.title, message.content)
+    )
+  }, [open, triggerChar, hasListablePrompts, quickMessages, filter])
+
   // Built from the FULL lists, not the filtered ones: this answers "is there
   // such a command", which the current query has no say in.
   const knownInvocations = useMemo(
@@ -151,7 +199,7 @@ export function useComposerInvocations({
     [availableCommands, isCodex, skills]
   )
 
-  const count = commands.length + matchedSkills.length
+  const count = commands.length + matchedSkills.length + matchedPrompts.length
   // Clamp on read so a shrinking filtered list never points past the end (avoids
   // a clamping effect / set-state-in-effect).
   const activeIndex = count > 0 ? Math.min(rawActiveIndex, count - 1) : 0
@@ -203,6 +251,50 @@ export function useComposerInvocations({
     [replaceTrigger]
   )
 
+  const selectPrompt = useCallback(
+    (message: QuickMessage) => {
+      if (!isPromptListable(message.content)) return
+      const editor = editorRef.current?.getEditor()
+      if (!editor) return
+      const { $from } = editor.state.selection
+      const before = $from.parent.textBetween(
+        0,
+        $from.parentOffset,
+        undefined,
+        " "
+      )
+      const match = before.match(/(^|\s)([/$])(\S*)$/)
+      const restoreToken = match ? `${match[2]}${match[3]}` : null
+      if (match) {
+        const tokenLen = match[2].length + match[3].length
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: $from.pos - tokenLen, to: $from.pos })
+          .run()
+      }
+      close()
+      const plan = planPromptFill(message.content)
+      if (plan.mode === "form") {
+        onPromptFormRef.current?.({
+          title: promptDisplayTitle(message.title),
+          template: plan.template,
+          vars: plan.vars,
+          restoreToken,
+        })
+        return
+      }
+      editorRef.current?.insertTextAtCursor(plan.text)
+      if (plan.mode === "tab") {
+        requestAnimationFrame(() => {
+          const next = editorRef.current?.getEditor()
+          if (next) selectPlaceholderInEditor(next, 1)
+        })
+      }
+    },
+    [editorRef, close]
+  )
+
   const onKeyDown = useCallback(
     (event: KeyboardEvent): boolean => {
       if (isImeCompositionKey(event)) return false
@@ -217,9 +309,13 @@ export function useComposerInvocations({
       }
       if (event.key === "Enter" || event.key === "Tab") {
         if (activeIndex < commands.length) selectCommand(commands[activeIndex])
-        else {
+        else if (activeIndex < commands.length + matchedSkills.length) {
           const skill = matchedSkills[activeIndex - commands.length]
           if (skill) selectSkill(skill)
+        } else {
+          const prompt =
+            matchedPrompts[activeIndex - commands.length - matchedSkills.length]
+          if (prompt) selectPrompt(prompt)
         }
         return true
       }
@@ -235,8 +331,10 @@ export function useComposerInvocations({
       activeIndex,
       commands,
       matchedSkills,
+      matchedPrompts,
       selectCommand,
       selectSkill,
+      selectPrompt,
       close,
     ]
   )
@@ -245,12 +343,14 @@ export function useComposerInvocations({
     isOpen: open && count > 0,
     commands,
     skills: matchedSkills,
+    prompts: matchedPrompts,
     knownInvocations,
     activeIndex,
     detect,
     onKeyDown,
     selectCommand,
     selectSkill,
+    selectPrompt,
   }
 }
 
@@ -282,7 +382,8 @@ export function ComposerInvocationsPopup({
   const [pos, setPos] = useState<PopupPosition | null>(null)
   const [anchorWidth, setAnchorWidth] = useState(0)
 
-  const itemCount = inv.commands.length + inv.skills.length
+  const t = useTranslations("Folder.chat.messageInput")
+  const itemCount = inv.commands.length + inv.skills.length + inv.prompts.length
 
   // Anchor the portalled panel to the composer box. Measure the rendered panel
   // (a `visibility:hidden` box still has layout), then clamp/flip via the pure
@@ -342,7 +443,9 @@ export function ComposerInvocationsPopup({
   useEffect(() => {
     if (!inv.isOpen) return
     const container = listRef.current
-    const el = container?.children[inv.activeIndex] as HTMLElement | undefined
+    const el = container?.querySelectorAll<HTMLElement>("[data-slash-row]")[
+      inv.activeIndex
+    ]
     if (!container || !el) return
     const elTop = el.offsetTop
     const elBottom = elTop + el.offsetHeight
@@ -381,10 +484,16 @@ export function ComposerInvocationsPopup({
       className="flex max-h-[min(16rem,40dvh)] flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
     >
       <div ref={listRef} className="flex-1 overflow-y-auto p-1">
+        {inv.commands.length > 0 && (
+          <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+            {t("slashGroupCommands")}
+          </div>
+        )}
         {inv.commands.map((cmd, i) => (
           <button
             key={`cmd-${cmd.name}`}
             type="button"
+            data-slash-row=""
             className={cn(
               "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
               i === inv.activeIndex
@@ -399,12 +508,18 @@ export function ComposerInvocationsPopup({
             <CommandOptionLabel command={cmd} />
           </button>
         ))}
+        {inv.skills.length > 0 && (
+          <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+            {t("slashGroupSkills")}
+          </div>
+        )}
         {inv.skills.map((skill, i) => {
           const absoluteIndex = inv.commands.length + i
           return (
             <button
               key={`skill-${skill.scope}-${skill.id}`}
               type="button"
+              data-slash-row=""
               className={cn(
                 "flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm",
                 absoluteIndex === inv.activeIndex
@@ -426,6 +541,40 @@ export function ComposerInvocationsPopup({
                   {skill.description ?? `$${skill.id}`}
                 </span>
               </div>
+            </button>
+          )
+        })}
+        {inv.prompts.length > 0 && (
+          <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+            {t("slashGroupPrompts")}
+          </div>
+        )}
+        {inv.prompts.map((message, i) => {
+          const absoluteIndex = inv.commands.length + inv.skills.length + i
+          const slug = promptSlug(message.title)
+          const label = promptDisplayTitle(message.title)
+          return (
+            <button
+              key={`prompt-${message.id}`}
+              type="button"
+              data-slash-row=""
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
+                absoluteIndex === inv.activeIndex
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-muted"
+              )}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                inv.selectPrompt(message)
+              }}
+            >
+              {slug ? (
+                <span className="shrink-0 font-mono text-primary">/{slug}</span>
+              ) : null}
+              <span className="truncate text-xs text-muted-foreground">
+                {label || t("quickMessageUntitled")}
+              </span>
             </button>
           )
         })}

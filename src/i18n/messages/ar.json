@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "الوكلاء",
         "mentionGroupSession": "الجلسات",
         "mentionGroupCommit": "عمليات الإيداع",
-        "mentionGroupSkill": "المهارات"
+        "mentionGroupSkill": "المهارات",
+        "slashGroupCommands": "أوامر",
+        "slashGroupPrompts": "مطالبات",
+        "slashGroupSkills": "مهارات",
+        "promptFillTitle": "املأ الفراغات",
+        "promptFillInsert": "إدراج",
+        "promptFillCancel": "إلغاء"
       },
       "messageQueue": {
         "addToQueue": "إضافة للقائمة",
@@ -4560,7 +4566,7 @@
   },
   "QuickMessagesSettings": {
     "title": "رسائل سريعة",
-    "description": "إدارة مقتطفات الرسائل القابلة لإعادة الاستخدام. اسحب لإعادة الترتيب.",
+    "description": "هذه مطالبات تدرجها يدويًا. لن يلتقطها الوكيل من تلقاء نفسه. إذا كان يجب أن يتصرف وحده، فأنشئ مهارة.",
     "loading": "جارٍ تحميل الرسائل السريعة…",
     "emptyList": "لا توجد رسائل سريعة بعد. انقر على \"جديد\" لإنشاء واحدة.",
     "emptySelection": "اختر رسالة سريعة للتعديل.",
@@ -4577,7 +4583,13 @@
       "title": "العنوان",
       "titlePlaceholder": "أعطِ هذه الرسالة عنوانًا قصيرًا",
       "content": "المحتوى",
-      "contentPlaceholder": "اكتب محتوى الرسالة هنا"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "حذف الرسالة السريعة؟",

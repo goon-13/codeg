@@ -32,6 +32,10 @@ import { rankByTextMatch } from "@/lib/fuzzy-text-match"
 import { isImeCompositionKey } from "@/lib/ime-composition"
 import { cn } from "@/lib/utils"
 import type { AvailableCommandInfo } from "@/lib/types"
+import {
+  promptDisplayTitle,
+  promptSlug,
+} from "@/lib/prompt-library/prompt-model"
 
 import {
   commandInputHint,
@@ -197,20 +201,31 @@ export function ComposerAddMenu({
                 {t("quickMessagesEmpty")}
               </div>
             ) : (
-              shortcuts.quickMessages.map((message) => (
-                <DropdownMenuItem
-                  key={message.id}
-                  onClick={() => shortcuts.insertQuickMessage(message)}
-                >
-                  <span className="truncate">
-                    {message.title || (
-                      <span className="italic text-muted-foreground">
-                        {t("quickMessageUntitled")}
+              shortcuts.quickMessages.map((message) => {
+                const slug = promptSlug(message.title)
+                const label = promptDisplayTitle(message.title)
+                return (
+                  <DropdownMenuItem
+                    key={message.id}
+                    onClick={() => shortcuts.insertQuickMessage(message)}
+                  >
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="truncate">
+                        {label || (
+                          <span className="italic text-muted-foreground">
+                            {t("quickMessageUntitled")}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                </DropdownMenuItem>
-              ))
+                      {slug ? (
+                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                          /{slug}
+                        </span>
+                      ) : null}
+                    </span>
+                  </DropdownMenuItem>
+                )
+              })
             )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>

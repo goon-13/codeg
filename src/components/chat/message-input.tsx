@@ -158,6 +158,16 @@ import { ComposerAddMenu } from "@/components/chat/composer/composer-add-menu"
 import { ComposerImageThumbnails } from "@/components/chat/composer/composer-image-thumbnails"
 import { useComposerAttachments } from "@/components/chat/composer/use-composer-attachments"
 import { useComposerShortcuts } from "@/components/chat/composer/use-composer-shortcuts"
+import { selectPlaceholderInEditor } from "@/components/prompt-library/select-placeholder"
+import { usePromptFormInsert } from "@/components/prompt-library/use-prompt-form-insert"
+import {
+  isPromptListable,
+  planPromptFill,
+  promptDisplayTitle,
+  promptSearchText,
+  promptSlug,
+} from "@/lib/prompt-library/prompt-model"
+import type { QuickMessage } from "@/lib/types"
 
 /**
  * Payload pushed into the composer from outside (e.g. a welcome-page quick
@@ -501,12 +511,15 @@ export function MessageInput({
     hydrateFromBlocks,
     imagePromptBlocks,
   } = attach
+  const promptForm = usePromptFormInsert(editorRef, syncComposerEmpty)
   const menuShortcuts = useComposerShortcuts({
     editorRef,
     agentType: agentType ?? null,
     onAfterInsert: syncComposerEmpty,
+    onPromptForm: promptForm.startForm,
     logLabel: "MessageInput",
   })
+  const [placeholderNav, setPlaceholderNav] = useState(false)
 
   // Collapsed (narrow) selectors live in a controlled Popover holding a
   // master–detail panel (`SessionSelectorsPanel`). It's controlled so a value
@@ -994,8 +1007,27 @@ export function MessageInput({
       (skill) => skill.id
     )
   }, [slashMenuOpen, availableSkills, agentType, slashTriggerChar, slashFilter])
+  const filteredSlashPrompts = useMemo(() => {
+    if (!slashMenuOpen || slashTriggerChar !== "/") return []
+    const list = menuShortcuts.quickMessages.filter((message) =>
+      isPromptListable(message.content)
+    )
+    return rankByTextMatch(slashFilter, list, (message) =>
+      promptSearchText(message.title, message.content)
+    )
+  }, [
+    slashMenuOpen,
+    slashTriggerChar,
+    slashFilter,
+    menuShortcuts.quickMessages,
+  ])
+  const hasListablePrompts = menuShortcuts.quickMessages.some((message) =>
+    isPromptListable(message.content)
+  )
   const slashAutocompleteCount =
-    filteredSlashCommands.length + filteredSlashSkills.length
+    filteredSlashCommands.length +
+    filteredSlashSkills.length +
+    filteredSlashPrompts.length
   // `/` is fed by the agent's own command list, which only exists once the
   // connection is up — so while it is being established the panel shows a
   // loading row rather than nothing at all. `$` (Codex skills) is read from
@@ -1033,7 +1065,9 @@ export function MessageInput({
     if (!slashMenuOpen || slashAutocompleteCount === 0) return
     const container = slashMenuListRef.current
     if (!container) return
-    const el = container.children[slashSelectedIndex] as HTMLElement | undefined
+    const el = container.querySelectorAll<HTMLElement>("[data-slash-row]")[
+      slashSelectedIndex
+    ]
     if (!el) return
     const elTop = el.offsetTop
     const elBottom = elTop + el.offsetHeight
@@ -1081,18 +1115,27 @@ export function MessageInput({
     // closing on empty would strand a `$` typed before the scan lands. Left
     // open, the panel simply stays hidden until the skills arrive and then
     // fills itself in — no second keystroke needed.
-    if (trigger === "/" && slashCommands.length === 0 && !commandsLoading) {
+    if (
+      trigger === "/" &&
+      slashCommands.length === 0 &&
+      !commandsLoading &&
+      !hasListablePrompts
+    ) {
       return close()
     }
     setSlashTriggerChar(trigger)
     setSlashFilter(match[3])
     setSlashSelectedIndex(0)
     setSlashMenuOpen(true)
-  }, [slashCommands.length, commandsLoading, agentType])
+  }, [slashCommands.length, commandsLoading, agentType, hasListablePrompts])
 
   useEffect(() => {
     detectSlashTriggerRef.current = detectSlashTrigger
   }, [detectSlashTrigger])
+
+  useEffect(() => {
+    detectSlashTriggerRef.current?.()
+  }, [hasListablePrompts])
 
   useEffect(() => {
     if (!showModeSelector) return
@@ -1169,6 +1212,54 @@ export function MessageInput({
       replaceTriggerWithReference(skillToReference(skill, skillPrefix))
     },
     [replaceTriggerWithReference, skillPrefix]
+  )
+
+  const handlePromptSelect = useCallback(
+    (message: QuickMessage) => {
+      if (!isPromptListable(message.content)) return
+      const editor = editorRef.current?.getEditor()
+      if (!editor) return
+      const { $from } = editor.state.selection
+      const before = $from.parent.textBetween(
+        0,
+        $from.parentOffset,
+        undefined,
+        " "
+      )
+      const match = before.match(/(^|\s)([/$])(\S*)$/)
+      const restoreToken = match ? `${match[2]}${match[3]}` : null
+      if (match) {
+        const tokenLen = match[2].length + match[3].length
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: $from.pos - tokenLen, to: $from.pos })
+          .run()
+      }
+      closeSlashMenu()
+      const plan = planPromptFill(message.content)
+      if (plan.mode === "form") {
+        promptForm.startForm({
+          title: promptDisplayTitle(message.title),
+          template: plan.template,
+          vars: plan.vars,
+          restoreToken,
+        })
+        return
+      }
+      editorRef.current?.insertTextAtCursor(plan.text)
+      if (plan.mode === "tab") {
+        setPlaceholderNav(true)
+        requestAnimationFrame(() => {
+          const next = editorRef.current?.getEditor()
+          if (next) selectPlaceholderInEditor(next, 1)
+        })
+      } else {
+        setPlaceholderNav(false)
+      }
+      syncComposerEmpty()
+    },
+    [closeSlashMenu, promptForm, syncComposerEmpty]
   )
 
   // Plain-text rendering of the editor's current selection, for the right-click
@@ -1699,41 +1790,57 @@ export function MessageInput({
   const handleExternalMenuKeyDown = useCallback(
     (event: KeyboardEvent): boolean => {
       if (isImeCompositionKey(event)) return false
-      if (!slashMenuVisible) return false
-      if (event.key === "Escape") {
-        closeSlashMenu()
-        return true
-      }
-      if (slashAutocompleteCount === 0) {
-        // Loading row: own the navigation/confirm keys so nothing submits or
-        // moves the caret under an open panel, but insert nothing. Same
-        // treatment the `@` panel gives its own stale state.
-        return ["ArrowDown", "ArrowUp", "Enter", "Tab"].includes(event.key)
-      }
-      if (event.key === "ArrowDown") {
-        setSlashSelectedIndex((i) =>
-          i < slashAutocompleteCount - 1 ? i + 1 : 0
-        )
-        return true
-      }
-      if (event.key === "ArrowUp") {
-        setSlashSelectedIndex((i) =>
-          i > 0 ? i - 1 : slashAutocompleteCount - 1
-        )
-        return true
-      }
-      if (event.key === "Enter" || event.key === "Tab") {
-        // The merged list is [commands, skills].
-        if (slashSelectedIndex < filteredSlashCommands.length) {
-          handleSlashSelect(filteredSlashCommands[slashSelectedIndex])
-        } else {
-          const skill =
-            filteredSlashSkills[
-              slashSelectedIndex - filteredSlashCommands.length
-            ]
-          if (skill) handleSkillAutocompleteSelect(skill)
+      if (slashMenuVisible) {
+        if (event.key === "Escape") {
+          closeSlashMenu()
+          return true
         }
-        return true
+        if (slashAutocompleteCount === 0) {
+          // Loading row: own the navigation/confirm keys so nothing submits or
+          // moves the caret under an open panel, but insert nothing. Same
+          // treatment the `@` panel gives its own stale state.
+          return ["ArrowDown", "ArrowUp", "Enter", "Tab"].includes(event.key)
+        }
+        if (event.key === "ArrowDown") {
+          setSlashSelectedIndex((i) =>
+            i < slashAutocompleteCount - 1 ? i + 1 : 0
+          )
+          return true
+        }
+        if (event.key === "ArrowUp") {
+          setSlashSelectedIndex((i) =>
+            i > 0 ? i - 1 : slashAutocompleteCount - 1
+          )
+          return true
+        }
+        if (event.key === "Enter" || event.key === "Tab") {
+          const commandCount = filteredSlashCommands.length
+          const skillCount = filteredSlashSkills.length
+          if (slashSelectedIndex < commandCount) {
+            handleSlashSelect(filteredSlashCommands[slashSelectedIndex])
+          } else if (slashSelectedIndex < commandCount + skillCount) {
+            const skill =
+              filteredSlashSkills[slashSelectedIndex - commandCount]
+            if (skill) handleSkillAutocompleteSelect(skill)
+          } else {
+            const prompt =
+              filteredSlashPrompts[
+                slashSelectedIndex - commandCount - skillCount
+              ]
+            if (prompt) handlePromptSelect(prompt)
+          }
+          return true
+        }
+        return false
+      }
+      if (event.key === "Tab") {
+        const editor = editorRef.current?.getEditor()
+        if (
+          editor &&
+          selectPlaceholderInEditor(editor, event.shiftKey ? -1 : 1)
+        ) {
+          return true
+        }
       }
       return false
     },
@@ -1743,8 +1850,10 @@ export function MessageInput({
       slashSelectedIndex,
       filteredSlashCommands,
       filteredSlashSkills,
+      filteredSlashPrompts,
       handleSlashSelect,
       handleSkillAutocompleteSelect,
+      handlePromptSelect,
       closeSlashMenu,
     ]
   )
@@ -2116,10 +2225,16 @@ export function MessageInput({
                 <SelectorLoadingChip label={t("slashLoading")} />
               </div>
             )}
+            {(slashLoading || filteredSlashCommands.length > 0) && (
+              <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+                {t("slashGroupCommands")}
+              </div>
+            )}
             {filteredSlashCommands.map((cmd, i) => (
               <button
                 key={`cmd-${cmd.name}`}
                 type="button"
+                data-slash-row=""
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
                   i === slashSelectedIndex
@@ -2134,12 +2249,18 @@ export function MessageInput({
                 <CommandOptionLabel command={cmd} />
               </button>
             ))}
+            {filteredSlashSkills.length > 0 && (
+              <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+                {t("slashGroupSkills")}
+              </div>
+            )}
             {filteredSlashSkills.map((skill, i) => {
               const absoluteIndex = filteredSlashCommands.length + i
               return (
                 <button
                   key={`skill-${skill.scope}-${skill.id}`}
                   type="button"
+                  data-slash-row=""
                   className={cn(
                     "flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm",
                     absoluteIndex === slashSelectedIndex
@@ -2164,9 +2285,50 @@ export function MessageInput({
                 </button>
               )
             })}
+            {filteredSlashPrompts.length > 0 && (
+              <div
+                data-testid="slash-group-prompts"
+                className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground"
+              >
+                {t("slashGroupPrompts")}
+              </div>
+            )}
+            {filteredSlashPrompts.map((message, i) => {
+              const absoluteIndex =
+                filteredSlashCommands.length + filteredSlashSkills.length + i
+              const slug = promptSlug(message.title)
+              const label = promptDisplayTitle(message.title)
+              return (
+                <button
+                  key={`prompt-${message.id}`}
+                  type="button"
+                  data-slash-row=""
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
+                    absoluteIndex === slashSelectedIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-muted"
+                  )}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    handlePromptSelect(message)
+                  }}
+                >
+                  {slug ? (
+                    <span className="shrink-0 font-mono text-primary">
+                      /{slug}
+                    </span>
+                  ) : null}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {label || t("quickMessageUntitled")}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
+      {promptForm.dialog}
       {/* Attached, this group clips the composer and the folder/branch row
           below it into one rounded box (`overflow-hidden rounded-xl`); the
           drag-active ring rides the wrapper so it isn't clipped. Standalone it
@@ -2265,7 +2427,9 @@ export function MessageInput({
                 onPlainPaste={handlePlainPasteShortcut}
                 submitShortcut={shortcuts.send_message}
                 newlineShortcut={shortcuts.newline_in_message}
-                isExternalMenuOpen={slashMenuVisible}
+                isExternalMenuOpen={
+                  slashMenuVisible || promptForm.formOpen || placeholderNav
+                }
                 onExternalMenuKeyDown={handleExternalMenuKeyDown}
                 onHistoryKeyDown={handleHistoryKeyDown}
                 // `grow`, not `flex-1`: a content flex basis, so the editable

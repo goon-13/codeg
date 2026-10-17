@@ -204,6 +204,7 @@ vi.mock("@/hooks/use-appearance", async (importOriginal) => ({
 }))
 
 import enMessages from "@/i18n/messages/en.json"
+import { quickMessagesList } from "@/lib/api"
 import type {
   PromptCapabilitiesInfo,
   SessionConfigOptionInfo,
@@ -1358,6 +1359,7 @@ describe("MessageInput slash menu while the agent connects", () => {
   afterEach(() => {
     cleanup()
     composerHandle.current = null
+    vi.mocked(quickMessagesList).mockResolvedValue([])
   })
 
   const LOADING = enMessages.Folder.chat.messageInput.slashLoading
@@ -1482,6 +1484,44 @@ describe("MessageInput slash menu while the agent connects", () => {
     }
   })
 
+  it("does not list prompts in the Codex $ menu", async () => {
+    vi.mocked(quickMessagesList).mockResolvedValue([
+      {
+        id: 2,
+        title: "开会纪要 /meet",
+        content: "日期 {{日期}}，对象 {{对象}}，地点 {{地点}}",
+        sort_order: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ])
+    agentSkills.mockReturnValue([
+      {
+        id: "brainstorm",
+        name: "Brainstorm",
+        description: "Ideas",
+        scope: "global",
+      },
+    ])
+    try {
+      await mountAndType(
+        {
+          agentType: "codex",
+          commandsLoading: false,
+          availableCommands: [],
+        },
+        "$"
+      )
+      const menu = await screen.findByTestId("slash-menu")
+      expect(within(menu).getByText("Brainstorm")).toBeInTheDocument()
+      expect(within(menu).queryByTestId("slash-group-prompts")).toBeNull()
+      expect(within(menu).queryByText("/meet")).toBeNull()
+      expect(within(menu).queryByText("开会纪要")).toBeNull()
+    } finally {
+      agentSkills.mockReturnValue([])
+    }
+  })
+
   it("stays closed when nothing is loading and the agent has no commands", async () => {
     await mountAndType({ commandsLoading: false, availableCommands: [] })
     // Give the trigger detection a turn to run before asserting the absence.
@@ -1518,6 +1558,111 @@ describe("MessageInput slash menu while the agent connects", () => {
       )
     })
     await waitFor(() => expect(screen.queryByTestId("slash-menu")).toBeNull())
+  })
+
+  it("opens / on prompts when the agent has no commands", async () => {
+    vi.mocked(quickMessagesList).mockResolvedValue([
+      {
+        id: 1,
+        title: "问好",
+        content: "你好，开始吧",
+        sort_order: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ])
+    await mountAndType({ commandsLoading: false, availableCommands: [] })
+    const menu = await screen.findByTestId("slash-menu")
+    expect(within(menu).getByTestId("slash-group-prompts")).toBeInTheDocument()
+    expect(within(menu).getByText("问好")).toBeInTheDocument()
+  })
+
+  it("inserts a prompt as text and does not send", async () => {
+    const onSend = vi.fn()
+    vi.mocked(quickMessagesList).mockResolvedValue([
+      {
+        id: 1,
+        title: "问好",
+        content: "你好，开始吧",
+        sort_order: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ])
+    const { editor } = await mountAndType(
+      { onSend, commandsLoading: false, availableCommands: [] },
+      "先说一句 /问好"
+    )
+    const menu = await screen.findByTestId("slash-menu")
+    fireEvent.mouseDown(within(menu).getByText("问好"))
+    await waitFor(() =>
+      expect(composerHandle.current?.getText()).toContain("你好，开始吧")
+    )
+    expect(composerHandle.current?.getText()).toContain("先说一句")
+    expect(JSON.stringify(composerHandle.current?.getJSON())).not.toContain(
+      '"type":"reference"'
+    )
+    expect(onSend).not.toHaveBeenCalled()
+    expect(editor).toBeTruthy()
+  })
+
+  it("opens a form for a prompt with three or more blanks", async () => {
+    vi.mocked(quickMessagesList).mockResolvedValue([
+      {
+        id: 2,
+        title: "开会纪要 /meet",
+        content: "日期 {{日期}}，对象 {{对象}}，地点 {{地点}}",
+        sort_order: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ])
+    await mountAndType({ commandsLoading: false, availableCommands: [] })
+    const menu = await screen.findByTestId("slash-menu")
+    fireEvent.mouseDown(within(menu).getByText("/meet"))
+    expect(await screen.findByTestId("prompt-fill-dialog")).toBeInTheDocument()
+    expect(composerHandle.current?.getText() ?? "").not.toContain("{{日期}}")
+  })
+
+  it("lets Enter pick a reserved command instead of the same-slug prompt", async () => {
+    vi.mocked(quickMessagesList).mockResolvedValue([
+      {
+        id: 3,
+        title: "压缩 /compact",
+        content: "这是提示词 compact 正文",
+        sort_order: 0,
+        created_at: "",
+        updated_at: "",
+      },
+    ])
+    const { editor } = await mountAndType(
+      {
+        commandsLoading: false,
+        availableCommands: [
+          { name: "compact", description: "Compact the thread" },
+        ],
+      },
+      "/compact"
+    )
+    const menu = await screen.findByTestId("slash-menu")
+    expect(within(menu).getByTestId("slash-group-prompts")).toBeInTheDocument()
+    act(() => {
+      ;(editor.view.dom as HTMLElement).dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    })
+    await waitFor(() =>
+      expect(JSON.stringify(composerHandle.current?.getJSON())).toContain(
+        '"type":"reference"'
+      )
+    )
+    expect(composerHandle.current?.getText() ?? "").not.toContain(
+      "这是提示词 compact"
+    )
   })
 })
 

@@ -28,6 +28,7 @@ import { docToPromptBlocks } from "@/components/chat/composer/to-prompt-blocks"
 import { useComposerAttachments } from "@/components/chat/composer/use-composer-attachments"
 import { useComposerMentionLabels } from "@/components/chat/composer/use-composer-mention-labels"
 import { useComposerShortcuts } from "@/components/chat/composer/use-composer-shortcuts"
+import { usePromptFormInsert } from "@/components/prompt-library/use-prompt-form-insert"
 import { useReferenceSearch } from "@/components/chat/composer/use-reference-search"
 import { ServerFileBrowserDialog } from "@/components/shared/server-file-browser-dialog"
 import { useTranslations } from "next-intl"
@@ -174,11 +175,15 @@ export function TaskMessageComposer({
   const promptCapabilities =
     agentOptions.snapshot?.prompt_capabilities ?? ASSUMED_PROMPT_CAPABILITIES
 
+  const promptForm = usePromptFormInsert(editorRef, () =>
+    onChange(editorRef.current?.getText() ?? "")
+  )
   const invocations = useComposerInvocations({
     editorRef,
     agentType,
     folderPath,
     availableCommands,
+    onPromptForm: promptForm.startForm,
   })
 
   const attach = useComposerAttachments({
@@ -192,6 +197,7 @@ export function TaskMessageComposer({
     editorRef,
     agentType,
     onAfterInsert: () => onChange(editorRef.current?.getText() ?? ""),
+    onPromptForm: promptForm.startForm,
     logLabel: "TaskComposer",
   })
 
@@ -312,6 +318,7 @@ export function TaskMessageComposer({
       className="codeg-composer-chrome relative rounded-xl border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-ring/50"
     >
       <ComposerInvocationsPopup inv={invocations} />
+      {promptForm.dialog}
       {attach.imageAttachments.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto px-2 pt-2">
           <ComposerImageThumbnails

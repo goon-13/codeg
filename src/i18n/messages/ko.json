@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "에이전트",
         "mentionGroupSession": "세션",
         "mentionGroupCommit": "커밋",
-        "mentionGroupSkill": "스킬"
+        "mentionGroupSkill": "스킬",
+        "slashGroupCommands": "명령",
+        "slashGroupPrompts": "프롬프트",
+        "slashGroupSkills": "스킬",
+        "promptFillTitle": "빈칸 채우기",
+        "promptFillInsert": "삽입",
+        "promptFillCancel": "취소"
       },
       "messageQueue": {
         "addToQueue": "대기열에 추가",
@@ -4560,7 +4566,7 @@
   },
   "QuickMessagesSettings": {
     "title": "빠른 메시지",
-    "description": "재사용 가능한 메시지 스니펫을 관리합니다. 드래그하여 순서를 변경하세요.",
+    "description": "직접 넣는 프롬프트입니다. 에이전트는 스스로 집어 쓰지 않습니다. 자동으로 쓰이게 하려면 스킬을 만드세요.",
     "loading": "빠른 메시지 불러오는 중…",
     "emptyList": "빠른 메시지가 없습니다. \"새로 만들기\"를 클릭하여 추가하세요.",
     "emptySelection": "편집할 빠른 메시지를 선택하세요.",
@@ -4577,7 +4583,13 @@
       "title": "제목",
       "titlePlaceholder": "이 메시지에 짧은 제목을 지정하세요",
       "content": "내용",
-      "contentPlaceholder": "여기에 메시지 내용을 입력하세요"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "빠른 메시지를 삭제하시겠습니까?",

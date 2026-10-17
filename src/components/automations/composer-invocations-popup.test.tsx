@@ -12,8 +12,10 @@
  * outside-press that closes the host).
  */
 import { render, screen } from "@testing-library/react"
+import { NextIntlClientProvider } from "next-intl"
 import { describe, expect, it } from "vitest"
 
+import enMessages from "@/i18n/messages/en.json"
 import type { AvailableCommandInfo } from "@/lib/types"
 
 import {
@@ -32,12 +34,14 @@ function invocations(
     isOpen: true,
     commands,
     skills: [],
+    prompts: [],
     knownInvocations: new Set(commands.map((cmd) => `/${cmd.name}`)),
     activeIndex: 0,
     detect: () => {},
     onKeyDown: () => false,
     selectCommand: () => {},
     selectSkill: () => {},
+    selectPrompt: () => {},
     ...overrides,
   }
 }
@@ -45,10 +49,12 @@ function invocations(
 /** The shape every host uses: the popup inside the composer's chrome box. */
 function renderInHost(inv: ComposerInvocations) {
   return render(
-    <div data-testid="composer-chrome" className="relative">
-      <ComposerInvocationsPopup inv={inv} />
-      <textarea aria-label="composer" />
-    </div>
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <div data-testid="composer-chrome" className="relative">
+        <ComposerInvocationsPopup inv={inv} />
+        <textarea aria-label="composer" />
+      </div>
+    </NextIntlClientProvider>
   )
 }
 

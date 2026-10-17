@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "エージェント",
         "mentionGroupSession": "セッション",
         "mentionGroupCommit": "コミット",
-        "mentionGroupSkill": "スキル"
+        "mentionGroupSkill": "スキル",
+        "slashGroupCommands": "コマンド",
+        "slashGroupPrompts": "プロンプト",
+        "slashGroupSkills": "スキル",
+        "promptFillTitle": "空欄を記入",
+        "promptFillInsert": "挿入",
+        "promptFillCancel": "キャンセル"
       },
       "messageQueue": {
         "addToQueue": "キューに追加",
@@ -4560,7 +4566,7 @@
   },
   "QuickMessagesSettings": {
     "title": "クイックメッセージ",
-    "description": "再利用可能なメッセージスニペットを管理します。ドラッグして並べ替えできます。",
+    "description": "手で挿入するプロンプトです。エージェントは自分から使いません。自動で拾わせるならスキルにしてください。",
     "loading": "クイックメッセージを読み込み中…",
     "emptyList": "クイックメッセージはまだありません。「新規」をクリックして作成してください。",
     "emptySelection": "編集するクイックメッセージを選択してください。",
@@ -4577,7 +4583,13 @@
       "title": "タイトル",
       "titlePlaceholder": "このメッセージに短いタイトルを付けてください",
       "content": "内容",
-      "contentPlaceholder": "ここにメッセージ内容を入力してください"
+      "contentPlaceholder": "Write the message. Use '{{name}}' for a blank.",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "Type / to search by title",
+      "reservedSlug": "/{slug} is a reserved command name. Enter still picks the command.",
+      "varsNone": "No blanks. Inserts as written.",
+      "varsTab": "{names} · 1–2 blanks: Tab after insert",
+      "varsForm": "{names} · 3 or more blanks: fill a form first"
     },
     "confirmDelete": {
       "title": "クイックメッセージを削除しますか？",

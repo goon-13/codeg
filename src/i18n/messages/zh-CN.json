@@ -3192,7 +3192,13 @@
         "mentionGroupAgent": "智能体",
         "mentionGroupSession": "会话",
         "mentionGroupCommit": "提交",
-        "mentionGroupSkill": "技能"
+        "mentionGroupSkill": "技能",
+        "slashGroupCommands": "命令",
+        "slashGroupPrompts": "提示词",
+        "slashGroupSkills": "技能",
+        "promptFillTitle": "填写空",
+        "promptFillInsert": "插入",
+        "promptFillCancel": "取消"
       },
       "messageQueue": {
         "addToQueue": "加入队列",
@@ -4580,7 +4586,7 @@
   },
   "QuickMessagesSettings": {
     "title": "快捷消息",
-    "description": "管理可复用的消息片段。拖拽以调整顺序。",
+    "description": "这些是人手点的提示词。智能体不会自己拿去用。想让它自己捡，去做技能。",
     "loading": "加载快捷消息…",
     "emptyList": "暂无快捷消息。点击“新建”创建一条。",
     "emptySelection": "选择一条快捷消息进行编辑。",
@@ -4597,7 +4603,13 @@
       "title": "标题",
       "titlePlaceholder": "为此消息取一个简短的标题",
       "content": "内容",
-      "contentPlaceholder": "在此输入消息内容"
+      "contentPlaceholder": "在此输入消息。空用 '{{名字}}'。",
+      "slashHint": "/{slug}",
+      "slashHintSearch": "打 / 时按标题搜索",
+      "reservedSlug": "/{slug} 是保留命令名。回车仍会选中命令。",
+      "varsNone": "没有空。按原文插入。",
+      "varsTab": "{names} · 1–2 个空：插入后按 Tab",
+      "varsForm": "{names} · 3 个以上空：先填表"
     },
     "confirmDelete": {
       "title": "删除快捷消息？",
