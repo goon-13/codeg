@@ -10,6 +10,8 @@ import {
   AutomationsPageTitle,
 } from "@/components/automations/automations-page"
 import { CanvasPage, CanvasPageTitle } from "@/components/canvas/canvas-page"
+import { CalendarPage, CalendarPageTitle } from "@/components/calendar/calendar-page"
+import { PoolPage, PoolPageTitle } from "@/components/pool/pool-page"
 import { ForgeChromeActions } from "@/components/forge/forge-chrome-actions"
 import { ForgePage, ForgePageTitle } from "@/components/forge/forge-page"
 import { TasksChromeActions } from "@/components/tasks/tasks-chrome-actions"
@@ -29,6 +31,8 @@ import {
 const WORKBENCH_ROUTES: Partial<Record<WorkbenchRouteId, ComponentType>> = {
   automations: AutomationsPage,
   tasks: TasksPage,
+  calendar: CalendarPage,
+  pool: PoolPage,
   forge: ForgePage,
   tokenUsage: TokenUsagePage,
   canvas: CanvasPage,
@@ -40,6 +44,8 @@ const WORKBENCH_ROUTE_STRIPS: Partial<Record<WorkbenchRouteId, ComponentType>> =
   {
     automations: AutomationsPageTitle,
     tasks: TasksPageTitle,
+    calendar: CalendarPageTitle,
+    pool: PoolPageTitle,
     forge: ForgePageTitle,
     tokenUsage: TokenUsagePageTitle,
     canvas: CanvasPageTitle,

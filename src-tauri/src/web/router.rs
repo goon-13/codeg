@@ -1812,6 +1812,9 @@ pub fn build_router_with_proxy_auth(
             "/work_task_create",
             post(handlers::work_task::work_task_create),
         )
+        .route("/plan_status", post(handlers::plan::plan_status))
+        .route("/plan_read_text", post(handlers::plan::plan_read_text))
+        .route("/plan_write_text", post(handlers::plan::plan_write_text))
         .route(
             "/work_task_update",
             post(handlers::work_task::work_task_update),

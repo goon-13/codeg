@@ -79,6 +79,8 @@ export interface SidebarSectionCollapsed {
  */
 export const SIDEBAR_NAV_ITEM_IDS = [
   "automations",
+  "calendar",
+  "pool",
   "tasks",
   "forge",
   "canvas",
