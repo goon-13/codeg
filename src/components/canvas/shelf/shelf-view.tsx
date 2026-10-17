@@ -24,8 +24,6 @@ import {
   mergePersistedShelfOrder,
   moveShelfOrderId,
   recentShelfConversations,
-  SHELF_RECENT_CHROME_HEIGHT,
-  SHELF_RECENT_OPEN_HEIGHT,
   newShelfDraftNonce,
   intersectShelfLiveKeys,
   shelfDraftContextKey,
@@ -161,7 +159,6 @@ export function ShelfView() {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [jump, setJump] = useState<ShelfJumpButtons>(EMPTY_JUMP)
   const [recentOpen, setRecentOpen] = useState(false)
-  const outlineLayerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     saveShelfExpandedConversationIds(expandedIds)
@@ -288,22 +285,8 @@ export function ShelfView() {
         data-testid="shelf-view"
         className="relative flex h-full min-h-0 flex-col bg-background"
       >
-        <div
-          data-testid="shelf-chrome"
-          className={cn(
-            "sticky top-0 z-20 flex shrink-0 items-stretch overflow-hidden border-b border-border bg-background",
-            recentOpen ? "h-[112px]" : "h-[52px]"
-          )}
-        >
-          <div
-            data-testid="shelf-outline-anchor"
-            className={cn(
-              "relative z-30 flex w-[188px] shrink-0 overflow-visible border-r border-border bg-muted/30 px-3",
-              recentOpen ? "items-start pt-1.5" : "items-center"
-            )}
-          >
+        <div className="flex min-h-0 flex-1">
             <ShelfOutline
-              portalTarget={outlineLayerRef}
               rows={rows}
               visibleFolderIds={workingIds}
               visibleConversationIds={conversationWorkingIds}
@@ -358,23 +341,20 @@ export function ShelfView() {
               }}
               onJumpConversation={jumpToConversation}
             />
-          </div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          data-testid="shelf-chrome"
+          className={cn(
+            "sticky top-0 z-20 flex shrink-0 items-stretch overflow-hidden border-b border-border bg-background",
+            recentOpen ? "h-[112px]" : "h-[52px]"
+          )}
+        >
           <ShelfRecentRow
             conversations={recentConversations}
             onOpenConversation={jumpToConversation}
             onExpandedChange={setRecentOpen}
           />
         </div>
-        <div
-          ref={outlineLayerRef}
-          data-testid="shelf-outline-layer"
-          className="pointer-events-none absolute left-3 z-40"
-          style={{
-            top: recentOpen
-              ? SHELF_RECENT_OPEN_HEIGHT
-              : SHELF_RECENT_CHROME_HEIGHT,
-          }}
-        />
         <div
           ref={scrollerRef}
           data-testid="shelf-scroller"
@@ -535,6 +515,8 @@ export function ShelfView() {
               <ArrowDownIcon className="size-4" />
             </Button>
           ) : null}
+        </div>
+          </div>
         </div>
       </div>
     </ShelfComposerFocusProvider>

@@ -459,22 +459,18 @@ describe("ShelfView", () => {
 
   it("anchors the outline on the left edge and keeps jump on the rail", () => {
     renderShelf()
-    const anchor = screen.getByTestId("shelf-outline-anchor")
+    const rail = screen.getByTestId("shelf-outline")
     const jump = screen.getByTestId("shelf-jump")
-    expect(anchor.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
+    expect(rail.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
       true
     )
     expect(jump.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
       false
     )
     expect(screen.queryByTestId("shelf-nav")).toBeNull()
-    expect(anchor.closest('[data-testid="shelf-chrome"]')).toBeTruthy()
-    expect(anchor.className).toMatch(/w-\[188px\]/)
+    expect(rail.closest('[data-testid="shelf-chrome"]')).toBeNull()
+    expect(rail.className).toMatch(/w-12/)
     expect(jump.className).toMatch(/bottom-3/)
-    expect(jump.className).toMatch(/w-\[188px\]/)
-    expect(
-      screen.getByTestId("shelf-view").querySelector(".border-b.border-border.px-3")
-    ).toBeNull()
   })
 
   it("shows both jump buttons side by side in the middle of the shelf", () => {
@@ -568,8 +564,8 @@ describe("ShelfView", () => {
     const chrome = screen.getByTestId("shelf-chrome")
     expect(chrome.querySelector('[data-testid="shelf-recent-row"]')).toBeTruthy()
     expect(
-      chrome.querySelector('[data-testid="shelf-outline-anchor"]')
-    ).toBeTruthy()
+      chrome.querySelector('[data-testid="shelf-outline-trigger"]')
+    ).toBeNull()
     const scroller = screen.getByTestId("shelf-scroller")
     expect(
       scroller.querySelector('[data-testid="shelf-recent-row"]')
@@ -636,13 +632,13 @@ describe("ShelfView", () => {
 
   it("opens the outline panel below chrome, not inside the 188px rail", () => {
     renderShelf()
+    const rail = screen.getByTestId("shelf-outline")
+    expect(rail.className).toMatch(/w-12/)
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
-    const panel = screen.getByTestId("shelf-outline-panel")
-    const anchor = screen.getByTestId("shelf-outline-anchor")
-    const layer = screen.getByTestId("shelf-outline-layer")
-    expect(anchor.contains(panel)).toBe(false)
-    expect(layer.contains(panel)).toBe(true)
-    expect(panel.className).toMatch(/w-\[24rem\]/)
+    expect(rail.className).toMatch(/w-\[24rem\]/)
+    expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
+    expect(screen.queryByTestId("shelf-outline-anchor")).toBeNull()
+    expect(screen.getByTestId("shelf-chrome").contains(rail)).toBe(false)
   })
 
   it("grows chrome to three chip rows when Recent expands", () => {
