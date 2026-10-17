@@ -3097,7 +3097,8 @@
         },
         "configOptionAdjusted": "{agent}이(가) {option}을(를) {requested} 대신 {actual}(으)로 설정했습니다",
         "noticeTitle": "{agent}: {title}",
-        "pluginLoadFailedTitle": "{agent}에서 플러그인 {count}개를 불러오지 못했습니다"
+        "pluginLoadFailedTitle": "{agent}에서 플러그인 {count}개를 불러오지 못했습니다",
+        "notificationPlanApproval": "{agent} is waiting for plan approval"
       },
       "connectionLifecycle": {
         "tasks": {
@@ -5222,7 +5223,8 @@
     "eventsTitle": "이벤트",
     "eventsHint": "방해받고 싶지 않은 이벤트를 끕니다. 몇 초 이내의 동일 이벤트는 하나로 합쳐집니다.",
     "eventBackgroundTask": "백그라운드 작업",
-    "eventWorkTask": "작업 항목"
+    "eventWorkTask": "작업 항목",
+    "eventPlanApproval": "Plan approval"
   },
   "NotificationSoundSettings": {
     "title": "알림음",
@@ -6606,6 +6608,7 @@
     "showAllProjects": "모든 프로젝트 표시",
     "showWorkingProjects": "선반 프로젝트",
     "hideFromShelf": "이 대화를 선반에서 제거",
+    "acpWaiting": "응답을 기다리는 중",
     "childCount": "하위 에이전트 {count}개",
     "regionMenu": "영역 옵션",
     "rename": "이름 바꾸기",
@@ -7036,5 +7039,17 @@
         "probeFailed": "내장 브라우저가 터널을 통해 원격 호스트에 도달하는지 확인할 수 없습니다. 잠시 후 다시 시도하세요."
       }
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

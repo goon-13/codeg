@@ -118,8 +118,44 @@ import {
 import {
   notifyDesktop,
   withDesktopNotificationsSuppressed,
+  type NotifyPayload,
 } from "@/lib/desktop-notification"
 import { sessionNotificationPayload } from "@/lib/notification-session"
+import {
+  dismissSessionNotify,
+  notifySession,
+} from "@/lib/in-app-session-notify"
+import type { SessionNotifyEventId } from "@/lib/in-app-session-notify-prefs"
+import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
+
+function emitDesktopAndSession(
+  eventId: SessionNotifyEventId,
+  contextKey: string,
+  payload: NotifyPayload,
+  conversationId: number | null | undefined,
+  agentType: string | null | undefined
+): void {
+  void notifyDesktop(eventId, payload)
+  const conv =
+    conversationId != null
+      ? useAppWorkspaceStore
+          .getState()
+          .conversations.find((c) => c.id === conversationId)
+      : undefined
+  notifySession(
+    {
+      eventId,
+      contextKey,
+      conversationId: conversationId ?? null,
+      folderId: conv?.folder_id ?? null,
+      agentType: conv?.agent_type ?? agentType ?? null,
+      title: payload.title,
+      body: payload.body,
+    },
+    payload
+  )
+}
+
 import {
   playEventSound,
   primeNotificationSoundOutput,
@@ -4843,6 +4879,12 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
             contextKey,
             requestId: e.request_id,
           })
+          {
+            const conn = storeRef.current.connections.get(contextKey)
+            if (!conn?.pendingPermission) {
+              dismissSessionNotify(contextKey, "permission_request")
+            }
+          }
           break
         case "permission_queue_depth":
           // A request queued up behind the visible card. Only the count on the
@@ -4876,13 +4918,16 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
               ? null
               : storeRef.current.connections.get(contextKey)
             if (nc) {
-              void notifyDesktop(
+              emitDesktopAndSession(
                 "question_request",
+                contextKey,
                 sessionNotification(contextKey, {
                   body: t("notificationQuestion", {
                     agent: getAgentLabel(nc.agentType),
                   }),
-                })
+                }),
+                lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                nc.agentType
               )
             }
           }
@@ -4895,6 +4940,7 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
             contextKey,
             questionId: e.question_id,
           })
+          dismissSessionNotify(contextKey, "question_request")
           break
         case "plan_approval_request":
           // Grok called `exit_plan_mode`: it's blocked on the user's approval of
@@ -4911,6 +4957,24 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
               created_at: new Date().toISOString(),
             },
           })
+          {
+            const nc = quiet
+              ? null
+              : storeRef.current.connections.get(contextKey)
+            if (nc) {
+              emitDesktopAndSession(
+                "plan_approval_request",
+                contextKey,
+                sessionNotification(contextKey, {
+                  body: t("notificationPlanApproval", {
+                    agent: getAgentLabel(nc.agentType),
+                  }),
+                }),
+                lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                nc.agentType
+              )
+            }
+          }
           break
         case "plan_approval_resolved":
           // The approval was answered (this or another window) or canceled.
@@ -4920,6 +4984,7 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
             contextKey,
             approvalId: e.approval_id,
           })
+          dismissSessionNotify(contextKey, "plan_approval_request")
           break
         case "background_activity": {
           // Out-of-turn transcript activity from the backend watcher: async
@@ -4991,8 +5056,9 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
                 count,
               })
               const single = e.settled[0]
-              void notifyDesktop(
+              emitDesktopAndSession(
                 "background_task",
+                contextKey,
                 sessionNotification(contextKey, {
                   body:
                     count === 1
@@ -5011,7 +5077,9 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
                           agent: agentLabel,
                         })
                       : many,
-                })
+                }),
+                lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                nc?.agentType
               )
             }
             // 4. flip each async sub-agent's launch card to its terminal
@@ -5070,11 +5138,14 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
               // No redacted variant: the body is a fixed localized string
               // plus the agent's name, and names nothing of the user's. (The
               // session title does; `sessionNotificationPayload` redacts it.)
-              void notifyDesktop(
+              emitDesktopAndSession(
                 "permission_request",
+                contextKey,
                 sessionNotification(contextKey, {
                   body: `${agentLabel}: ${tChat("permissionDialog.subtitle")}`,
-                })
+                }),
+                lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                nc.agentType
               )
             }
           }
@@ -5502,8 +5573,9 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
               const agentLabel = getAgentLabel(nc.agentType)
               const failure = latestActiveTerminalFailure(nc.sessionFailures)
               if (failure) {
-                void notifyDesktop(
+                emitDesktopAndSession(
                   "error",
+                  contextKey,
                   sessionNotification(contextKey, {
                     body: t("notificationError", {
                       agent: agentLabel,
@@ -5514,14 +5586,19 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
                     redactedBody: t("notificationErrorRedacted", {
                       agent: agentLabel,
                     }),
-                  })
+                  }),
+                  lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                  nc.agentType
                 )
               } else {
-                void notifyDesktop(
+                emitDesktopAndSession(
                   "turn_complete",
+                  contextKey,
                   sessionNotification(contextKey, {
                     body: t("notificationTurnComplete", { agent: agentLabel }),
-                  })
+                  }),
+                  lastConnectParamsRef.current.get(contextKey)?.conversationId,
+                  nc.agentType
                 )
               }
             }
@@ -5582,8 +5659,9 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
           // quote agent stderr for codes we don't recognize, which is what the
           // redacted variant drops.
           if (nc && !quiet && acpErrorNotifiesDesktop(route)) {
-            void notifyDesktop(
+            emitDesktopAndSession(
               "error",
+              contextKey,
               sessionNotification(contextKey, {
                 body: t("notificationError", {
                   agent: agentLabel,
@@ -5592,7 +5670,9 @@ export function AcpConnectionsProvider({ children }: { children: ReactNode }) {
                 redactedBody: t("notificationErrorRedacted", {
                   agent: agentLabel,
                 }),
-              })
+              }),
+              lastConnectParamsRef.current.get(contextKey)?.conversationId,
+              nc.agentType
             )
           }
           if (quiet) break

@@ -85,6 +85,7 @@ import {
   DeepLinkBootstrap,
   PetFocusBridge,
 } from "@/components/workspace/deep-link-bootstrap"
+import { SessionNotifyLandBridge } from "@/components/workspace/session-notify-land-bridge"
 import { WorkspaceOpenFolderListener } from "@/components/workspace/workspace-open-folder-listener"
 import { WorkspaceRestoreNotices } from "@/components/workspace/workspace-restore-notices"
 import { HeavyPluginsWarmup } from "@/components/ai-elements/heavy-plugins-warmup"
@@ -396,6 +397,7 @@ function WorkspaceContent({ children }: { children: React.ReactNode }) {
                 `KeptMountedSurface` carries this flag. */}
             <OverlayHostHiddenProvider hidden={filesMaximized}>
               <section
+                data-testid="conversation-workspace"
                 className={cn(
                   "flex h-full min-h-0 flex-col overflow-hidden",
                   // Over the whole area — the same overlay for conversation
@@ -1446,6 +1448,7 @@ function FolderLayoutShell({ children }: { children: React.ReactNode }) {
         duration={TOAST_DURATION_MS}
         closeButton
       />
+      <SessionNotifyLandBridge />
     </div>
   )
 }

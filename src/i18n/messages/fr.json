@@ -3097,7 +3097,8 @@
         },
         "configOptionAdjusted": "{agent} a réglé {option} sur {actual} au lieu de {requested}",
         "noticeTitle": "{agent} : {title}",
-        "pluginLoadFailedTitle": "{agent} n'a pas pu charger {count, plural, one {# plugin} other {# plugins}}"
+        "pluginLoadFailedTitle": "{agent} n'a pas pu charger {count, plural, one {# plugin} other {# plugins}}",
+        "notificationPlanApproval": "{agent} is waiting for plan approval"
       },
       "connectionLifecycle": {
         "tasks": {
@@ -5222,7 +5223,8 @@
     "eventsTitle": "Événements",
     "eventsHint": "Désactivez les événements qui ne doivent pas vous interrompre. Les répétitions d'un même événement en quelques secondes sont regroupées en une seule notification.",
     "eventBackgroundTask": "Tâche en arrière-plan",
-    "eventWorkTask": "Tâche de travail"
+    "eventWorkTask": "Tâche de travail",
+    "eventPlanApproval": "Plan approval"
   },
   "NotificationSoundSettings": {
     "title": "Sons de notification",
@@ -6605,6 +6607,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "acpWaiting": "En attente de vous",
     "waitingCount": "{count} pending review",
     "childCount": "{count} sous-agents",
     "regionMenu": "Options de la région",
@@ -7036,5 +7039,17 @@
         "probeFailed": "Le navigateur intégré n'a pas pu confirmer qu'il atteint l'hôte distant par le tunnel. Réessayez dans un instant."
       }
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

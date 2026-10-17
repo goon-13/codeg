@@ -60,6 +60,8 @@ const h = vi.hoisted(() => {
     // Stable across renders so tests can assert on what the error handler
     // routes to the OS notification.
     notifyDesktop: vi.fn(async () => true),
+    notifySession: vi.fn(),
+    dismissSessionNotify: vi.fn(),
     toastWarning: vi.fn(),
     toastError: vi.fn(),
     toastInfo: vi.fn(),
@@ -102,6 +104,11 @@ vi.mock("@/lib/desktop-notification", () => ({
   // Snapshot replay wraps its dispatch in this; the real one only sets a
   // depth counter, so running the body straight through is faithful.
   withDesktopNotificationsSuppressed: (fn: () => unknown) => fn(),
+}))
+
+vi.mock("@/lib/in-app-session-notify", () => ({
+  notifySession: h.notifySession,
+  dismissSessionNotify: h.dismissSessionNotify,
 }))
 
 vi.mock("sonner", () => ({
@@ -7278,5 +7285,60 @@ describe("connect() first-send contextKey change", () => {
     expect(h.store!.getConnection("conv-1-claude_code-100")?.status).toBe(
       "prompting"
     )
+  })
+})
+
+describe("in-app session notify wiring", () => {
+  async function connectOwner(): Promise<AttachHandlers> {
+    await mountProvider()
+    await act(async () => {
+      await h.actions!.connect(TAB, "claude_code", "/tmp/x", "sess-1", 42)
+    })
+    return latestAttachHandlers()
+  }
+
+  it("notifies OS and in-app on plan_approval_request", async () => {
+    const handlers = await connectOwner()
+    h.notifyDesktop.mockClear()
+    h.notifySession.mockClear()
+    emitAcpEvent(handlers, {
+      seq: 1,
+      connection_id: "spawned-conn",
+      type: "plan_approval_request",
+      approval_id: "appr-1",
+      tool_call_id: "tool-1",
+      plan_markdown: "# plan",
+    })
+    expect(h.notifyDesktop).toHaveBeenCalledWith(
+      "plan_approval_request",
+      expect.anything()
+    )
+    expect(h.notifySession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "plan_approval_request",
+        contextKey: TAB,
+        conversationId: 42,
+      }),
+      expect.anything()
+    )
+  })
+
+  it("dismisses the in-app toast when the question is resolved", async () => {
+    const handlers = await connectOwner()
+    emitAcpEvent(handlers, {
+      seq: 1,
+      connection_id: "spawned-conn",
+      type: "question_request",
+      question_id: "q1",
+      questions: [],
+    })
+    h.dismissSessionNotify.mockClear()
+    emitAcpEvent(handlers, {
+      seq: 2,
+      connection_id: "spawned-conn",
+      type: "question_resolved",
+      question_id: "q1",
+    })
+    expect(h.dismissSessionNotify).toHaveBeenCalledWith(TAB, "question_request")
   })
 })

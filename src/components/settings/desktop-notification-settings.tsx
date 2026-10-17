@@ -80,6 +80,7 @@ const CHANNEL_EVENT_LABEL_KEYS = {
 const LOCAL_EVENT_LABEL_KEYS = {
   background_task: "eventBackgroundTask",
   work_task: "eventWorkTask",
+  plan_approval_request: "eventPlanApproval",
 } as const
 
 const WHEN_LABEL_KEYS = {

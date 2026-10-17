@@ -13,6 +13,7 @@ import {
 import { useTranslations } from "next-intl"
 import { workTaskList } from "@/lib/api"
 import { notifyDesktop } from "@/lib/desktop-notification"
+import { notifySession } from "@/lib/in-app-session-notify"
 import { onTransportReconnect, subscribe } from "@/lib/platform"
 import {
   loadTasksViewMode,
@@ -182,7 +183,7 @@ function notifyFlips(
     const folderName = folder ? (folder.alias ?? folder.name) : null
     const title = folderName ? `${folderName} - Codeg` : "Codeg"
     const review = task.status === "review"
-    void notifyDesktop("work_task", {
+    const payload = {
       title,
       body: review
         ? t("notifyReview", { title: task.title })
@@ -193,6 +194,19 @@ function notifyFlips(
       redactedBody: review
         ? t("notifyReviewRedacted")
         : t("notifyFailedRedacted"),
-    })
+    }
+    void notifyDesktop("work_task", payload)
+    notifySession(
+      {
+        eventId: "work_task",
+        contextKey: `work-task:${task.id}`,
+        conversationId: task.conversation_id,
+        folderId: task.folder_id,
+        agentType: task.agent_type ?? null,
+        title: payload.title,
+        body: payload.body,
+      },
+      payload
+    )
   }
 }

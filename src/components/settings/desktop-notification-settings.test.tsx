@@ -98,6 +98,7 @@ describe("DesktopNotificationSettingsSection", () => {
       "Agent Error",
       "Background task",
       "Work task",
+      "Plan approval",
     ]) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }

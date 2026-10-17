@@ -3097,7 +3097,8 @@
         },
         "configOptionAdjusted": "{agent} set {option} to {actual} instead of {requested}",
         "noticeTitle": "{agent}: {title}",
-        "pluginLoadFailedTitle": "{agent} couldn't load {count, plural, one {# plugin} other {# plugins}}"
+        "pluginLoadFailedTitle": "{agent} couldn't load {count, plural, one {# plugin} other {# plugins}}",
+        "notificationPlanApproval": "{agent} is waiting for plan approval"
       },
       "connectionLifecycle": {
         "tasks": {
@@ -5222,7 +5223,8 @@
     "eventsTitle": "Events",
     "eventsHint": "Turn off any event that should not interrupt you. Repeats of the same event within a few seconds collapse into one notification.",
     "eventBackgroundTask": "Background task",
-    "eventWorkTask": "Work task"
+    "eventWorkTask": "Work task",
+    "eventPlanApproval": "Plan approval"
   },
   "NotificationSoundSettings": {
     "title": "Notification sounds",
@@ -6606,6 +6608,7 @@
     "showAllProjects": "Show all projects",
     "showWorkingProjects": "Shelf projects",
     "hideFromShelf": "Remove this conversation from the shelf",
+    "acpWaiting": "Waiting for you",
     "childCount": "{count} sub-agents",
     "regionMenu": "Region options",
     "rename": "Rename",
@@ -7036,5 +7039,17 @@
         "probeFailed": "The built-in browser couldn't confirm that it reaches the remote host through the tunnel. Try again in a moment."
       }
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

@@ -3097,7 +3097,8 @@
         },
         "configOptionAdjusted": "{agent} は{option}を {requested} ではなく {actual} にしました",
         "noticeTitle": "{agent}：{title}",
-        "pluginLoadFailedTitle": "{agent} で {count} 個のプラグインを読み込めませんでした"
+        "pluginLoadFailedTitle": "{agent} で {count} 個のプラグインを読み込めませんでした",
+        "notificationPlanApproval": "{agent} is waiting for plan approval"
       },
       "connectionLifecycle": {
         "tasks": {
@@ -5222,7 +5223,8 @@
     "eventsTitle": "イベント",
     "eventsHint": "邪魔してほしくないイベントをオフにします。数秒以内の同じイベントは 1 つにまとめられます。",
     "eventBackgroundTask": "バックグラウンドタスク",
-    "eventWorkTask": "ワークタスク"
+    "eventWorkTask": "ワークタスク",
+    "eventPlanApproval": "Plan approval"
   },
   "NotificationSoundSettings": {
     "title": "通知音",
@@ -6606,6 +6608,7 @@
     "showAllProjects": "すべてのプロジェクトを表示",
     "showWorkingProjects": "シェルフのプロジェクト",
     "hideFromShelf": "この会話をシェルフから外す",
+    "acpWaiting": "あなたの応答待ち",
     "childCount": "サブエージェント {count} 件",
     "regionMenu": "リージョンのオプション",
     "rename": "名前を変更",
@@ -7036,5 +7039,17 @@
         "probeFailed": "内蔵ブラウザーがトンネル経由でリモートホストに届くことを確認できませんでした。しばらくしてからもう一度お試しください。"
       }
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "In-app session alerts",
+    "description": "Show a bottom-right toast when another session finishes or is waiting. This device only — LAN does not use the browser notification permission.",
+    "hideBody": "Hide toast contents",
+    "hideBodyHint": "Show a generic line instead of the session title.",
+    "eventsTitle": "Events",
+    "eventsHint": "Turn off any event that should not raise a toast while you are looking at another session.",
+    "sendTest": "Send a test",
+    "testTitle": "Codeg",
+    "testBody": "In-app session alerts are working.",
+    "testSent": "Test toast sent."
   }
 }

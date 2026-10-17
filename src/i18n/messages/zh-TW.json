@@ -3097,7 +3097,8 @@
         },
         "configOptionAdjusted": "{agent} 把{option}設成了 {actual}，而不是 {requested}",
         "noticeTitle": "{agent}：{title}",
-        "pluginLoadFailedTitle": "{agent} 有 {count} 個外掛載入失敗"
+        "pluginLoadFailedTitle": "{agent} 有 {count} 個外掛載入失敗",
+        "notificationPlanApproval": "{agent} 在等你批准計畫"
       },
       "connectionLifecycle": {
         "tasks": {
@@ -5222,7 +5223,8 @@
     "eventsTitle": "事件",
     "eventsHint": "關掉不想被打斷的事件。同一事件在數秒內重複觸發時只通知一次。",
     "eventBackgroundTask": "背景任務",
-    "eventWorkTask": "待辦任務"
+    "eventWorkTask": "待辦任務",
+    "eventPlanApproval": "計畫批准"
   },
   "NotificationSoundSettings": {
     "title": "提示音",
@@ -6606,6 +6608,7 @@
     "showAllProjects": "顯示全部專案",
     "showWorkingProjects": "貨架專案",
     "hideFromShelf": "從貨架移除此會話",
+    "acpWaiting": "在等你",
     "childCount": "{count} 個子智慧體",
     "regionMenu": "區域選項",
     "rename": "重新命名",
@@ -7036,5 +7039,17 @@
         "probeFailed": "內建瀏覽器無法確認它能透過通道連到遠端主機。請稍後再試。"
       }
     }
+  },
+  "InAppSessionNotifySettings": {
+    "title": "應用內提醒",
+    "description": "看別的會話時在右下角出條。只記在這台瀏覽器，不會向系統申請通知權限。",
+    "hideBody": "隱藏條上內容",
+    "hideBodyHint": "用一句通用話代替會話標題。",
+    "eventsTitle": "事件",
+    "eventsHint": "關掉你不想在看別的會話時彈出的事件。",
+    "sendTest": "發送測試",
+    "testTitle": "Codeg",
+    "testBody": "應用內提醒可用。",
+    "testSent": "測試條已發出。"
   }
 }

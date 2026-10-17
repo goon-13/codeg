@@ -88,6 +88,10 @@ vi.mock("@/contexts/acp-connections-context", () => ({
   }),
 }))
 
+vi.mock("@/hooks/use-connection", () => ({
+  useConnection: () => ({}),
+}))
+
 vi.mock("@/stores/app-workspace-store", () => ({
   useAppWorkspaceStore: (
     selector: (s: {
