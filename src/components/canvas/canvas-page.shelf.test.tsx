@@ -93,7 +93,7 @@ describe("CanvasPage shelf layout", () => {
     await userEvent.click(board)
 
     expect(await screen.findByTestId("board-list")).toBeTruthy()
-    expect(screen.queryByTestId("shelf-view")).toBeNull()
+    expect(screen.getByTestId("shelf-view")).toBeTruthy()
     expect(board).toHaveAttribute("aria-pressed", "true")
     expect(shelf).toHaveAttribute("aria-pressed", "false")
     expect(localStorage.getItem("workspace:canvas-layout")).toBe(
@@ -127,7 +127,7 @@ describe("CanvasPage shelf layout", () => {
 
     expect(await screen.findByTestId("board-view")).toBeTruthy()
     expect(screen.queryByTestId("board-list")).toBeNull()
-    expect(screen.queryByTestId("shelf-view")).toBeNull()
+    expect(screen.getByTestId("shelf-view")).toBeTruthy()
     expect(
       screen.getByRole("button", { name: "Back to all canvases" })
     ).toBeTruthy()

@@ -168,4 +168,13 @@ describe("ChatInput slash-command loading window", () => {
     expect(renderStatus({ status: "error" })?.disabled).toBe(true)
     expect(renderStatus({ status: "disconnected" })?.disabled).toBe(true)
   })
+
+  it("lets you send while selectors are still loading", () => {
+    const props = renderStatus({
+      status: "connected",
+      selectorsLoading: true,
+    })
+    expect(props?.disabled).toBe(false)
+    expect(props?.commandsLoading).toBe(true)
+  })
 })

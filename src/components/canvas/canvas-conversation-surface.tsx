@@ -10,6 +10,9 @@ import {
 } from "react"
 import { useTranslations } from "next-intl"
 import { AgentSelector } from "@/components/chat/agent-selector"
+import { QuickActions } from "@/components/chat/quick-actions"
+import { WelcomeHero } from "@/components/chat/welcome-hero"
+import type { ComposerInjectContent } from "@/components/chat/message-input"
 import { ConversationShell } from "@/components/chat/conversation-shell"
 import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
 import { MessageListView } from "@/components/message/message-list-view"
@@ -124,6 +127,9 @@ interface CanvasConversationSurfaceProps {
   folderPickerOverride?: ConversationFolderPickerOverride
   /** Focus/priority hint for the connection lifecycle and the transcript. */
   isActive?: boolean
+  /** Shelf drafts reuse the sidebar welcome column (greeting + quick actions
+   *  + agent dock). Canvas drafts keep the thin agent bar. */
+  showWelcome?: boolean
   className?: string
 }
 
@@ -179,6 +185,7 @@ export function CanvasConversationSurface({
   onSaveSelectionAsNote,
   folderPickerOverride,
   isActive = true,
+  showWelcome = false,
   className,
 }: CanvasConversationSurfaceProps) {
   const t = useTranslations("Canvas")
@@ -743,6 +750,8 @@ export function CanvasConversationSurface({
   )
 
   const isDraft = dbConversationId == null
+  const [composerInject, setComposerInject] =
+    useState<ComposerInjectContent | null>(null)
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -791,7 +800,33 @@ export function CanvasConversationSurface({
           attachmentTabId={contextKey}
           folderPickerOverride={folderPickerOverride}
           isActive={isActive}
+          injectContent={composerInject}
+          onInjectConsumed={() => setComposerInject(null)}
         >
+          {isDraft && showWelcome && onAgentTypeChange ? (
+            <div
+              data-testid="draft-welcome"
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4"
+            >
+              <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+                <WelcomeHero />
+                <QuickActions
+                  onSelect={(payload) => setComposerInject(payload)}
+                  agentType={agentType}
+                />
+                <div className="flex justify-center">
+                  <AgentSelector
+                    align="center"
+                    defaultAgentType={agentType}
+                    onSelect={onAgentTypeChange}
+                    onFallback={onAgentTypeChange}
+                    disabled={conn.status === "connecting"}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
           {isDraft && onAgentTypeChange && (
             <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
               <AgentSelector
@@ -823,6 +858,8 @@ export function CanvasConversationSurface({
             showMessageNav={false}
             onSaveNoteSelection={onSaveSelectionAsNote}
           />
+            </>
+          )}
         </ConversationShell>
       </div>
     </div>

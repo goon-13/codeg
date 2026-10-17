@@ -9,7 +9,7 @@ import {
   AutomationsPage,
   AutomationsPageTitle,
 } from "@/components/automations/automations-page"
-import { CanvasPage, CanvasPageTitle } from "@/components/canvas/canvas-page"
+import { CanvasPageTitle } from "@/components/canvas/canvas-page"
 import { ForgeChromeActions } from "@/components/forge/forge-chrome-actions"
 import { ForgePage, ForgePageTitle } from "@/components/forge/forge-page"
 import { TasksChromeActions } from "@/components/tasks/tasks-chrome-actions"
@@ -31,7 +31,6 @@ const WORKBENCH_ROUTES: Partial<Record<WorkbenchRouteId, ComponentType>> = {
   tasks: TasksPage,
   forge: ForgePage,
   tokenUsage: TokenUsagePage,
-  canvas: CanvasPage,
 }
 
 /** Optional per-route content for the window-chrome strip above the page

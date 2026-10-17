@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import enMessages from "@/i18n/messages/en.json"
@@ -54,6 +54,7 @@ const h = vi.hoisted(() => {
 
   return {
     surfaceRendered: vi.fn(),
+    registerLiveSurfaceKeys: vi.fn(),
     createConversation: vi.fn().mockResolvedValue(42),
     moveConversation: vi.fn().mockResolvedValue(undefined),
     folders: [folder(10, "Alpha"), folder(20, "Beta")],
@@ -81,6 +82,12 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() },
 }))
 
+vi.mock("@/contexts/acp-connections-context", () => ({
+  useAcpActions: () => ({
+    registerLiveSurfaceKeys: h.registerLiveSurfaceKeys,
+  }),
+}))
+
 vi.mock("@/stores/app-workspace-store", () => ({
   useAppWorkspaceStore: (
     selector: (s: {
@@ -101,6 +108,7 @@ function renderShelf() {
 beforeEach(() => {
   localStorage.clear()
   h.surfaceRendered.mockClear()
+  h.registerLiveSurfaceKeys.mockClear()
   h.createConversation.mockClear()
   h.moveConversation.mockClear()
 })
@@ -125,12 +133,11 @@ describe("ShelfView", () => {
     expect(screen.getByTestId("shelf-row").className).toMatch(/shrink-0/)
   })
 
-  it("shows conversations off the shelf after Show all conversations", () => {
+  it("lists off-shelf conversations in the outline, not on the canvas", () => {
     renderShelf()
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show all conversations" })
-    )
-    expect(screen.getByText("Ship the shelf")).toBeTruthy()
+    expect(screen.queryByText("Ship the shelf")).toBeNull()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    expect(screen.getByRole("checkbox", { name: "Ship the shelf" })).toBeTruthy()
   })
 
   it("removes a conversation from the shelf working set", () => {
@@ -149,32 +156,86 @@ describe("ShelfView", () => {
     ).toEqual([8])
   })
 
-  it("adds a conversation to the shelf from the full list", () => {
+  it("adds a conversation to the shelf from the outline", () => {
     renderShelf()
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show all conversations" })
-    )
-    fireEvent.click(
-      screen.getByRole("button", { name: "Add this conversation to the shelf" })
-    )
-    fireEvent.click(
-      screen.getByRole("button", { name: "Shelf conversations" })
-    )
-    expect(screen.getByText("Ship the shelf")).toBeTruthy()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    fireEvent.click(screen.getByRole("checkbox", { name: "Ship the shelf" }))
+    expect(screen.getByTestId("shelf-outline-title-conversation-9")).toBeTruthy()
+    expect(
+      screen.getAllByText("Ship the shelf").length
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
+      )
+    ).toEqual([7, 8, 9])
   })
 
-  it("creates a conversation in the project row", async () => {
+  it("opens a draft in the project row so the agent can be chosen", async () => {
     renderShelf()
     fireEvent.click(screen.getByRole("button", { name: "New conversation" }))
-    await waitFor(() =>
-      expect(h.createConversation).toHaveBeenCalledWith(10, "claude_code")
+    expect(h.createConversation).not.toHaveBeenCalled()
+    expect(screen.getByTestId("shelf-draft-card")).toBeTruthy()
+    expect(screen.getByTestId("shelf-row").className).toMatch(/min-h-\[560px\]/)
+    expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
+      conversationId: null,
+      agentType: "claude_code",
+      contextKey: "shelf-draft:10",
+      isActive: true,
+      showWelcome: true,
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].draftTarget).toEqual({
+      kind: "folder",
+      folderId: 10,
+      workingDir: "/tmp/Alpha",
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].onAgentTypeChange).toEqual(
+      expect.any(Function)
     )
+
+    await waitFor(() => {
+      const keys = h.registerLiveSurfaceKeys.mock.calls.map(
+        (call) => call[1] as Set<string>
+      )
+      expect(keys.some((set) => set.has("shelf-draft:10"))).toBe(true)
+    })
+
+    act(() => {
+      ;(
+        h.surfaceRendered.mock.lastCall![0].onAgentTypeChange as (
+          agent: string
+        ) => void
+      )("codex")
+    })
+    expect(h.surfaceRendered.mock.lastCall![0].agentType).toBe("codex")
+
+    act(() => {
+      ;(
+        h.surfaceRendered.mock.lastCall![0].onConversationCreated as (
+          id: number,
+          folderId: number
+        ) => void
+      )(42, 10)
+    })
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-visible-conversations") ?? "[]"
+      )
+    ).toEqual(expect.arrayContaining([7, 8, 42]))
+    expect(
+      JSON.parse(
+        localStorage.getItem("workspace:shelf-expanded-conversations") ?? "[]"
+      )
+    ).toEqual(expect.arrayContaining([42]))
   })
 
-  it("shows every project after Show all projects", () => {
+  it("adds a hidden project from the outline", () => {
     renderShelf()
-    fireEvent.click(screen.getByRole("button", { name: "Show all projects" }))
-    expect(screen.getByText("Beta")).toBeTruthy()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    fireEvent.click(screen.getByRole("checkbox", { name: "Beta" }))
+    expect(
+      screen.getByRole("button", { name: "Beta", expanded: true })
+    ).toBeTruthy()
     expect(screen.getByText("This project has no conversations")).toBeTruthy()
   })
 
@@ -267,7 +328,7 @@ describe("ShelfView", () => {
     expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
       contextKey: "shelf:8",
       conversationId: 8,
-      isActive: true,
+      isActive: false,
     })
 
     fireEvent.click(screen.getByText("Fix the flaky test"))
@@ -289,12 +350,36 @@ describe("ShelfView", () => {
     const film = screen.getByTestId("shelf-row").querySelector("[hidden]")
     expect(film?.textContent).toContain("Fix the flaky test")
 
-    fireEvent.click(screen.getByRole("button", { name: "Show all projects" }))
-    fireEvent.click(screen.getByRole("button", { name: "Beta" }))
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    fireEvent.click(screen.getByRole("checkbox", { name: "Beta" }))
+    fireEvent.click(screen.getByRole("button", { name: "Beta", expanded: true }))
     expect(
       JSON.parse(
         localStorage.getItem("workspace:shelf-collapsed-folders") ?? "[]"
       )
     ).toEqual([10, 20])
+  })
+
+  it("registers expanded shown cards under source shelf", async () => {
+    renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    await waitFor(() => {
+      expect(h.registerLiveSurfaceKeys).toHaveBeenCalled()
+    })
+    const last = h.registerLiveSurfaceKeys.mock.calls.at(-1)
+    expect(last?.[0]).toBe("shelf")
+    expect([...(last?.[1] ?? [])].sort()).toEqual(["shelf:7"])
+  })
+
+  it("only the last opened card is the active composer", () => {
+    renderShelf()
+    fireEvent.click(screen.getByText("Fix the flaky test"))
+    fireEvent.click(screen.getByText("Review the patch"))
+    const latestById = new Map<number, boolean>()
+    for (const [props] of h.surfaceRendered.mock.calls) {
+      latestById.set(props.conversationId as number, props.isActive as boolean)
+    }
+    expect(latestById.get(7)).toBe(false)
+    expect(latestById.get(8)).toBe(true)
   })
 })

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   CANVAS_LAYOUT_EVENT,
   loadCanvasLayoutMode,
+  loadShelfConversationOrder,
+  loadShelfFolderOrder,
   loadShelfCollapsedFolderIds,
   loadShelfExpandedConversationIds,
   loadShelfShowAll,
@@ -13,6 +15,8 @@ import {
   saveShelfExpandedConversationIds,
   saveShelfShowAll,
   saveShelfShowAllConversationFolderIds,
+  saveShelfConversationOrder,
+  saveShelfFolderOrder,
   saveShelfVisibleConversationIds,
   saveShelfVisibleFolderIds,
   setCanvasLayoutMode,
@@ -109,5 +113,13 @@ describe("shelf storage", () => {
     expect(loadShelfShowAllConversationFolderIds()).toEqual([])
     saveShelfShowAllConversationFolderIds([10, 20])
     expect(loadShelfShowAllConversationFolderIds()).toEqual([10, 20])
+  })
+
+  it("round-trips folder and per-folder conversation order", () => {
+    expect(loadShelfFolderOrder()).toBeNull()
+    saveShelfFolderOrder([20, 10])
+    expect(loadShelfFolderOrder()).toEqual([20, 10])
+    saveShelfConversationOrder({ 10: [8, 7] })
+    expect(loadShelfConversationOrder()).toEqual({ 10: [8, 7] })
   })
 })
