@@ -12,6 +12,7 @@ import { parseBackgroundLaunch } from "@/lib/background-task"
 import { isUnsettledToolCall } from "@/lib/tool-call-lifecycle"
 import { normalizePriority, normalizeStatus } from "@/lib/plan-parse"
 import { isDelegateToAgentToolName } from "@/lib/delegation-card"
+import { isSideSeedText } from "@/lib/side-seed"
 import { useTranslations } from "next-intl"
 import {
   countUnifiedDiffLineChanges,
@@ -3113,6 +3114,7 @@ export const ContentPartsRenderer = memo(function ContentPartsRenderer({
       // never a stream that has not produced its first token yet, which is why
       // this is scoped to `user` and assistant text is left to render as-is.
       if (role === "user" && part.text.trim().length === 0) return null
+      if (role === "user" && isSideSeedText(part.text.trim())) return null
       return (
         <TextPart
           key={`text-${keyId}`}

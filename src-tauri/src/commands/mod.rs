@@ -24,6 +24,7 @@ pub mod computer;
 pub mod computer_tools;
 pub mod config_sync;
 pub mod conversation_tags;
+pub mod conversation_clusters;
 pub mod conversations;
 /// "New folder" in the directory browser (both runtimes).
 pub mod create_directory;

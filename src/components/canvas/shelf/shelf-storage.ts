@@ -182,3 +182,14 @@ export function saveShelfConversationOrder(
   }
   writeJson(CONVERSATION_ORDER_KEY, serialized)
 }
+
+/** Shelf session rail. Missing or unreadable storage stays collapsed. */
+const SESSION_RAIL_OPEN_KEY = "codeg.shelf.sessionRailOpen"
+
+export function loadShelfSessionRailOpen(): boolean {
+  return readJson(SESSION_RAIL_OPEN_KEY) === true
+}
+
+export function saveShelfSessionRailOpen(open: boolean): void {
+  writeJson(SESSION_RAIL_OPEN_KEY, open)
+}

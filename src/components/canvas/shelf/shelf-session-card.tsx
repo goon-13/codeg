@@ -26,13 +26,14 @@ import {
 import { formatConversationTitle } from "@/lib/conversation-title"
 import type { ConversationStatus, DbConversationSummary } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 
 import { CanvasConversationSurface } from "../canvas-conversation-surface"
 import { shelfContextKey } from "./shelf-model"
 
 // Same box as the board detail card. Duplicated so this file does not import
 // canvas-model.
-const SHELF_EXPANDED_WIDTH = 520
+const SHELF_EXPANDED_WIDTH = 720
 const SHELF_EXPANDED_HEIGHT = 560
 
 type ShelfComposerFocus = {
@@ -83,6 +84,8 @@ interface ShelfSessionCardProps {
   onMove: (toFolderId: number) => void
   onHideFromShelf: () => void
   onAddToShelf: () => void
+  surfaceId?: number
+  onBackToSource?: () => void
   isTransientUnmount?: () => boolean
 }
 
@@ -95,12 +98,22 @@ export function ShelfSessionCard({
   onMove,
   onHideFromShelf,
   onAddToShelf,
+  surfaceId,
+  onBackToSource,
   isTransientUnmount: _isTransientUnmount,
 }: ShelfSessionCardProps) {
   const t = useTranslations("Canvas")
   const { activeKey, claim } = useShelfComposerFocus()
-  const surfaceKey = shelfContextKey(conversation.id)
-  const composerActive = expanded && activeKey === surfaceKey
+  const shownId = surfaceId ?? conversation.id
+  const isSideSurface = shownId !== conversation.id
+  const surfaceConversation = useAppWorkspaceStore(
+    (s) => s.conversations.find((c) => c.id === shownId) ?? null
+  )
+  const surfaceTitle = surfaceConversation?.title
+    ? formatConversationTitle(surfaceConversation.title)
+    : null
+  const cardKey = shelfContextKey(conversation.id)
+  const composerActive = expanded && activeKey === cardKey
   const status = conversation.status as ConversationStatus
   const running = status === "in_progress"
   const title = conversation.title
@@ -108,7 +121,7 @@ export function ShelfSessionCard({
     : t("untitled")
 
   function expandAndClaim() {
-    if (!expanded) claim(surfaceKey)
+    if (!expanded) claim(cardKey)
     onToggleExpand()
   }
 
@@ -212,9 +225,9 @@ export function ShelfSessionCard({
   return (
     <div
       data-shelf-card={conversation.id}
-      className="flex w-[520px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card ring-2 ring-primary/25"
+      className="flex w-[720px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card ring-2 ring-primary/25"
       style={{ width: SHELF_EXPANDED_WIDTH, height: SHELF_EXPANDED_HEIGHT }}
-      onPointerDownCapture={() => claim(surfaceKey)}
+      onPointerDownCapture={() => claim(cardKey)}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-2.5 py-1.5">
         <AgentIcon
@@ -243,11 +256,28 @@ export function ShelfSessionCard({
           <X />
         </Button>
       </div>
+      {isSideSurface ? (
+        <div
+          data-shelf-side-surface={shownId}
+          className="flex shrink-0 items-center gap-1 px-2 py-1 text-xs"
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {surfaceTitle ?? t("untitled")}
+          </span>
+          <button type="button" onClick={() => onBackToSource?.()}>
+            {t("shelfBackToSource")}
+          </button>
+        </div>
+      ) : null}
       <CanvasConversationSurface
-        key={conversation.id}
-        contextKey={shelfContextKey(conversation.id)}
-        conversationId={conversation.id}
-        agentType={conversation.agent_type}
+        key={shownId}
+        contextKey={shelfContextKey(shownId)}
+        conversationId={shownId}
+        agentType={
+          isSideSurface
+            ? (surfaceConversation?.agent_type ?? conversation.agent_type)
+            : conversation.agent_type
+        }
         isActive={composerActive}
         // Bound conversation: show its own folder and do not move the
         // workspace tab. The chip is display-only (`editable: false`).

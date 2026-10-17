@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { horizontalWheelDelta, jumpButtonsFromMetrics } from "./shelf-scroll"
+import { horizontalWheelDelta, isNestedVerticalScroller, jumpButtonsFromMetrics } from "./shelf-scroll"
 
 describe("jumpButtonsFromMetrics", () => {
   it("hides both buttons when the shelf fits in one screen", () => {
@@ -102,3 +102,27 @@ describe("horizontalWheelDelta", () => {
     ).toBeNull()
   })
 })
+
+describe("isNestedVerticalScroller", () => {
+  it("treats the prompt tick rail as a wheel sink so the film does not pan", () => {
+    const film = document.createElement("div")
+    const rail = document.createElement("div")
+    rail.setAttribute("data-testid", "prompt-tick-rail")
+    const tick = document.createElement("button")
+    rail.appendChild(tick)
+    film.appendChild(rail)
+    document.body.appendChild(film)
+    expect(isNestedVerticalScroller(tick, film)).toBe(true)
+    film.remove()
+  })
+
+  it("does not treat an ordinary card chrome node as a vertical scroller", () => {
+    const film = document.createElement("div")
+    const title = document.createElement("button")
+    film.appendChild(title)
+    document.body.appendChild(film)
+    expect(isNestedVerticalScroller(title, film)).toBe(false)
+    film.remove()
+  })
+})
+

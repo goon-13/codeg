@@ -775,3 +775,40 @@ describe("SidebarConversationCard branch chip", () => {
     expect(screen.queryByTitle("Branch: main")).toBeNull()
   })
 })
+
+describe("SidebarConversationCard side tag", () => {
+  it("marks a side row and shows the Side tag", () => {
+    const { container } = renderWithIntl(
+      <SidebarConversationCard
+        conversation={{ ...conv(9), kind: "side", parent_id: 1 }}
+        isSelected={false}
+        timeLabel="5m"
+        onSelect={onSelect}
+        onDoubleClick={onDoubleClick}
+        onRename={onRename}
+        onDelete={onDelete}
+        onStatusChange={onStatusChange}
+      />
+    )
+    const row = container.querySelector("[data-side-row]")
+    expect(row).toBeTruthy()
+    expect(row?.textContent).toContain("Side")
+    expect(container.querySelector("[data-side-row]")?.tagName).toBe("BUTTON")
+  })
+
+  it("does not mark a regular row", () => {
+    const { container } = renderWithIntl(
+      <SidebarConversationCard
+        conversation={conv(8)}
+        isSelected={false}
+        timeLabel="5m"
+        onSelect={onSelect}
+        onDoubleClick={onDoubleClick}
+        onRename={onRename}
+        onDelete={onDelete}
+        onStatusChange={onStatusChange}
+      />
+    )
+    expect(container.querySelector("[data-side-row]")).toBeNull()
+  })
+})

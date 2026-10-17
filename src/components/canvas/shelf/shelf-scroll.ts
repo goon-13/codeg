@@ -37,6 +37,9 @@ export function horizontalWheelDelta(input: {
   return input.deltaY
 }
 
+/** True when the wheel should stay with the target instead of becoming a
+ *  horizontal film pan: an overflow-y scroller (expanded transcript) or the
+ *  prompt-tick rail (window pan). */
 export function isNestedVerticalScroller(
   target: EventTarget | null,
   stopAt: HTMLElement
@@ -48,6 +51,9 @@ export function isNestedVerticalScroller(
         ? target.parentElement
         : null
   while (node && node !== stopAt) {
+    if (node.getAttribute("data-testid") === "prompt-tick-rail") {
+      return true
+    }
     const overflowY = getComputedStyle(node).overflowY
     if (
       (overflowY === "auto" || overflowY === "scroll") &&

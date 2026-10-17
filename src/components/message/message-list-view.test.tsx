@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -875,5 +877,32 @@ describe("compactionOnlyPart", () => {
     expect(compactionOnlyPart(compactionGroup("output-available"))?.state).toBe(
       "output-available"
     )
+  })
+})
+
+
+describe("prompt-tick rail attachment", () => {
+  it("spans the transcript so chat-content-w can center (not hug the sidebar)", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/message/message-list-view.tsx"),
+      "utf8"
+    )
+    expect(source).toMatch(
+      /className="pointer-events-none absolute inset-0 z-30 flex justify-center"/
+    )
+    expect(source).toMatch(
+      /className="relative mx-auto h-full w-full chat-content-w"/
+    )
+  })
+
+  it("keeps the rail on the canvas / shelf conversation surface", () => {
+    const source = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/components/canvas/canvas-conversation-surface.tsx"
+      ),
+      "utf8"
+    )
+    expect(source).not.toMatch(/showMessageNav=\{false\}/)
   })
 })

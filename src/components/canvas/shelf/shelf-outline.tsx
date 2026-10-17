@@ -7,11 +7,6 @@ import { useTranslations } from "next-intl"
 import { AgentIcon } from "@/components/agent-icon"
 import { ConversationStatusDot } from "@/components/conversations/conversation-status-dot"
 import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { formatConversationTitle } from "@/lib/conversation-title"
 import type { ConversationStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -64,6 +59,7 @@ export function ShelfOutline({
   const t = useTranslations("Canvas")
   const untitled = t("untitled")
   const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
   const [jumpedId, setJumpedId] = useState<number | null>(null)
   const folderSet = new Set(visibleFolderIds)
   const conversationSet = new Set(visibleConversationIds)
@@ -76,26 +72,29 @@ export function ShelfOutline({
     : rows.map((item) => item.folder.id)
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          data-testid="shelf-outline-trigger"
-          className="gap-1.5 text-[0.8125rem]"
-        >
-          {t("shelfOutlineSummary", {
-            projects: visibleFolderIds.length,
-            sessions: visibleConversationIds.length,
-          })}
-          <ChevronDown className="size-3.5 text-muted-foreground/60" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-[32rem] overflow-hidden rounded-2xl p-0"
+    <div
+      data-testid="shelf-outline"
+      className={cn(
+        "flex shrink-0 flex-col self-stretch overflow-hidden border-r border-border",
+        open ? "w-[24rem]" : "w-12"
+      )}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        data-testid="shelf-outline-trigger"
+        aria-expanded={open}
+        className="h-8 w-full shrink-0 truncate px-1 text-[0.625rem]"
+        onClick={() => setOpen((value) => !value)}
       >
+        {t("shelfOutlineShort", {
+          projects: visibleFolderIds.length,
+          sessions: visibleConversationIds.length,
+        })}
+      </Button>
+      {open ? (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="border-b border-border px-3 py-2">
           <input
             type="search"
@@ -308,7 +307,8 @@ export function ShelfOutline({
             })
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </div>
+      ) : null}
+    </div>
   )
 }

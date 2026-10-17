@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { describe, expect, it, vi } from "vitest"
@@ -134,3 +136,18 @@ describe("ShelfOutline", () => {
     expect(screen.getByTestId("shelf-mini-card-9")).toBeTruthy()
   })
 })
+
+  it("does not use a Popover overlay", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/canvas/shelf/shelf-outline.tsx"),
+      "utf8"
+    )
+    expect(src).not.toMatch(/Popover/)
+  })
+
+  it("uses the short directory label, not the shelf summary sentence", () => {
+    renderOutline()
+    const trigger = screen.getByTestId("shelf-outline-trigger")
+    expect(trigger.textContent ?? "").toMatch(/Directory 1·2|目录 1·2/)
+    expect(trigger.textContent ?? "").not.toMatch(/Shelf ·/)
+  })

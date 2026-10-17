@@ -201,7 +201,8 @@ export function moveShelfOrderId(
 export function shelfLiveSurfaceKeys(
   rows: ShelfProjectRow[],
   expandedIds: ReadonlySet<number>,
-  visibleConversationIds: number[] | null
+  visibleConversationIds: number[] | null,
+  surfaceByCard?: Readonly<Record<number, number>>
 ): Set<string> {
   const keys = new Set<string>()
   for (const row of rows) {
@@ -210,7 +211,8 @@ export function shelfLiveSurfaceKeys(
       visibleConversationIds,
       false
     )) {
-      if (expandedIds.has(c.id)) keys.add(shelfContextKey(c.id))
+      if (!expandedIds.has(c.id)) continue
+      keys.add(shelfContextKey(surfaceByCard?.[c.id] ?? c.id))
     }
   }
   return keys

@@ -40,6 +40,17 @@ const messageListViewSource = readFileSync(
   resolve(process.cwd(), "src/components/message/message-list-view.tsx"),
   "utf8"
 )
+const canvasSurfaceSource = readFileSync(
+  resolve(
+    process.cwd(),
+    "src/components/canvas/canvas-conversation-surface.tsx"
+  ),
+  "utf8"
+)
+const agentSelectorSource = readFileSync(
+  resolve(process.cwd(), "src/components/chat/agent-selector.tsx"),
+  "utf8"
+)
 
 describe("ConversationDetailPanel new conversation layout", () => {
   it("keeps the new-conversation input in the welcome panel with the original scroll layout", () => {
@@ -66,6 +77,10 @@ describe("ConversationDetailPanel new conversation layout", () => {
     expect(welcomeBranch).toContain('className="flex min-h-full flex-col"')
     expect(welcomeBranch).not.toContain("overflow-y-auto")
     expect(welcomeBranch).not.toContain("WelcomeBackdrop")
+    // Greeting h1 is atmosphere, not a control; shelf cards cannot afford it.
+    expect(welcomeBranch).not.toContain("<WelcomeHero")
+    expect(welcomeBranch).toContain("<QuickActions")
+    expect(welcomeBranch).toContain("<WelcomeTip")
     // The welcome input is flushed: the welcome column already supplies px-4, so
     // the input must not double-pad (would make it narrower than the cards).
     expect(welcomeBranch).toContain("flush")
@@ -647,5 +662,153 @@ describe("ConversationDetailPanel session-load failure surface", () => {
     expect(source).not.toContain(
       "detail?.summary.external_id ?? runtimeExternalId ?? undefined"
     )
+  })
+})
+
+describe("composer agent chip", () => {
+  it("keeps the canvas and shelf draft on one AgentSelector chip", () => {
+    const start = canvasSurfaceSource.indexOf(
+      "{isDraft && onAgentTypeChange && ("
+    )
+    const end = canvasSurfaceSource.indexOf("<MessageListView", start)
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    const draft = canvasSurfaceSource.slice(start, end)
+    expect(draft).toContain("<AgentSelector")
+    expect(draft).not.toContain("agent-pill")
+    expect(draft).not.toContain("WelcomeHero")
+    expect(agentSelectorSource).toContain('data-slot="agent-selector-trigger"')
+    expect(agentSelectorSource).not.toMatch(
+      /visibleOtherCount|agent-selector-more/
+    )
+  })
+
+  it("shows the handoff chip on a persisted regular composer, not AgentSelector", () => {
+    const handoffStart = source.indexOf("handoffSource={")
+    const handoffEnd = source.indexOf("topBanner={", handoffStart)
+    expect(handoffStart).toBeGreaterThan(-1)
+    expect(handoffEnd).toBeGreaterThan(handoffStart)
+    const handoff = source.slice(handoffStart, handoffEnd)
+    expect(handoff).toContain("dbConversationId != null")
+    expect(handoff).toContain('kind === "regular"')
+
+    const rowStart = messageInputSource.indexOf(
+      '<div className="flex min-w-0 items-end gap-1">'
+    )
+    const rowEnd = messageInputSource.indexOf("<ComposerAddMenu", rowStart)
+    expect(rowStart).toBeGreaterThan(-1)
+    expect(rowEnd).toBeGreaterThan(rowStart)
+    const row = messageInputSource.slice(rowStart, rowEnd)
+    expect(row).toContain("<HandoffAgentDock")
+    expect(row).not.toContain("AgentSelector")
+    expect(row).not.toContain("agent-pill")
+  })
+
+  it("does not inline ACP chips on a persist handoff composer", () => {
+    const inlineStart = messageInputSource.indexOf("{hasInlineSelectors &&")
+    const anyStart = messageInputSource.indexOf(
+      "{hasAnySelector &&",
+      inlineStart
+    )
+    expect(inlineStart).toBeGreaterThan(-1)
+    expect(anyStart).toBeGreaterThan(inlineStart)
+    const inline = messageInputSource.slice(inlineStart, anyStart)
+    expect(inline).toContain("hasInlineSelectors && !handoffSource")
+    expect(inline).toContain("@[30rem]:flex")
+
+    const gearEnd = messageInputSource.indexOf("<Popover", anyStart)
+    expect(gearEnd).toBeGreaterThan(anyStart)
+    const gear = messageInputSource.slice(anyStart, gearEnd)
+    expect(gear).toContain("!handoffSource")
+    expect(gear).toContain("@[30rem]:hidden")
+  })
+
+  it("does not retarget a persisted row except a Hermes role switch", () => {
+    const calls = source.match(/updateConversationAgentType\(/g) ?? []
+    expect(calls).toHaveLength(1)
+    const callAt = source.indexOf("updateConversationAgentType(")
+    const interceptAt = source.lastIndexOf(
+      "interceptHermesProfileConfigChange",
+      callAt
+    )
+    expect(interceptAt).toBeGreaterThan(-1)
+    expect(interceptAt).toBeLessThan(callAt)
+
+    const sendStart = source.indexOf("const handleSend = useCallback")
+    const sendEnd = source.indexOf("const handleAgentSelect = useCallback")
+    expect(sendStart).toBeGreaterThan(-1)
+    expect(sendEnd).toBeGreaterThan(sendStart)
+    const send = source.slice(sendStart, sendEnd)
+    expect(send).not.toContain("updateConversationAgentType")
+    const resumeStart = source.indexOf("sessionId: hermesResumeSessionId({")
+    const resumeEnd = source.indexOf(
+      "conversationId: dbConversationId",
+      resumeStart
+    )
+    expect(resumeStart).toBeGreaterThan(-1)
+    expect(resumeEnd).toBeGreaterThan(resumeStart)
+    const resume = source.slice(resumeStart, resumeEnd)
+    expect(resume).toContain("persistedSessionId:")
+    expect(resume).toContain("externalId")
+
+    const selectStart = source.indexOf("const handleAgentSelect = useCallback")
+    const selectEnd = source.indexOf(
+      "const handleAgentFallback = useCallback",
+      selectStart
+    )
+    const select = source.slice(selectStart, selectEnd)
+    expect(select).toContain("if (dbConvIdRef.current) return")
+    expect(select).not.toContain("updateConversationAgentType")
+    expect(select).not.toContain("createConversation(")
+
+    const canvasCalls =
+      canvasSurfaceSource.match(/updateConversationAgentType\(/g) ?? []
+    expect(canvasCalls).toHaveLength(1)
+    const canvasCallAt = canvasSurfaceSource.indexOf(
+      "updateConversationAgentType("
+    )
+    const canvasInterceptAt = canvasSurfaceSource.lastIndexOf(
+      "interceptHermesProfileConfigChange",
+      canvasCallAt
+    )
+    expect(canvasInterceptAt).toBeGreaterThan(-1)
+    expect(canvasInterceptAt).toBeLessThan(canvasCallAt)
+    const canvasSendStart = canvasSurfaceSource.indexOf(
+      "const handleSend = useCallback"
+    )
+    const canvasSendEnd = canvasSurfaceSource.indexOf(
+      "const handleAnswerQuestion",
+      canvasSendStart
+    )
+    expect(canvasSendEnd).toBeGreaterThan(canvasSendStart)
+    expect(
+      canvasSurfaceSource.slice(canvasSendStart, canvasSendEnd)
+    ).not.toContain("updateConversationAgentType")
+  })
+})
+
+describe("canvas shelf side intercept", () => {
+  it("opens a side row before the optimistic turn and does not openTab on the shelf", () => {
+    expect(canvasSurfaceSource).toContain("planSideIntercept")
+    expect(canvasSurfaceSource).toContain("openSideConversation")
+    expect(canvasSurfaceSource).toContain("codeg:shelf-open-side")
+
+    const sendStart = canvasSurfaceSource.indexOf(
+      "const handleSend = useCallback"
+    )
+    const optimistic = canvasSurfaceSource.indexOf(
+      "appendOptimisticTurn(",
+      sendStart
+    )
+    const planned = canvasSurfaceSource.indexOf("planSideIntercept(", sendStart)
+    expect(sendStart).toBeGreaterThan(-1)
+    expect(planned).toBeGreaterThan(sendStart)
+    expect(optimistic).toBeGreaterThan(planned)
+
+    const shelfAt = canvasSurfaceSource.indexOf("codeg:shelf-open-side")
+    const elseAt = canvasSurfaceSource.indexOf("} else {", shelfAt)
+    expect(shelfAt).toBeGreaterThan(-1)
+    expect(elseAt).toBeGreaterThan(shelfAt)
+    expect(canvasSurfaceSource.slice(shelfAt, elseAt)).not.toContain("openTab(")
   })
 })
