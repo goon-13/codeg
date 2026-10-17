@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
@@ -129,6 +136,7 @@ export function ShelfView() {
   }, [conversationOrder])
 
   const collapsingIdsRef = useRef(new Set<number>())
+  const pendingShelfScrollId = useRef<number | null>(null)
   const expanded = useMemo(() => new Set(expandedIds), [expandedIds])
   const collapsed = useMemo(
     () => new Set(collapsedFolderIds),
@@ -174,16 +182,116 @@ export function ShelfView() {
       window.removeEventListener("resize", update)
       observer?.disconnect()
     }
-  }, [collapsedFolderIds, expandedIds, rows, visibleConversationIds, visibleIds])
+  }, [
+    collapsedFolderIds,
+    expandedIds,
+    rows,
+    visibleConversationIds,
+    visibleIds,
+  ])
 
-  function setMembersAndUnfreeze(
-    nextFolders: number[],
-    nextConversations: number[]
-  ) {
-    snapshotRef.current = null
-    setVisibleIds(nextFolders)
-    setVisibleConversationIds(nextConversations)
-  }
+  const setMembersAndUnfreeze = useCallback(
+    (nextFolders: number[], nextConversations: number[]) => {
+      snapshotRef.current = null
+      setVisibleIds(nextFolders)
+      setVisibleConversationIds(nextConversations)
+    },
+    []
+  )
+
+  const revealConversation = useCallback(
+    (conversationId: number, folderId: number, afterId?: number) => {
+      const nextFolders = workingIds.includes(folderId)
+        ? workingIds
+        : [...workingIds, folderId]
+      const nextConversations = conversationWorkingIds.includes(conversationId)
+        ? conversationWorkingIds
+        : [...conversationWorkingIds, conversationId]
+      if (nextFolders !== workingIds) {
+        setVisibleIds(nextFolders)
+      }
+      if (nextConversations !== conversationWorkingIds) {
+        setVisibleConversationIds(nextConversations)
+      }
+      setConversationOrder((prev) => {
+        const current =
+          prev?.[folderId] ??
+          rows.find((row) => row.folder.id === folderId)?.conversations.map(
+            (c) => c.id
+          ) ??
+          []
+        if (current.includes(conversationId)) return prev
+        const idx = afterId != null ? current.indexOf(afterId) : -1
+        const nextIds =
+          idx >= 0
+            ? [
+                ...current.slice(0, idx + 1),
+                conversationId,
+                ...current.slice(idx + 1),
+              ]
+            : [...current, conversationId]
+        const snap = snapshotRef.current
+        if (snap) {
+          snapshotRef.current = {
+            ...snap,
+            conversationIdsByFolder: {
+              ...snap.conversationIdsByFolder,
+              [folderId]: nextIds,
+            },
+          }
+        }
+        return { ...(prev ?? {}), [folderId]: nextIds }
+      })
+      setExpandedIds([conversationId])
+      pendingShelfScrollId.current = conversationId
+    },
+    [conversationWorkingIds, rows, workingIds]
+  )
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          conversationId?: unknown
+          folderId?: unknown
+          afterId?: unknown
+        }>
+      ).detail
+      if (detail == null || typeof detail !== "object") return
+      const { conversationId, folderId, afterId } = detail
+      if (
+        typeof conversationId !== "number" ||
+        typeof folderId !== "number" ||
+        !Number.isInteger(conversationId) ||
+        !Number.isInteger(folderId)
+      ) {
+        return
+      }
+      revealConversation(
+        conversationId,
+        folderId,
+        typeof afterId === "number" ? afterId : undefined
+      )
+    }
+    window.addEventListener("codeg:shelf-open-conversation", onOpen)
+    return () =>
+      window.removeEventListener("codeg:shelf-open-conversation", onOpen)
+  }, [revealConversation])
+
+  useLayoutEffect(() => {
+    const id = pendingShelfScrollId.current
+    if (id == null) return
+    const node = document.querySelector(`[data-shelf-card="${id}"]`)
+    if (!node) return
+    node.scrollIntoView({ block: "nearest", inline: "center" })
+    pendingShelfScrollId.current = null
+  }, [
+    collapsedFolderIds,
+    expandedIds,
+    rows,
+    visibleConversationIds,
+    visibleIds,
+  ])
 
   return (
     <ShelfComposerFocusProvider>
@@ -245,28 +353,7 @@ export function ShelfView() {
                 scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
               )
             }}
-            onJumpConversation={(conversationId, folderId) => {
-              const nextFolders = workingIds.includes(folderId)
-                ? workingIds
-                : [...workingIds, folderId]
-              const nextConversations = conversationWorkingIds.includes(
-                conversationId
-              )
-                ? conversationWorkingIds
-                : [...conversationWorkingIds, conversationId]
-              if (
-                nextFolders !== workingIds ||
-                nextConversations !== conversationWorkingIds
-              ) {
-                setMembersAndUnfreeze(nextFolders, nextConversations)
-              }
-              setExpandedIds((ids) =>
-                ids.includes(conversationId) ? ids : [...ids, conversationId]
-              )
-              requestAnimationFrame(() =>
-                scrollShelfTarget(`[data-shelf-card="${conversationId}"]`)
-              )
-            }}
+            onJumpConversation={revealConversation}
           />
         </div>
         <div
@@ -281,7 +368,9 @@ export function ShelfView() {
               collapsed={collapsed.has(row.folder.id)}
               expandedIds={expanded}
               visibleConversationIds={visibleConversationIds}
-              moveTargets={moveTargets.filter((item) => item.id !== row.folder.id)}
+              moveTargets={moveTargets.filter(
+                (item) => item.id !== row.folder.id
+              )}
               onToggleCollapsed={() =>
                 setCollapsedFolderIds((ids) => toggleMember(ids, row.folder.id))
               }

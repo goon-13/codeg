@@ -3329,7 +3329,8 @@
         "noEnabledAgents": "暫無已啟用的 Agent",
         "openAgentsSettings": "開啟 Agents 設定",
         "notInstalled": "未安裝",
-        "moreAgents": "更多 Agent（{count}）"
+        "moreAgents": "更多 Agent（{count}）",
+        "openMenu": "選擇 Agent"
       },
       "subAgentOverlay": {
         "title": "子智能體",
@@ -4008,7 +4009,36 @@
       "cloneFailed": "複製倉庫失敗"
     },
     "cluster": {
-      "editTitle": "重新命名主題"
+      "rename": "Rename theme",
+      "editTitle": "重新命名主題",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "接到 {agent}",
+      "currentSession": "目前工作階段"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -7040,6 +7070,21 @@
         "bypassed": "這台電腦的瀏覽器引擎會讓部分位址繞過通道，為避免從這台電腦載入，遠端主機的頁面不會開啟。",
         "probeFailed": "內建瀏覽器無法確認它能透過通道連到遠端主機。請稍後再試。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

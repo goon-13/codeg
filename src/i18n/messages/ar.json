@@ -3329,7 +3329,8 @@
         "noEnabledAgents": "لا يوجد وكلاء مفعّلون",
         "openAgentsSettings": "فتح إعدادات الوكلاء",
         "notInstalled": "غير مثبّت",
-        "moreAgents": "وكلاء إضافيون ({count})"
+        "moreAgents": "وكلاء إضافيون ({count})",
+        "openMenu": "الوكلاء"
       },
       "subAgentOverlay": {
         "title": "الوكلاء الفرعيون",
@@ -4008,7 +4009,36 @@
       "cloneFailed": "فشل استنساخ المستودع"
     },
     "cluster": {
-      "editTitle": "إعادة تسمية الموضوع"
+      "rename": "Rename theme",
+      "editTitle": "إعادة تسمية الموضوع",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "المتابعة مع {agent}",
+      "currentSession": "هذه الجلسة"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -7040,6 +7070,21 @@
         "bypassed": "يرسل محرك المتصفح في هذا الكمبيوتر بعض العناوين خارج النفق، لذا تبقى صفحات المضيف البعيد مغلقة بدل تحميلها من هذا الكمبيوتر.",
         "probeFailed": "تعذّر على المتصفح المدمج التأكد من أنه يصل إلى المضيف البعيد عبر النفق. حاول مرة أخرى بعد قليل."
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

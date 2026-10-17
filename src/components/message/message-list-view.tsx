@@ -43,6 +43,7 @@ import { AgentPlanOverlay } from "@/components/chat/agent-plan-overlay"
 import { SubAgentOverlay } from "@/components/chat/sub-agent-overlay"
 import { SessionViewerHost } from "@/components/message/session-viewer-host"
 import { normalizeToolName } from "@/lib/tool-call-normalization"
+import { isSideSeedText } from "@/lib/side-seed"
 import { parseResumeTaskId } from "@/lib/codeg-mcp-tool"
 import {
   isDelegateToAgentToolName,
@@ -951,6 +952,18 @@ export function isForkPointUnnamed(
   return forkPoint.source_turn_id == null && isLiveTurnId(forkPoint.id)
 }
 
+function isSideSeedUserGroup(group: ResolvedMessageGroup): boolean {
+  if (group.role !== "user") return false
+  if (group.images.length > 0 || group.resources.length > 0) return false
+  let sawText = false
+  for (const part of group.parts) {
+    if (part.type !== "text") return false
+    if (!isSideSeedText(part.text.trim())) return false
+    sawText = true
+  }
+  return sawText
+}
+
 const HistoricalMessageGroup = memo(function HistoricalMessageGroup({
   group,
   dimmed = false,
@@ -1445,6 +1458,7 @@ export function MessageListView({
     (item: ThreadRenderItem) => {
       switch (item.kind) {
         case "turn": {
+          if (isSideSeedUserGroup(item.group)) return null
           const pt = item.isRoleTransition ? 16 : 0
           const phaseLabel =
             item.group.role === "user" && userTurnHeader
@@ -1579,7 +1593,11 @@ export function MessageListView({
     if (!showMessageNav) return { count, threadIndexByTurnId }
     for (let i = 0; i < threadItems.length; i++) {
       const item = threadItems[i]
-      if (item.kind === "turn" && item.group.role === "user") {
+      if (
+        item.kind === "turn" &&
+        item.group.role === "user" &&
+        !isSideSeedUserGroup(item.group)
+      ) {
         count += 1
         threadIndexByTurnId.set(item.group.id, i)
       }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import enMessages from "@/i18n/messages/en.json"
@@ -137,7 +137,9 @@ describe("ShelfView", () => {
     renderShelf()
     expect(screen.queryByText("Ship the shelf")).toBeNull()
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
-    expect(screen.getByRole("checkbox", { name: "Ship the shelf" })).toBeTruthy()
+    expect(
+      screen.getByRole("checkbox", { name: "Ship the shelf" })
+    ).toBeTruthy()
   })
 
   it("removes a conversation from the shelf working set", () => {
@@ -160,10 +162,12 @@ describe("ShelfView", () => {
     renderShelf()
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
     fireEvent.click(screen.getByRole("checkbox", { name: "Ship the shelf" }))
-    expect(screen.getByTestId("shelf-outline-title-conversation-9")).toBeTruthy()
     expect(
-      screen.getAllByText("Ship the shelf").length
-    ).toBeGreaterThanOrEqual(1)
+      screen.getByTestId("shelf-outline-title-conversation-9")
+    ).toBeTruthy()
+    expect(screen.getAllByText("Ship the shelf").length).toBeGreaterThanOrEqual(
+      1
+    )
     expect(
       JSON.parse(
         localStorage.getItem("workspace:shelf-visible-conversations") ?? "null"
@@ -302,7 +306,9 @@ describe("ShelfView", () => {
 
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
     fireEvent.click(screen.getByRole("checkbox", { name: "Beta" }))
-    fireEvent.click(screen.getByRole("button", { name: "Beta", expanded: true }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Beta", expanded: true })
+    )
     expect(
       JSON.parse(
         localStorage.getItem("workspace:shelf-collapsed-folders") ?? "[]"
@@ -356,6 +362,45 @@ describe("ShelfView", () => {
       ]
     expect(last[0]).toBe("shelf")
     expect(last[1].size).toBe(0)
+  })
+
+  it("opens a handoff conversation into the working set", async () => {
+    const previous = Element.prototype.scrollIntoView
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    try {
+      renderShelf()
+      expect(screen.queryByText("Ship the shelf")).toBeNull()
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent("codeg:shelf-open-conversation", {
+            detail: { conversationId: 9, folderId: 10 },
+          })
+        )
+      })
+
+      expect(await screen.findByText("Ship the shelf")).toBeTruthy()
+      expect(screen.getByTestId("conversation-surface")).toBeTruthy()
+      expect(h.surfaceRendered.mock.lastCall![0]).toMatchObject({
+        conversationId: 9,
+        contextKey: "shelf:9",
+      })
+      expect(
+        JSON.parse(
+          localStorage.getItem("workspace:shelf-visible-conversations") ??
+            "null"
+        )
+      ).toEqual([7, 8, 9])
+      expect(
+        JSON.parse(
+          localStorage.getItem("workspace:shelf-expanded-conversations") ?? "[]"
+        )
+      ).toEqual([9])
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
+    } finally {
+      Element.prototype.scrollIntoView = previous
+    }
   })
 
   it("shows both jump buttons side by side in the middle of the shelf", () => {

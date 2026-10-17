@@ -6,7 +6,13 @@ import {
   useImperativeHandle,
   useState,
 } from "react"
-import { act, fireEvent, render } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -21,6 +27,11 @@ import {
   useAppWorkspaceStore,
 } from "@/stores/app-workspace-store"
 import enMessages from "@/i18n/messages/en.json"
+import * as api from "@/lib/api"
+import {
+  resetConversationClustersStore,
+  useConversationClustersStore,
+} from "@/stores/conversation-clusters-store"
 
 // ── Probes ────────────────────────────────────────────────────────────────
 // AgentIcon renders once per card body → counts card re-renders. The Folder /
@@ -276,6 +287,7 @@ function conv(
     created_at: createdAt,
     updated_at: createdAt,
     pinned_at: null,
+    cluster_id: null,
     ...overrides,
   }
 }
@@ -1776,5 +1788,85 @@ describe("SidebarConversationList — tag filter", () => {
     })
     expect(probes.card).toBe(1)
     expect(probes.folder).toBe(0)
+  })
+})
+
+describe("SidebarConversationList — cluster header and side row", () => {
+  const theme = {
+    id: 10,
+    folder_id: 1,
+    title: "Theme",
+    created_at: new Date(FIXED).toISOString(),
+    updated_at: new Date(FIXED).toISOString(),
+  }
+
+  beforeEach(() => {
+    cleanup()
+    resetConversationClustersStore()
+    localStorage.removeItem("codeg.sidebar.clusterExpanded")
+    localStorage.removeItem("workspace:sidebar-section-collapsed")
+    localStorage.removeItem("workspace:sidebar-folder-expanded")
+    localStorage.removeItem("workspace:sidebar-folder-group-expanded")
+    localStorage.removeItem("workspace:sidebar-conversation-expanded")
+    store.activeTabId = null
+    store.tabSpec = []
+    const folders = [folder(1, "Folder 1")]
+    useAppWorkspaceStore.setState({
+      folders,
+      allFolders: folders,
+      folderGroups: [],
+      conversations: [
+        conv(11, 1, { cluster_id: 10, title: "source" }),
+        conv(12, 1, { cluster_id: 10, title: "relay" }),
+      ],
+    })
+    useConversationClustersStore.setState({
+      clusters: [theme],
+      clustersById: new Map([[10, theme]]),
+      hydrated: true,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    resetConversationClustersStore()
+  })
+
+  it("renders a cluster header for two members in a folder", () => {
+    render(tree())
+    expect(document.querySelector("[data-conversation-cluster]")).not.toBeNull()
+  })
+
+  it("shows a side row only after the parent tree expands", async () => {
+    useAppWorkspaceStore.setState({
+      conversations: [
+        conv(11, 1, { cluster_id: 10, child_count: 1, title: "source" }),
+        conv(12, 1, { cluster_id: 10, title: "relay" }),
+      ],
+    })
+    const side = conv(21, 1, {
+      kind: "side",
+      parent_id: 11,
+      title: "side question",
+    })
+    const listChildren = vi
+      .spyOn(api, "listChildConversations")
+      .mockResolvedValue([side])
+    try {
+      render(tree())
+      expect(document.querySelector("[data-side-row]")).toBeNull()
+      await act(async () => {
+        window.dispatchEvent(
+          new CustomEvent("codeg:expand-conversation-tree", {
+            detail: { id: 11 },
+          })
+        )
+      })
+      await waitFor(() => {
+        expect(document.querySelector("[data-side-row]")).not.toBeNull()
+      })
+    } finally {
+      listChildren.mockRestore()
+    }
   })
 })

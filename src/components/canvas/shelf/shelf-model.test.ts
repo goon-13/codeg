@@ -60,11 +60,12 @@ function folder(id: number, over: Partial<FolderDetail> = {}): FolderDetail {
 }
 
 describe("shelf-model", () => {
-  it("isShelfConversation keeps regular and drops loop/delegate/chat", () => {
+  it("isShelfConversation keeps regular and drops loop/delegate/chat/side", () => {
     expect(isShelfConversation(conv(1, { kind: "regular" }))).toBe(true)
     expect(isShelfConversation(conv(2, { kind: "chat" }))).toBe(false)
     expect(isShelfConversation(conv(3, { kind: "loop" }))).toBe(false)
     expect(isShelfConversation(conv(4, { kind: "delegate" }))).toBe(false)
+    expect(isShelfConversation(conv(5, { kind: "side" }))).toBe(false)
   })
 
   it("countShelf splits in_progress vs pending_review and ignores others", () => {

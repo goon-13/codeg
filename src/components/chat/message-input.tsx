@@ -96,6 +96,7 @@ import {
   type SessionSelectorSetting,
 } from "@/components/chat/session-selectors-panel"
 import { HERMES_PROFILE_CONFIG_ID } from "@/lib/hermes-profile-option"
+import { HandoffAgentDock, type HandoffSource } from "@/components/conversations/cluster/handoff-agent-dock"
 import {
   deriveModelGroups,
   isModelConfigOption,
@@ -276,6 +277,8 @@ interface MessageInputProps {
    * component knows the action row that separates them.
    */
   tall?: boolean
+  /** Persisted regular session this composer belongs to. Null on drafts. */
+  handoffSource?: HandoffSource | null
 }
 
 // Non-image files attach as inline file badges in the editor (like `@`-file
@@ -404,6 +407,7 @@ export function MessageInput({
   onInjectConsumed,
   getSentHistory,
   tall = false,
+  handoffSource = null,
 }: MessageInputProps) {
   const t = useTranslations("Folder.chat.messageInput")
   const tQueue = useTranslations("Folder.chat.messageQueue")
@@ -1082,6 +1086,9 @@ export function MessageInput({
     // open, the panel simply stays hidden until the skills arrive and then
     // fills itself in — no second keystroke needed.
     if (trigger === "/" && slashCommands.length === 0 && !commandsLoading) {
+      return close()
+    }
+    if (trigger === "/" && /^(side|btw)\b/i.test(match[3])) {
       return close()
     }
     setSlashTriggerChar(trigger)
@@ -2278,6 +2285,9 @@ export function MessageInput({
               />
               <div className="flex shrink-0 items-end justify-between gap-1 px-2 pb-2">
                 <div className="flex min-w-0 items-end gap-1">
+                  {handoffSource ? (
+                    <HandoffAgentDock source={handoffSource} />
+                  ) : null}
                   <ComposerAddMenu
                     disabled={disabled}
                     attachments={attach}
@@ -2286,7 +2296,7 @@ export function MessageInput({
                     onAddFeedback={onAddFeedback}
                     feedbackAddDisabled={feedbackAddDisabled}
                   />
-                  {hasInlineSelectors && (
+                  {hasInlineSelectors && !handoffSource && (
                     <div className="hidden min-w-0 items-end gap-1 @[30rem]:flex">
                       {inlineSelectorItems}
                     </div>
@@ -2295,7 +2305,9 @@ export function MessageInput({
                     <div
                       className={cn(
                         "flex",
-                        hasInlineSelectors && "@[30rem]:hidden"
+                        hasInlineSelectors &&
+                          !handoffSource &&
+                          "@[30rem]:hidden"
                       )}
                     >
                       <Popover

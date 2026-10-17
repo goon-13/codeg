@@ -3329,7 +3329,8 @@
         "noEnabledAgents": "有効なエージェントがありません",
         "openAgentsSettings": "エージェント設定を開く",
         "notInstalled": "未インストール",
-        "moreAgents": "他のエージェント（{count}）"
+        "moreAgents": "他のエージェント（{count}）",
+        "openMenu": "エージェント"
       },
       "subAgentOverlay": {
         "title": "サブエージェント",
@@ -4008,7 +4009,36 @@
       "cloneFailed": "リポジトリのクローンに失敗しました"
     },
     "cluster": {
-      "editTitle": "テーマ名を変更"
+      "rename": "Rename theme",
+      "editTitle": "テーマ名を変更",
+      "renameTitle": "Rename theme",
+      "dissolve": "Ungroup",
+      "dissolveTitle": "Ungroup these conversations?",
+      "dissolveDescription": "\"{title}\" will split into separate rows. Conversations are not deleted.",
+      "leave": "Remove from theme",
+      "untitled": "Theme",
+      "memberCount": "{count}",
+      "expand": "Expand theme",
+      "collapse": "Collapse theme",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "handoff": {
+      "dockLabel": "Continue with another agent",
+      "goalTitle": "Continue with {agent}",
+      "goalPlaceholder": "What should the next agent do?",
+      "emptyGoal": "Write the next goal first.",
+      "confirm": "Continue",
+      "cancel": "Cancel",
+      "handoffTo": "{agent} に引き継ぐ",
+      "currentSession": "このセッション"
+    },
+    "side": {
+      "tag": "Side",
+      "errors": {
+        "notRegular": "Source is not a regular session",
+        "notFound": "Conversation not found"
+      }
     }
   },
   "ProjectBoot": {
@@ -7040,6 +7070,21 @@
         "bypassed": "このコンピューターのブラウザーエンジンは一部のアドレスをトンネルを通さずに送るため、このコンピューターから読み込まないよう、リモートホストのページは開きません。",
         "probeFailed": "内蔵ブラウザーがトンネル経由でリモートホストに届くことを確認できませんでした。しばらくしてからもう一度お試しください。"
       }
+    }
+  },
+  "ConversationCluster": {
+    "errors": {
+      "emptyTitle": "Enter a theme name",
+      "notRegular": "Only project conversations can join a theme",
+      "sameAgent": "Pick a different agent",
+      "folderMismatch": "That theme belongs to another folder",
+      "notFound": "That theme no longer exists"
+    }
+  },
+  "ConversationSide": {
+    "errors": {
+      "notRegular": "Source is not a regular session",
+      "notFound": "Conversation not found"
     }
   }
 }

@@ -37,7 +37,7 @@ pub struct DbConversationSummary {
     pub agent_type: AgentType,
     pub status: String,
     /// Mirrors `conversation.kind` — drives sidebar visibility/grouping
-    /// (serialized as "regular" | "chat" | "loop" | "delegate").
+    /// (serialized as "regular" | "chat" | "loop" | "delegate" | "side").
     pub kind: ConversationKind,
     pub model: Option<String>,
     pub git_branch: Option<String>,
@@ -74,6 +74,39 @@ pub struct DbConversationSummary {
     /// the wire when empty, so the frontend reads an absent field as "no tags".
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tag_ids: Vec<i32>,
+    /// Exclusive theme bag. Omitted when unset, like `parent_id`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cluster_id: Option<i32>,
+    /// Source conversation of a cross-CLI handoff. Omitted when unset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handoff_from_id: Option<i32>,
+}
+
+/// A theme cluster as the UI sees it. `folder_id` is the ROOT folder.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ConversationClusterDetail {
+    pub id: i32,
+    pub folder_id: i32,
+    pub title: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Result of creating a handoff conversation in the same cluster as the source.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandoffConversationResult {
+    pub conversation_id: i32,
+    pub cluster_id: i32,
+    pub source_id: i32,
+}
+
+/// Result of inserting a side chat under a regular source. Always a new id.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSideConversationResult {
+    pub conversation_id: i32,
+    pub source_id: i32,
 }
 
 /// A conversation tag as the UI sees it. `folder_id` is the scope: `None` for

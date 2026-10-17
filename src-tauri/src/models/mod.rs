@@ -23,9 +23,10 @@ pub use canvas::{CanvasBoard, CanvasBoardSummary, CanvasMutation, CanvasNode, Ca
 #[allow(unused_imports)]
 pub use chat_channel::{ChannelStatusInfo, ChatChannelInfo, ChatChannelMessageLogInfo};
 pub use conversation::{
-    AgentConversationCount, AgentStats, ConversationBranchTag, ConversationDetail,
+    AgentConversationCount, AgentStats, ConversationBranchTag, ConversationClusterDetail, ConversationDetail,
     ConversationOutline, ConversationSummary, ConversationTagDetail, ConversationTurnsPage,
-    DbConversationDetail, DbConversationSummary, FolderInfo, ImportFolderOutcome, ImportResult,
+    DbConversationDetail, DbConversationSummary, FolderInfo, HandoffConversationResult, ImportFolderOutcome, ImportResult,
+    OpenSideConversationResult,
     ImportSelectedResult, ScanFolder, ScanResult, ScanSession, ScanSessionStatus,
     SelectedSessionKey, SessionStats, SidebarData,
 };

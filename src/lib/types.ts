@@ -604,6 +604,36 @@ export interface DbConversationSummary {
    * the tag store and skip unknown ones rather than trusting the count.
    */
   tag_ids?: number[]
+  /** Exclusive theme bag. Absent/null = ungrouped. */
+  cluster_id?: number | null
+  /** Source conversation of a cross-CLI handoff. */
+  handoff_from_id?: number | null
+}
+
+export interface ConversationClusterDetail {
+  id: number
+  folder_id: number
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export type ConversationClusterChange =
+  | { kind: "upsert"; cluster: ConversationClusterDetail }
+  | { kind: "deleted"; id: number }
+
+export const CONVERSATION_CLUSTER_CHANGED_EVENT =
+  "conversation-cluster://changed"
+
+export interface HandoffConversationResult {
+  conversationId: number
+  clusterId: number
+  sourceId: number
+}
+
+export interface OpenSideConversationResult {
+  conversationId: number
+  sourceId: number
 }
 
 /** Payload for the global `conversation://changed` side-channel that keeps
@@ -1055,8 +1085,9 @@ export type ConversationStatus =
 
 /** Mirrors Rust `ConversationKind` (src-tauri/src/db/entities/conversation.rs).
  *  `loop` rows belong to the Loop Engineering workbench and never appear in
- *  the sidebar list; `delegate` rows nest under their parent's tool-call view. */
-export type ConversationKind = "regular" | "chat" | "loop" | "delegate"
+ *  the sidebar list; `delegate` rows nest under their parent's tool-call view;
+ *  `side` rows nest under a regular source the same way, tagged 旁问. */
+export type ConversationKind = "regular" | "chat" | "loop" | "delegate" | "side"
 
 /** Mirrors Rust `FolderKind` (src-tauri/src/db/entities/folder.rs).
  *  `loop_worktree` is reserved for M2+ — add it here when the variant lands. */

@@ -900,6 +900,11 @@ export function CanvasConversationSurface({
   )
 
   const isDraft = dbConversationId == null
+  const handoffSummary = useAppWorkspaceStore((s) =>
+    dbConversationId == null
+      ? null
+      : (s.conversations.find((c) => c.id === dbConversationId) ?? null)
+  )
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -910,6 +915,19 @@ export function CanvasConversationSurface({
           added here later. */}
       <div className="nowheel flex min-h-0 flex-1 flex-col">
         <ConversationShell
+          handoffSource={
+            !isDraft &&
+            handoffSummary &&
+            handoffSummary.kind === "regular"
+              ? {
+                  id: dbConversationId!,
+                  folderId: handoffSummary.folder_id,
+                  agentType: selectedAgent,
+                  title: handoffSummary.title,
+                  summary: handoffSummary,
+                }
+              : null
+          }
           status={connStatus}
           promptCapabilities={conn.promptCapabilities}
           defaultPath={workingDir}

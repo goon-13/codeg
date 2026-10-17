@@ -29,6 +29,7 @@ import { ChatWidthHandles } from "@/components/chat/chat-width-handles"
 import { chatGutterStyle } from "@/lib/chat-content-width"
 import { cn } from "@/lib/utils"
 import type { ComposerInjectContent } from "@/components/chat/message-input"
+import type { HandoffSource } from "@/components/conversations/cluster/handoff-agent-dock"
 import { PermissionDialog } from "@/components/chat/permission-dialog"
 import { QuestionDialog } from "@/components/chat/question-dialog"
 import { AskQuestionCard } from "@/components/chat/ask-question-card"
@@ -154,6 +155,7 @@ interface ConversationShellProps {
    *  handles' layout maths would be off by the zoom factor, and a card has no
    *  window edge to keep clear. */
   resizableWidth?: boolean
+  handoffSource?: HandoffSource | null
 }
 
 export function ConversationShell({
@@ -217,6 +219,7 @@ export function ConversationShell({
   injectContent,
   onInjectConsumed,
   resizableWidth = false,
+  handoffSource = null,
 }: ConversationShellProps) {
   return (
     // The gutter keeps the chat column (transcript and composer alike) off
@@ -305,6 +308,7 @@ export function ConversationShell({
               onModeChange={onModeChange}
               onConfigOptionChange={onConfigOptionChange}
               agentType={agentType}
+              handoffSource={handoffSource}
               availableCommands={availableCommands}
               attachmentTabId={attachmentTabId}
               folderPickerOverride={folderPickerOverride}
