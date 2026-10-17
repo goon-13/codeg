@@ -1,9 +1,5 @@
 "use client"
 
-import { memo, useState } from "react"
-import { ChevronRight, Pencil, Trash2 } from "lucide-react"
-import { useTranslations } from "next-intl"
-import { AgentIcon } from "@/components/agent-icon"
 import { memo, useRef, useState, type KeyboardEvent } from "react"
 import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -64,7 +60,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
   expanded: boolean
   depth: number
   onToggle: (clusterId: number) => void
-  onRename: (clusterId: number, title: string) => void
   onRename: (clusterId: number, title: string) => void | Promise<unknown>
   onDissolve: (clusterId: number) => void
 }) {
@@ -118,9 +113,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
               paddingLeft: `calc(${depth} * 1.25rem)`,
             }}
           >
-            <button
-              type="button"
-              onClick={() => onToggle(clusterId)}
             <RowChrome
               type={editing ? undefined : "button"}
               onClick={() => onToggle(clusterId)}
@@ -131,12 +123,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
               style={{
                 paddingLeft: "calc(var(--conv-rail-axis, 0.875rem) + 0.875rem)",
               }}
-              aria-expanded={expanded}
-              aria-label={expanded ? t("collapse") : t("expand")}
-            >
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 flex items-center justify-center"
               aria-expanded={editing ? undefined : expanded}
             >
               <span
@@ -156,9 +142,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
                     expanded && "rotate-90"
                   )}
                 />
-              </span>
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {title || t("untitled")}
               </span>
               <InlineTitleEditor
                 ref={editorRef}
@@ -185,16 +168,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
                   />
                 ))}
               </span>
-            </button>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem
-            onSelect={() => {
-              setRenameValue(title)
-              setRenameOpen(true)
-            }}
-          >
             </RowChrome>
           </div>
         </ContextMenuTrigger>
@@ -225,10 +198,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
             {...ime.props}
             onKeyDown={(e) => {
               if (ime.isComposing(e)) return
-              if (e.key === "Enter" && renameValue.trim()) {
-                onRename(clusterId, renameValue.trim())
-                setRenameOpen(false)
-              }
               if (e.key === "Enter") void handleRenameConfirm()
             }}
             autoFocus
@@ -236,15 +205,6 @@ export const SidebarClusterHeader = memo(function SidebarClusterHeader({
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameOpen(false)}>
               {t("cancel")}
-            </Button>
-            <Button
-              disabled={!renameValue.trim()}
-              onClick={() => {
-                onRename(clusterId, renameValue.trim())
-                setRenameOpen(false)
-              }}
-            >
-              {t("save")}
             </Button>
             <Button onClick={() => void handleRenameConfirm()}>{t("save")}</Button>
           </DialogFooter>

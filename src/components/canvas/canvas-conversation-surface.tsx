@@ -459,7 +459,6 @@ export function CanvasConversationSurface({
   // Enabled and platform-available, yet nothing installed: the preflight
   // refuses such an agent before it tears anything down, so a switch to one
   // never gets past the old connection.
-  const { agents: acpAgents } = useAcpAgents()
   const selectedAgentNotInstalled = useMemo(() => {
     const info = acpAgents.find((a) => a.agent_type === agentType)
     return (
