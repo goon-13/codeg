@@ -24,6 +24,7 @@ import {
   createChatDir,
   updateConversationAgentType,
 } from "@/lib/api"
+import { shouldShowAgentTypePicker } from "@/lib/agent-type-lock"
 import { toErrorMessage } from "@/lib/app-error"
 import { notify } from "@/lib/notify"
 import { getAgentLabel } from "@/lib/custom-agents"
@@ -63,6 +64,7 @@ import { userPromptHistory } from "@/lib/composer-history"
 import { useAppWorkspaceStore } from "@/stores/app-workspace-store"
 import {
   getTimelineTurns,
+  selectTimelineTurns,
   useConversationRuntimeActions,
   useConversationRuntimeStore,
 } from "@/stores/conversation-runtime-store"
@@ -900,6 +902,15 @@ export function CanvasConversationSurface({
   )
 
   const isDraft = dbConversationId == null
+  const transcriptCount = useConversationRuntimeStore(
+    (s) => selectTimelineTurns(s, effectiveConversationId).length
+  )
+  const showAgentTypePicker = shouldShowAgentTypePicker({
+    canPick: onAgentTypeChange != null,
+    isDraft,
+    hasTranscript: transcriptCount > 0,
+    hasStartedSend: creating || connStatus === "prompting",
+  })
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -949,7 +960,7 @@ export function CanvasConversationSurface({
           folderPickerOverride={folderPickerOverride}
           isActive={isActive}
         >
-          {isDraft && onAgentTypeChange && (
+          {showAgentTypePicker && onAgentTypeChange ? (
             <div className="flex shrink-0 justify-center border-b border-border/60 px-3 py-2">
               <AgentSelector
                 align="center"
@@ -959,7 +970,7 @@ export function CanvasConversationSurface({
                 disabled={conn.status === "connecting"}
               />
             </div>
-          )}
+          ) : null}
           <MessageListView
             conversationId={effectiveConversationId}
             // The card's own cwd, which it already knows before any

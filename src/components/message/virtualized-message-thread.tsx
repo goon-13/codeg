@@ -1,6 +1,14 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import type { CSSProperties, ReactNode, RefObject } from "react"
 import { Virtualizer, type VirtualizerHandle } from "virtua"
 import { useStickToBottomContext } from "use-stick-to-bottom"
@@ -14,6 +22,13 @@ import {
   MessageScrollProvider,
   type MessageScrollContextValue,
 } from "@/components/message/message-scroll-context"
+import {
+  countVirtuaPaintedChildren,
+  shouldSyncVirtuaToViewport,
+  syncVirtuaToViewport,
+} from "@/components/message/virtua-scroll-sync"
+
+const VIRTUA_SYNC_MAX_FRAMES = 24
 
 /**
  * Scroll offset (px from the top) under which a reverse-infinite-scroll load
@@ -230,7 +245,16 @@ function VirtualizedMessageThreadImpl<T>({
     loadOlderStateRef.current = { hasOlder, isLoadingOlder, onLoadOlder }
   })
   const prevScrollOffsetRef = useRef<number | null>(null)
+  const itemsLengthRef = useRef(items.length)
+  itemsLengthRef.current = items.length
   const handleScroll = useCallback((offset: number) => {
+    const viewport = scrollRef.current
+    syncVirtuaToViewport(
+      virtualizerHandleRef.current,
+      viewport,
+      itemsLengthRef.current,
+      countVirtuaPaintedChildren(viewport)
+    )
     const prev = prevScrollOffsetRef.current
     prevScrollOffsetRef.current = offset
     const s = loadOlderStateRef.current
@@ -318,6 +342,79 @@ function VirtualizedMessageThreadImpl<T>({
       clearPointerFocus()
     }
   }, [scrollRef])
+
+  // StickToBottom can land the viewport at the tail (or a tiled card can
+  // grow from height 0) before virtua has measured. Keep aligning until
+  // virtua reports a real viewport, including the both-offsets-are-0 case
+  // that used to look "already synced" and stay blank until a wheel event.
+  useLayoutEffect(() => {
+    const viewport = scrollRef.current
+    if (!viewport) return
+
+    const painted = () => countVirtuaPaintedChildren(viewport)
+    const sync = () =>
+      syncVirtuaToViewport(
+        virtualizerHandleRef.current,
+        viewport,
+        items.length,
+        painted()
+      )
+
+    let frames = 0
+    let raf = 0
+    let stopped = false
+    const tick = () => {
+      if (stopped) return
+      sync()
+      frames += 1
+      if (frames >= VIRTUA_SYNC_MAX_FRAMES) return
+      const handle = virtualizerHandleRef.current
+      const stillNeeds =
+        !handle ||
+        shouldSyncVirtuaToViewport({
+          virtuaOffset: handle.scrollOffset,
+          viewportScrollTop: viewport.scrollTop,
+          viewportClientHeight: viewport.clientHeight,
+          itemCount: items.length,
+          virtuaViewportSize: handle.viewportSize,
+          virtuaScrollSize: handle.scrollSize,
+          paintedChildCount: painted(),
+        })
+      if (stillNeeds) {
+        raf = window.requestAnimationFrame(tick)
+      }
+    }
+    tick()
+
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (viewport.clientHeight > 0) sync()
+          })
+    resizeObserver?.observe(viewport)
+
+    const intersectionObserver =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) sync()
+          })
+    intersectionObserver?.observe(viewport)
+
+    // StickToBottom's instant jump often lands AFTER the first-paint frames.
+    // Only calls handle.scrollTo when virtua is actually desynced; never
+    // writes viewport.scrollTop and never stopScroll().
+    viewport.addEventListener("scroll", sync, { passive: true })
+
+    return () => {
+      stopped = true
+      window.cancelAnimationFrame(raf)
+      resizeObserver?.disconnect()
+      intersectionObserver?.disconnect()
+      viewport.removeEventListener("scroll", sync)
+    }
+  }, [scrollRef, items.length])
 
   // Pre-compute the three possible padding styles so every render reuses
   // the same object references (avoids allocating per-item on each frame).
