@@ -412,8 +412,8 @@ describe("recentShelfConversations", () => {
 })
 
 it("locks the expanded recent chrome to three chip rows", () => {
-  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(32 * 3 + 8 * 2)
-  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(112)
+  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(8 * 2 + 32 * 3 + 8 * 2)
+  expect(SHELF_RECENT_OPEN_HEIGHT).toBe(128)
 })
 
 describe("nextRecentPage", () => {

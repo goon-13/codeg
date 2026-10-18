@@ -265,8 +265,10 @@ export const SHELF_RECENT_CHROME_HEIGHT = 52
 export const SHELF_RECENT_CHIP_HEIGHT = 32
 export const SHELF_RECENT_CHIP_GAP = 8
 export const SHELF_RECENT_OPEN_ROWS = 3
-/** Exactly 3 chip rows: no partial 4th row in the lock. */
+export const SHELF_RECENT_CHROME_PAD_Y = 8
+/** 3 chip rows plus 8px pad on both ends: no flush bottom edge. */
 export const SHELF_RECENT_OPEN_HEIGHT =
+  SHELF_RECENT_CHROME_PAD_Y * 2 +
   SHELF_RECENT_OPEN_ROWS * SHELF_RECENT_CHIP_HEIGHT +
   (SHELF_RECENT_OPEN_ROWS - 1) * SHELF_RECENT_CHIP_GAP
 

@@ -30,6 +30,8 @@ import {
   intersectShelfLiveKeys,
   shelfDraftContextKey,
   shelfLiveSurfaceKeys,
+  SHELF_RECENT_CHROME_HEIGHT,
+  SHELF_RECENT_OPEN_HEIGHT,
   type ShelfOrderSnapshot,
   type ShelfProjectRow,
 } from "./shelf-model"
@@ -312,6 +314,15 @@ export function ShelfView() {
         className="relative flex h-full min-h-0 flex-col bg-background"
       >
         <div className="flex min-h-0 flex-1">
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          data-testid="shelf-chrome"
+          className={cn(
+            "sticky top-0 z-20 flex shrink-0 gap-2 overflow-hidden border-b border-border bg-background px-2",
+            recentOpen ? "h-[128px] items-start py-2" : "h-[52px] items-center"
+          )}
+        >
             <ShelfOutline
               rows={rows}
               visibleFolderIds={workingIds}
@@ -365,23 +376,16 @@ export function ShelfView() {
                   scrollShelfTarget(`[data-shelf-folder="${folderId}"]`)
                 )
               }}
+              chromeHeight={recentOpen ? SHELF_RECENT_OPEN_HEIGHT : SHELF_RECENT_CHROME_HEIGHT}
               onJumpConversation={jumpToConversation}
             />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div
-          data-testid="shelf-chrome"
-          className={cn(
-            "sticky top-0 z-20 flex shrink-0 items-stretch overflow-hidden border-b border-border bg-background",
-            recentOpen ? "h-[112px]" : "h-[52px]"
-          )}
-        >
           <input
             ref={filterInputRef}
             data-testid="shelf-film-filter"
             type="search"
             value={filmQuery}
             placeholder={t("shelfFilmFilter")}
-            className="m-2 h-8 w-48 shrink-0 self-center rounded-lg bg-foreground/5 px-2.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground"
+            className="h-8 w-48 shrink-0 self-center rounded-lg bg-foreground/5 px-2.5 text-[0.8125rem] outline-none placeholder:text-muted-foreground"
             onChange={(event) => setFilmQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== "Escape") return

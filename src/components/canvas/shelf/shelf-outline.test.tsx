@@ -145,9 +145,34 @@ describe("ShelfOutline", () => {
     expect(src).not.toMatch(/Popover/)
   })
 
-  it("uses the short directory label, not the shelf summary sentence", () => {
+  it("is a ghost icon with no counts until open", () => {
     renderOutline()
     const trigger = screen.getByTestId("shelf-outline-trigger")
-    expect(trigger.textContent ?? "").toMatch(/Directory 1·2|目录 1·2|Outline/)
+    expect(trigger).toHaveAttribute("aria-label", "Outline")
+    expect(trigger.textContent ?? "").not.toMatch(/\d/)
     expect(trigger.textContent ?? "").not.toMatch(/Shelf ·/)
+    expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
+    fireEvent.click(trigger)
+    const layer = screen.getByTestId("shelf-outline-layer")
+    expect(layer.textContent).toMatch(/1\s*·\s*2/)
+    expect(layer.className).toMatch(/w-\[24rem\]/)
+  })
+
+  it("closes on Escape and pointer outside", () => {
+    renderOutline()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    expect(screen.getByTestId("shelf-outline-layer")).toBeTruthy()
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
+  })
+
+  it("does not keep an in-flow rail", () => {
+    renderOutline()
+    const root = screen.getByTestId("shelf-outline")
+    expect(root.className).not.toMatch(/w-12/)
+    expect(root.className).not.toMatch(/w-\[24rem\]/)
+    expect(root.className).not.toMatch(/self-stretch/)
   })

@@ -457,19 +457,21 @@ describe("ShelfView", () => {
     expect(last[1].size).toBe(0)
   })
 
-  it("anchors the outline on the left edge and keeps jump on the rail", () => {
+  it("anchors the outline trigger in chrome, not a 48px rail", () => {
     renderShelf()
-    const rail = screen.getByTestId("shelf-outline")
+    const chrome = screen.getByTestId("shelf-chrome")
+    const trigger = screen.getByTestId("shelf-outline-trigger")
     const jump = screen.getByTestId("shelf-jump")
-    expect(rail.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
-      true
-    )
-    expect(jump.contains(screen.getByTestId("shelf-outline-trigger"))).toBe(
-      false
-    )
+    expect(chrome.contains(trigger)).toBe(true)
+    expect(chrome.contains(screen.getByTestId("shelf-film-filter"))).toBe(true)
+    expect(
+      trigger.compareDocumentPosition(screen.getByTestId("shelf-film-filter")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(jump.contains(trigger)).toBe(false)
     expect(screen.queryByTestId("shelf-nav")).toBeNull()
-    expect(rail.closest('[data-testid="shelf-chrome"]')).toBeNull()
-    expect(rail.className).toMatch(/w-12/)
+    expect(screen.getByTestId("shelf-outline").className).not.toMatch(/w-12/)
+    expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
     expect(jump.className).toMatch(/bottom-3/)
   })
 
@@ -565,7 +567,7 @@ describe("ShelfView", () => {
     expect(chrome.querySelector('[data-testid="shelf-recent-row"]')).toBeTruthy()
     expect(
       chrome.querySelector('[data-testid="shelf-outline-trigger"]')
-    ).toBeNull()
+    ).toBeTruthy()
     const scroller = screen.getByTestId("shelf-scroller")
     expect(
       scroller.querySelector('[data-testid="shelf-recent-row"]')
@@ -630,15 +632,19 @@ describe("ShelfView", () => {
     ).toEqual(expect.arrayContaining([9]))
   })
 
-  it("opens the outline panel below chrome, not inside the 188px rail", () => {
+  it("opens the outline as an overlay below chrome", () => {
     renderShelf()
-    const rail = screen.getByTestId("shelf-outline")
-    expect(rail.className).toMatch(/w-12/)
+    const scroller = screen.getByTestId("shelf-scroller")
+    const widthBefore = scroller.getBoundingClientRect().width
     fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
-    expect(rail.className).toMatch(/w-\[24rem\]/)
+    const layer = screen.getByTestId("shelf-outline-layer")
+    const view = screen.getByTestId("shelf-view")
+    expect(view.contains(layer)).toBe(true)
+    expect(screen.getByTestId("shelf-chrome").contains(layer)).toBe(false)
+    expect(layer.className).toMatch(/w-\[24rem\]/)
+    expect(scroller.getBoundingClientRect().width).toBe(widthBefore)
+    fireEvent.click(screen.getByTestId("shelf-outline-trigger"))
     expect(screen.queryByTestId("shelf-outline-layer")).toBeNull()
-    expect(screen.queryByTestId("shelf-outline-anchor")).toBeNull()
-    expect(screen.getByTestId("shelf-chrome").contains(rail)).toBe(false)
   })
 
   it("grows chrome to three chip rows when Recent expands", () => {
@@ -658,7 +664,9 @@ describe("ShelfView", () => {
       const chrome = screen.getByTestId("shelf-chrome")
       expect(chrome.className).toMatch(/h-\[52px\]/)
       fireEvent.click(screen.getByTestId("shelf-recent-more"))
-      expect(chrome.className).toMatch(/h-\[112px\]/)
+      expect(chrome.className).toMatch(/h-\[128px\]/)
+      expect(chrome.className).toMatch(/py-2/)
+      expect(chrome.className).not.toMatch(/h-\[112px\]/)
       expect(chrome.className).not.toMatch(/h-\[140px\]/)
       expect(chrome.className).toMatch(/overflow-hidden/)
       expect(chrome.className).not.toMatch(/h-\[52px\]/)
