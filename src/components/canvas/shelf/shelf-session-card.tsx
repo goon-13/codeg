@@ -28,8 +28,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { formatConversationTitle } from "@/lib/conversation-title"
+import { acpWaitingKind } from "@/lib/acp-waiting"
 import type { AgentType, ConversationStatus, DbConversationSummary } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useConnection } from "@/hooks/use-connection"
 
 import { CanvasConversationSurface } from "../canvas-conversation-surface"
 import { shelfContextKey, shelfDraftContextKey } from "./shelf-model"
@@ -136,6 +138,8 @@ export function ShelfSessionCard({
   const live = liveKeys.has(surfaceKey)
   const status = conversation.status as ConversationStatus
   const running = status === "in_progress"
+  const conn = useConnection(surfaceKey)
+  const waiting = acpWaitingKind(conn)
   const [editing, setEditing] = useState(false)
   const titleText = conversation.title
     ? formatConversationTitle(conversation.title)
@@ -241,11 +245,12 @@ export function ShelfSessionCard({
               event.dataTransfer.effectAllowed = "move"
             }}
             data-shelf-card={conversation.id}
+            data-acp-waiting={waiting ?? undefined}
             data-testid="shelf-card-title"
             className={cn(
               "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
               "border-foreground/15 hover:border-foreground/30",
-              running && "ring-1 ring-primary/30"
+              waiting ? "ring-2 ring-amber-500/70" : running && "ring-1 ring-primary/30"
             )}
           >
             <span className="flex items-center gap-1.5">
@@ -257,6 +262,7 @@ export function ShelfSessionCard({
                 status={status}
                 size="sm"
                 className={cn(running && "motion-safe:animate-pulse")}
+                title={waiting ? t("acpWaiting") : undefined}
               />
             </span>
             {editor}
@@ -277,12 +283,13 @@ export function ShelfSessionCard({
               event.dataTransfer.effectAllowed = "move"
             }}
             data-shelf-card={conversation.id}
+            data-acp-waiting={waiting ?? undefined}
             data-testid="shelf-card-title"
             onClick={expandAndClaim}
             className={cn(
               "flex w-[216px] h-[126px] shrink-0 flex-col overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left transition-colors",
               "border-foreground/15 hover:border-foreground/30",
-              running && "ring-1 ring-primary/30"
+              waiting ? "ring-2 ring-amber-500/70" : running && "ring-1 ring-primary/30"
             )}
           >
             <span className="flex items-center gap-1.5">
@@ -294,6 +301,7 @@ export function ShelfSessionCard({
                 status={status}
                 size="sm"
                 className={cn(running && "motion-safe:animate-pulse")}
+                title={waiting ? t("acpWaiting") : undefined}
               />
             </span>
             {editor}
@@ -324,7 +332,12 @@ export function ShelfSessionCard({
   return (
     <div
       data-shelf-card={conversation.id}
-      className="flex w-[520px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card ring-2 ring-primary/25"
+      data-shelf-expanded=""
+      data-acp-waiting={waiting ?? undefined}
+      className={cn(
+        "flex w-[520px] h-[560px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary bg-card",
+        waiting ? "ring-2 ring-amber-500/70" : "ring-2 ring-primary/25"
+      )}
       style={{ width: SHELF_EXPANDED_WIDTH, height: SHELF_EXPANDED_HEIGHT }}
       onPointerDownCapture={() => claim(surfaceKey)}
     >

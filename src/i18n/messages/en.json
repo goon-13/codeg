@@ -7671,7 +7671,8 @@
     "recentMoreCount": "… More · {count}",
     "recentCollapse": "Show less",
     "shelfMiniExpand": "Expand to three columns",
-    "shelfMiniCollapse": "Collapse to one row"
+    "shelfMiniCollapse": "Collapse to one row",
+    "acpWaiting": "Waiting for you"
   },
   "Browser": {
     "toolbar": {

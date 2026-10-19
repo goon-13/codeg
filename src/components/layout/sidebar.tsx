@@ -149,18 +149,23 @@ function SidebarNavButton({
   onClick,
   active,
   trailing,
+  navId,
 }: {
   icon: LucideIcon
   label: string
   onClick: () => void
   active?: boolean
   trailing?: ReactNode
+  navId?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={label}
+      data-nav={navId}
+      data-pool={navId === "pool" ? "" : undefined}
+      data-calendar={navId === "calendar" ? "" : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
         "group flex h-8 w-full items-center gap-[0.4375rem] rounded-full pl-[0.4375rem] pr-1.5",
@@ -649,6 +654,7 @@ export function Sidebar() {
           <SidebarNavButton
             icon={CalendarDays}
             label={t("calendar")}
+            navId="calendar"
             active={routeId === "calendar"}
             onClick={() => {
               if (isMobile) toggle()
@@ -660,6 +666,7 @@ export function Sidebar() {
           <SidebarNavButton
             icon={Inbox}
             label={t("pool")}
+            navId="pool"
             active={routeId === "pool"}
             onClick={() => {
               if (isMobile) toggle()

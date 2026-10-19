@@ -7671,7 +7671,8 @@
     "shelfFilmFilter": "Filter shelf",
     "homeListFilter": "Filter conversations",
     "homeListEmpty": "No matching conversations",
-    "shelfFilmEmpty": "No matching projects or conversations on the shelf"
+    "shelfFilmEmpty": "No matching projects or conversations on the shelf",
+    "acpWaiting": "Waiting for you"
   },
   "Browser": {
     "toolbar": {

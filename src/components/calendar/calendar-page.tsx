@@ -419,7 +419,7 @@ export function CalendarPage() {
   const canSave = Boolean(draft?.title.trim() && draft.start && draft.end)
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
+    <div data-calendar="" className="flex h-full flex-col gap-3 p-4">
       {error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
           {error}

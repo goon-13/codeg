@@ -19,6 +19,17 @@ vi.mock("../canvas-conversation-surface", () => ({
   CanvasConversationSurface: () => <div data-testid="surface" />,
 }))
 
+const connStub = vi.hoisted(() => ({
+  current: {
+    pendingAskQuestion: null as unknown,
+    pendingPlanApproval: null as unknown,
+    pendingPermission: null as unknown,
+  },
+}))
+vi.mock("@/hooks/use-connection", () => ({
+  useConnection: () => connStub.current,
+}))
+
 const conv: DbConversationSummary = {
   id: 11,
   folder_id: 1,
@@ -60,6 +71,11 @@ function renderCard(expanded: boolean) {
 describe("ShelfSessionCard inline title", () => {
   beforeEach(() => {
     api.updateConversationTitle.mockClear()
+    connStub.current = {
+      pendingAskQuestion: null,
+      pendingPlanApproval: null,
+      pendingPermission: null,
+    }
   })
 
   it("click collapsed title expands and does not show input", () => {
@@ -152,5 +168,69 @@ describe("ShelfSessionCard inline title", () => {
     renderCard(false)
     fireEvent.keyDown(screen.getByTestId("shelf-card-title"), { key: "F2" })
     expect(screen.queryByTestId("inline-title-editor-input")).toBeNull()
+  })
+})
+
+describe("ShelfSessionCard waiting chrome", () => {
+  beforeEach(() => {
+    connStub.current = {
+      pendingAskQuestion: null,
+      pendingPlanApproval: null,
+      pendingPermission: null,
+    }
+  })
+
+  function renderWaiting(expanded: boolean, status: DbConversationSummary["status"] = "in_progress") {
+    return render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ShelfSessionCard
+          conversation={{ ...conv, status }}
+          expanded={expanded}
+          onShelf
+          moveTargets={[]}
+          onToggleExpand={vi.fn()}
+          onMove={nop}
+          onHideFromShelf={nop}
+          onAddToShelf={nop}
+        />
+      </NextIntlClientProvider>
+    )
+  }
+
+  it("marks an expanded waiting card with data-shelf-expanded and data-acp-waiting", () => {
+    connStub.current.pendingAskQuestion = {}
+    renderWaiting(true)
+    const card = document.querySelector('[data-shelf-card="11"]')
+    expect(card).not.toBeNull()
+    expect(card).toHaveAttribute("data-shelf-expanded")
+    expect(card).toHaveAttribute("data-acp-waiting", "question")
+    expect(card?.className).toMatch(/ring-amber-500/)
+    expect(card?.className).not.toMatch(/ring-primary\/30/)
+    expect(card?.className).not.toMatch(/ring-primary\/25/)
+  })
+
+  it("does not set data-shelf-expanded on the collapsed card", () => {
+    connStub.current.pendingAskQuestion = {}
+    renderWaiting(false)
+    const card = document.querySelector('[data-shelf-card="11"]')
+    expect(card).not.toBeNull()
+    expect(card).not.toHaveAttribute("data-shelf-expanded")
+    expect(card).toHaveAttribute("data-acp-waiting", "question")
+    expect(card?.className).toMatch(/ring-amber-500/)
+    expect(card?.className).not.toMatch(/ring-primary\/30/)
+  })
+
+  it("keeps the running primary ring when the connection is not waiting", () => {
+    renderWaiting(false)
+    const card = document.querySelector('[data-shelf-card="11"]')
+    expect(card?.className).toMatch(/ring-primary\/30/)
+    expect(card?.className).not.toMatch(/ring-amber-500/)
+    expect(card).not.toHaveAttribute("data-acp-waiting")
+  })
+
+  it("titles the status dot with the waiting copy", () => {
+    connStub.current.pendingAskQuestion = {}
+    renderWaiting(false)
+    expect(screen.getByTitle("Waiting for you")).toBeTruthy()
   })
 })

@@ -7671,7 +7671,8 @@
     "recentMoreCount": "… 更多 · {count}",
     "recentCollapse": "收起",
     "shelfMiniExpand": "展开成一行三张",
-    "shelfMiniCollapse": "收起成一行"
+    "shelfMiniCollapse": "收起成一行",
+    "acpWaiting": "等你回复"
   },
   "Browser": {
     "toolbar": {
