@@ -10,6 +10,7 @@
 //!   after `CODEG_RESTART_DELAY_MS`.
 //! - **Standalone** (no supervisor): the worker re-execs itself.
 
+pub mod allow_env;
 pub mod install;
 pub mod runtime;
 pub mod state;

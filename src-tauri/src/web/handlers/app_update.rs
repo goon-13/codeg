@@ -127,6 +127,13 @@ async fn perform_impl(state: Arc<AppState>) -> Result<AppUpdateState, AppCommand
     use crate::update::state as update_state;
 
     ensure_supported()?;
+    // Before `try_begin`: a blocked install must not claim `Downloading`.
+    // Missing / empty / "true" / "yes" all stay closed; only exact "1" opens.
+    if !crate::update::allow_env::official_update_allowed() {
+        return Err(AppCommandError::invalid_input(
+            "Official in-app update is blocked. Use fuse-release.sh.",
+        ));
+    }
 
     // Perform-vs-perform mutual exclusion is the atomic `update_state` claim:
     // a second click or another client that finds a download already in flight
@@ -309,7 +316,27 @@ mod tests {
     use crate::update::state as update_state;
 
     #[tokio::test]
+    async fn perform_blocked_unless_official_update_allowed() {
+        let _env = crate::update::allow_env::EnvGuard::set(None);
+        let db = crate::db::test_helpers::fresh_in_memory_db().await;
+        let dir = tempfile::tempdir().unwrap();
+        let state = Arc::new(AppState::new_for_test(db, dir.path().to_path_buf()));
+
+        let err = perform_impl(state.clone()).await.unwrap_err();
+        assert!(err
+            .message
+            .contains("Official in-app update is blocked. Use fuse-release.sh."));
+        assert_eq!(
+            update_state::snapshot(&state.update_state).status,
+            update_state::AppUpdateLifecycle::Idle
+        );
+    }
+
+    #[tokio::test]
     async fn perform_attaches_to_an_in_flight_download_without_busy() {
+        // Gate is checked before `try_begin`. Open it so this attach path
+        // still returns the in-flight snapshot instead of the block error.
+        let _env = crate::update::allow_env::EnvGuard::set(Some("1"));
         let db = crate::db::test_helpers::fresh_in_memory_db().await;
         let dir = tempfile::tempdir().unwrap();
         let state = Arc::new(AppState::new_for_test(db, dir.path().to_path_buf()));
