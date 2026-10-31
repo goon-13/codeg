@@ -234,7 +234,6 @@ export function ConversationShell({
   injectContent,
   onInjectConsumed,
   resizableWidth = false,
-  handoffSource = null,
 }: ConversationShellProps) {
   return (
     // The gutter keeps the chat column (transcript and composer alike) off
@@ -341,7 +340,6 @@ export function ConversationShell({
               onModeChange={onModeChange}
               onConfigOptionChange={onConfigOptionChange}
               agentType={agentType}
-              handoffSource={handoffSource}
               availableCommands={availableCommands}
               promptSuggestion={promptSuggestion}
               attachmentTabId={attachmentTabId}

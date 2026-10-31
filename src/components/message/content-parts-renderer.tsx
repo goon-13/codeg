@@ -6,17 +6,6 @@ import {
   useState,
   type ReactNode,
 } from "react"
-  aliasToolInputKeys,
-  extractClaudeCodeMetaTitle,
-  extractClaudeCodeSkillName,
-  normalizeToolName,
-  toolCallMovedToBackground,
-} from "@/lib/tool-call-normalization"
-import { parseBackgroundLaunch } from "@/lib/background-task"
-import { isUnsettledToolCall } from "@/lib/tool-call-lifecycle"
-import { normalizePriority, normalizeStatus } from "@/lib/plan-parse"
-import { isDelegateToAgentToolName } from "@/lib/delegation-card"
-import { isSideSeedText } from "@/lib/side-seed"
 import { useTranslations } from "next-intl"
 
 import type { AdaptedContentPart } from "@/lib/adapters/ai-elements-adapter"
@@ -325,7 +314,6 @@ function renderPart(
       // never a stream that has not produced its first token yet, which is why
       // this is scoped to `user` and assistant text is left to render as-is.
       if (role === "user" && part.text.trim().length === 0) return null
-      if (role === "user" && isSideSeedText(part.text.trim())) return null
       return (
         <TextPart
           key={`text-${keyId}`}

@@ -9,14 +9,6 @@ import {
   useRef,
   useState,
   type ComponentProps,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent,
-  type ReactNode,
-  type Ref,
 } from "react"
 import {
   isLiveTurnId,
@@ -110,18 +102,6 @@ import type {
   PlanEntryInfo,
 } from "@/lib/types"
 import { cn, copyTextToClipboard } from "@/lib/utils"
-import {
-  VirtualizedMessageThread,
-  TRANSCRIPT_ACTIVATION_SELECTOR,
-} from "@/components/message/virtualized-message-thread"
-import { ThreadFindBar } from "./thread-find-bar"
-import {
-  collectThreadFindHits,
-  nextFindIndex,
-  type ThreadFindHit,
-} from "@/lib/thread-find"
-import { isElementLive } from "@/lib/search-surface"
-import { SelectionActionBubble } from "@/components/message/selection-action-bubble"
 import {
   VirtualizedMessageThread,
   type ViewportTop,
@@ -758,24 +738,6 @@ function extractTextFromParts(parts: AdaptedContentPart[]): string {
     })
     .filter((text) => text.length > 0)
     .join("\n")
-}
-
-function threadFindHaystack(item: ThreadRenderItem): string {
-  if (item.kind === "turn") return extractTextFromParts(item.group.parts)
-  if (item.kind === "compaction") return item.summary ?? ""
-  return ""
-}
-
-export function sameHitList(
-  a: readonly ThreadFindHit[],
-  b: readonly ThreadFindHit[]
-): boolean {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) {
-    if (a[i].index !== b[i].index) return false
-  }
-  return true
 }
 
 type AssistantTurnItem = Extract<ThreadRenderItem, { kind: "turn" }>
@@ -1451,81 +1413,6 @@ const AutoScrollOnSend = memo(function AutoScrollOnSend({
   return null
 })
 
-const EMPTY_FIND_HITS: ThreadFindHit[] = []
-const EMPTY_FIND_INDEXES: ReadonlySet<number> = new Set()
-
-function shouldKeepThreadFindFocus(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false
-  // The scrollport focuses itself on pointerdown so Arrow keys scroll. This
-  // mousedown is later; moving focus to the column undoes that. Capture does
-  // not need the column to be the active element.
-  if (target.closest(".chat-scroll-port") != null) return true
-  return target.closest(TRANSCRIPT_ACTIVATION_SELECTOR) != null
-}
-
-export function ThreadFindRoot({
-  isActive,
-  open,
-  onModF,
-  onEscape,
-  bar,
-  boxRef,
-  className,
-  children,
-}: {
-  isActive: boolean
-  open: boolean
-  onModF: () => void
-  onEscape: () => void
-  bar: ReactNode
-  boxRef: Ref<HTMLDivElement | null>
-  className?: string
-  children: ReactNode
-}) {
-  return (
-    <div
-      ref={boxRef}
-      tabIndex={-1}
-      data-testid="thread-find-root"
-      className={className}
-      onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
-        if (shouldKeepThreadFindFocus(event.target)) return
-        event.currentTarget.focus()
-      }}
-      onKeyDownCapture={(event: KeyboardEvent<HTMLDivElement>) => {
-        // Capture so a focused transcript beats the window-bubble Mod+F
-        // (shelf / home). A keep-alive tab stays mounted and must not steal.
-        if (!isActive || !isElementLive(event.currentTarget)) return
-        const modF =
-          (event.metaKey || event.ctrlKey) &&
-          !event.shiftKey &&
-          !event.altKey &&
-          (event.key === "f" || event.key === "F")
-        if (modF) {
-          event.preventDefault()
-          event.stopPropagation()
-          onModF()
-          return
-        }
-        if (event.key !== "Escape" || !open) return
-        const target = event.target
-        if (
-          target instanceof Element &&
-          target.closest('[data-testid="thread-find-bar"]') != null
-        ) {
-          return
-        }
-        event.preventDefault()
-        event.stopPropagation()
-        onEscape()
-      }}
-    >
-      {open ? bar : null}
-      {children}
-    </div>
-  )
-}
-
 export function MessageListView({
   conversationId,
   imageRoot,
@@ -1862,67 +1749,8 @@ export function MessageListView({
   // "not right now" instead of dropping its button and shifting the icon row.
   const forkBusy = connStatus === "prompting"
 
-  const [findOpen, setFindOpen] = useState(false)
-  const [findQuery, setFindQuery] = useState("")
-  const [findHitIdx, setFindHitIdx] = useState(0)
-  const [findScopeId, setFindScopeId] = useState(conversationId)
-  if (findScopeId !== conversationId) {
-    setFindScopeId(conversationId)
-    setFindOpen(false)
-    setFindQuery("")
-    setFindHitIdx(0)
-  }
-
-  const findItems = useMemo(
-    () =>
-      threadItems.map((item) => ({
-        kind: item.kind,
-        text: threadFindHaystack(item),
-      })),
-    [threadItems]
-  )
-  // A streaming re-adapt rebuilds `threadItems` every token. Keep the last
-  // hit list when the index sequence didn't change. Haystack growth is not a
-  // new hit: scrollToIndex would release stick-to-bottom every token.
-  const computedHits = useMemo(() => {
-    const next = collectThreadFindHits(findItems, findQuery)
-    return next.length === 0 ? EMPTY_FIND_HITS : next
-  }, [findItems, findQuery])
-  const [hits, setHits] = useState(EMPTY_FIND_HITS)
-  if (!sameHitList(hits, computedHits)) setHits(computedHits)
-  const findHitIndexes = useMemo(() => {
-    if (hits.length === 0) return EMPTY_FIND_INDEXES
-    return new Set(hits.map((hit) => hit.index))
-  }, [hits])
-  const shownHitIdx =
-    hits.length === 0 ? 0 : Math.min(findHitIdx, hits.length - 1)
-
-  const openFind = useCallback(() => {
-    setFindOpen(true)
-  }, [])
-  const closeFind = useCallback(() => {
-    setFindOpen(false)
-    setFindQuery("")
-    setFindHitIdx(0)
-  }, [])
-  const handleFindQuery = useCallback((query: string) => {
-    setFindQuery(query)
-    setFindHitIdx(0)
-  }, [])
-  const stepFind = useCallback(
-    (dir: 1 | -1) => {
-      setFindHitIdx((current) => {
-        if (hits.length === 0) return 0
-        const base = Math.min(current, hits.length - 1)
-        return nextFindIndex(hits, base, dir)
-      })
-    },
-    [hits]
-  )
-
   const renderThreadItem = useCallback(
-    (item: ThreadRenderItem, index: number) => {
-      const findHitAttr = findHitIndexes.has(index) ? "" : undefined
+    (item: ThreadRenderItem) => {
       switch (item.kind) {
         case "turn": {
           const pt = item.isRoleTransition ? 16 : 0
@@ -1931,10 +1759,7 @@ export function MessageListView({
               ? userTurnHeader(item.group)
               : null
           return (
-            <div
-              style={pt > 0 ? { paddingTop: pt } : undefined}
-              data-find-hit={findHitAttr}
-            >
+            <div style={pt > 0 ? { paddingTop: pt } : undefined}>
               {phaseLabel ? (
                 <div className="flex items-center gap-2 px-1 pb-3 pt-1">
                   <span aria-hidden="true" className="h-px flex-1 bg-border" />
@@ -1973,7 +1798,7 @@ export function MessageListView({
         case "compaction":
           // Chrome-less centered divider between turns (no avatar / stats footer).
           return (
-            <div className="px-1 py-2" data-find-hit={findHitAttr}>
+            <div className="px-1 py-2">
               <ContextCompactionCard
                 state={item.state}
                 meta={item.meta}
@@ -1993,7 +1818,6 @@ export function MessageListView({
       handleRoundOpenChange,
       onForkFromTurn,
       forkBusy,
-      findHitIndexes,
     ]
   )
 
@@ -2070,15 +1894,6 @@ export function MessageListView({
     conversationId,
     insightsInSidebar
   )
-  useEffect(() => {
-    if (!findOpen || hits.length === 0) return
-    scrollApiRef.current?.scrollToIndex(hits[shownHitIdx].index, {
-      align: "center",
-    })
-  }, [findOpen, hits, shownHitIdx])
-  // Collapse state is owned here (not in the panel) so the expensive per-file
-  // `navEntries` is computed only while the panel is open.
-  const [navExpanded, setNavExpanded] = useState(false)
 
   // Positioning box for the text-selection bubble. It is the transcript's outer
   // (non-scrolling) frame, so the bubble is clipped to the message area and
@@ -2335,55 +2150,10 @@ export function MessageListView({
     // inline SubAgentOverlay's rows too. (The Session Details side panel's
     // sub-agent rows sit in another tree and bring their own host.)
     <SessionViewerHost>
-      <ThreadFindRoot
-        isActive={isActive}
-        open={findOpen}
-        onModF={openFind}
-        onEscape={closeFind}
-        boxRef={setSelectionBoxNode}
-        className="chat-motion-scope relative flex h-full min-h-0 flex-col outline-none"
-        bar={
-          <ThreadFindBar
-            query={findQuery}
-            current={shownHitIdx}
-            count={hits.length}
-            onQuery={handleFindQuery}
-            onNext={() => stepFind(1)}
-            onPrev={() => stepFind(-1)}
-            onClose={closeFind}
-          />
-        }
+      <div
+        ref={selectionBoxRef}
+        className="chat-motion-scope relative flex h-full min-h-0 flex-col"
       >
-        <div
-          onKeyDown={handleTranscriptNavKey}
-          className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
-        >
-        <RunRevealProvider>
-        <div
-          className={cn(
-            "mx-auto w-full shrink-0 chat-content-w px-4",
-            showMessageNav && userMessageCount >= 2 && "ps-6"
-          )}
-        >
-          <SessionDashboardHost
-            conversationId={conversationId}
-            segs={dashboardSegs}
-            rounds={dashboardRounds}
-            activeFirst={dashboardActiveFirst}
-            onJump={(first) =>
-              scrollApiRef.current?.scrollToIndex(first, {
-                align: "start",
-                smooth: chatAnimations,
-              })
-            }
-            onJumpUser={(first) =>
-              scrollApiRef.current?.scrollToIndex(first, {
-                align: "start",
-                smooth: chatAnimations,
-              })
-            }
-          />
-        </div>
         <MessageThread
           className="flex-1 min-h-0"
           resize={
@@ -2474,9 +2244,7 @@ export function MessageListView({
           onAsk={onAskSelection}
           onSaveAsNote={onSaveNoteSelection}
         />
-        </RunRevealProvider>
-        </div>
-      </ThreadFindRoot>
+      </div>
     </SessionViewerHost>
   )
 

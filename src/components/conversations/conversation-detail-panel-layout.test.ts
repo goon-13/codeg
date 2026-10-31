@@ -716,6 +716,8 @@ it("gates the no-tab draft creation effect on folder-tabs mode", () => {
     "shouldSeedConversation(useFolderTabsStore.getState().enabled, hasNoTabs)"
   )
   expect(effect).toContain("openNewConversationTab(")
+})
+
 describe("composer agent chip", () => {
   it("keeps the canvas and shelf draft on one AgentSelector chip", () => {
     const start = canvasSurfaceSource.indexOf(

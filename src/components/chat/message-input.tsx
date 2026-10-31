@@ -56,7 +56,6 @@ import type {
   PromptInputBlock,
   SessionConfigOptionInfo,
   SessionModeInfo,
-  QuickMessage,
 } from "@/lib/types"
 import {
   ATTACH_FILE_TO_SESSION_EVENT,
@@ -81,25 +80,6 @@ import {
   buildSessionSettings,
   type SessionSettingTarget,
 } from "@/lib/session-settings"
-  InlineSessionConfigSelector,
-  InlineSessionConfigToggle,
-} from "@/components/chat/session-config-selector"
-import { ModelOptionPicker } from "@/components/chat/model-option-picker"
-import { SelectorTooltip } from "@/components/chat/selector-tooltip"
-import {
-  SessionSelectorsPanel,
-  type SessionSelectorGroup,
-  type SessionSelectorSetting,
-} from "@/components/chat/session-selectors-panel"
-import { HandoffAgentDock, type HandoffSource } from "@/components/conversations/cluster/handoff-agent-dock"
-import {
-  deriveModelGroups,
-  isModelConfigOption,
-  modelListGroups,
-  MODEL_LIST_VIRTUALIZE_THRESHOLD,
-  type ModelOptionGroup,
-} from "@/lib/model-config-groups"
-import { HERMES_PROFILE_CONFIG_ID } from "@/lib/hermes-profile-option"
 import { useAgentSkills } from "@/hooks/use-agent-skills"
 import { isPrimaryPointerCoarse } from "@/hooks/use-is-coarse-pointer"
 import { useAgentVocabulary } from "@/hooks/use-agent-vocabulary"
@@ -159,15 +139,6 @@ import { ComposerAddMenu } from "@/components/chat/composer/composer-add-menu"
 import { ComposerImageThumbnails } from "@/components/chat/composer/composer-image-thumbnails"
 import { useComposerAttachments } from "@/components/chat/composer/use-composer-attachments"
 import { useComposerShortcuts } from "@/components/chat/composer/use-composer-shortcuts"
-import { selectPlaceholderInEditor } from "@/components/prompt-library/select-placeholder"
-import { usePromptFormInsert } from "@/components/prompt-library/use-prompt-form-insert"
-import {
-  isPromptListable,
-  planPromptFill,
-  promptDisplayTitle,
-  promptSearchText,
-  promptSlug,
-} from "@/lib/prompt-library/prompt-model"
 
 /**
  * Payload pushed into the composer from outside (e.g. a welcome-page quick
@@ -526,15 +497,12 @@ export function MessageInput({
     hydrateFromBlocks,
     imagePromptBlocks,
   } = attach
-  const promptForm = usePromptFormInsert(editorRef, syncComposerEmpty)
   const menuShortcuts = useComposerShortcuts({
     editorRef,
     agentType: agentType ?? null,
     onAfterInsert: syncComposerEmpty,
-    onPromptForm: promptForm.startForm,
     logLabel: "MessageInput",
   })
-  const [placeholderNav, setPlaceholderNav] = useState(false)
 
   // Whether the async Clipboard read API is usable here. It's absent in
   // non-secure web deployments served over HTTP/LAN (see installClipboardFallback
@@ -593,39 +561,21 @@ export function MessageInput({
   // reload — a Markdown round-trip would downgrade them to plain links.
   const draftSaveTimerRef = useRef<number | null>(null)
   /** Persist (or clear) the draft from the document as it stands right now. */
-  const latestDraftRef = useRef<{
-    key: string
-    doc: ReturnType<typeof stripEmbeddedReferences> | null
-  } | null>(null)
-  const snapshotDraft = useCallback(() => {
+  const writeDraftNow = useCallback(() => {
     const ed = editorRef.current
     if (!ed || !effectiveDraftStorageKey) return
     if (ed.isEmpty()) {
-      latestDraftRef.current = { key: effectiveDraftStorageKey, doc: null }
-      return
-    }
-    latestDraftRef.current = {
-      key: effectiveDraftStorageKey,
-      doc: stripEmbeddedReferences(ed.getJSON()),
+      clearMessageInputDraftV2(effectiveDraftStorageKey)
+    } else {
+      saveMessageInputDraftV2(
+        effectiveDraftStorageKey,
+        stripEmbeddedReferences(ed.getJSON())
+      )
     }
   }, [effectiveDraftStorageKey])
-  const persistLatestDraft = useCallback(() => {
-    const snap = latestDraftRef.current
-    if (!snap) return
-    if (snap.doc == null) {
-      clearMessageInputDraftV2(snap.key)
-    } else {
-      saveMessageInputDraftV2(snap.key, snap.doc)
-    }
-  }, [])
-  const writeDraftNow = useCallback(() => {
-    snapshotDraft()
-    persistLatestDraft()
-  }, [snapshotDraft, persistLatestDraft])
   const scheduleDraftSave = useCallback(() => {
     if (typeof window === "undefined") return
     if (!effectiveDraftStorageKey || isEditingQueueItem) return
-    snapshotDraft()
     if (draftSaveTimerRef.current != null) {
       window.clearTimeout(draftSaveTimerRef.current)
     }
@@ -633,7 +583,7 @@ export function MessageInput({
       draftSaveTimerRef.current = null
       writeDraftNow()
     }, 300)
-  }, [effectiveDraftStorageKey, isEditingQueueItem, writeDraftNow, snapshotDraft])
+  }, [effectiveDraftStorageKey, isEditingQueueItem, writeDraftNow])
   /**
    * Land a *pending* debounced save immediately, before something other than
    * the user replaces the document. A save scheduled by the keystrokes that
@@ -648,15 +598,10 @@ export function MessageInput({
     writeDraftNow()
   }, [writeDraftNow])
 
-  const persistLatestDraftRef = useRef(persistLatestDraft)
-  persistLatestDraftRef.current = persistLatestDraft
   useEffect(() => {
     return () => {
-      if (typeof window === "undefined") return
-      if (draftSaveTimerRef.current != null) {
+      if (draftSaveTimerRef.current != null && typeof window !== "undefined") {
         window.clearTimeout(draftSaveTimerRef.current)
-        draftSaveTimerRef.current = null
-        persistLatestDraftRef.current()
       }
     }
   }, [])
@@ -987,13 +932,8 @@ export function MessageInput({
     }
     return availableModes[0]?.id ?? null
   }, [hasModes, selectedModeId, availableModes])
-  const keepHermesModeSelector = availableConfigOptions.some(
-    (option) => option.id === HERMES_PROFILE_CONFIG_ID
-  )
   const showModeSelector =
-    hasModes &&
-    Boolean(effectiveModeId) &&
-    (!hasConfigOptions || keepHermesModeSelector)
+    hasModes && Boolean(effectiveModeId) && !hasConfigOptions
   const showModeLoading = modeLoading && !hasConfigOptions && !showModeSelector
   const showConfigLoading = configOptionsLoading && !hasConfigOptions
   const showSelectorsLoading = showConfigLoading || showModeLoading
@@ -1084,27 +1024,8 @@ export function MessageInput({
     slashTriggerChar,
     slashFilter,
   ])
-  const filteredSlashPrompts = useMemo(() => {
-    if (!slashMenuOpen || slashTriggerChar !== "/") return []
-    const list = menuShortcuts.quickMessages.filter((message) =>
-      isPromptListable(message.content)
-    )
-    return rankByTextMatch(slashFilter, list, (message) =>
-      promptSearchText(message.title, message.content)
-    )
-  }, [
-    slashMenuOpen,
-    slashTriggerChar,
-    slashFilter,
-    menuShortcuts.quickMessages,
-  ])
-  const hasListablePrompts = menuShortcuts.quickMessages.some((message) =>
-    isPromptListable(message.content)
-  )
   const slashAutocompleteCount =
-    filteredSlashCommands.length +
-    filteredSlashSkills.length +
-    filteredSlashPrompts.length
+    filteredSlashCommands.length + filteredSlashSkills.length
   // `/` is fed by the agent's own command list, which only exists once the
   // connection is up — so while it is being established the panel shows a
   // loading row rather than nothing at all. Disk skills (Codex's `$` list,
@@ -1201,8 +1122,7 @@ export function MessageInput({
       trigger === "/" &&
       skillTrigger !== "/" &&
       slashCommands.length === 0 &&
-      !commandsLoading &&
-      !hasListablePrompts
+      !commandsLoading
     ) {
       return close()
     }
@@ -1210,15 +1130,11 @@ export function MessageInput({
     setSlashFilter(match[3])
     setSlashSelectedIndex(0)
     setSlashMenuOpen(true)
-  }, [slashCommands.length, commandsLoading, skillTrigger, hasListablePrompts])
+  }, [slashCommands.length, commandsLoading, skillTrigger])
 
   useEffect(() => {
     detectSlashTriggerRef.current = detectSlashTrigger
   }, [detectSlashTrigger])
-
-  useEffect(() => {
-    detectSlashTriggerRef.current?.()
-  }, [hasListablePrompts])
 
   useEffect(() => {
     if (!showModeSelector) return
@@ -1303,55 +1219,6 @@ export function MessageInput({
   // holds DOM focus). Uses the same leaf mapping as send serialization
   // (`composerLeafText`: reference badges → their inline token, hard breaks →
   // newlines) so a copied selection reads back exactly like what is sent.
-
-  const handlePromptSelect = useCallback(
-    (message: QuickMessage) => {
-      if (!isPromptListable(message.content)) return
-      const editor = editorRef.current?.getEditor()
-      if (!editor) return
-      const { $from } = editor.state.selection
-      const before = $from.parent.textBetween(
-        0,
-        $from.parentOffset,
-        undefined,
-        " "
-      )
-      const match = before.match(/(^|\s)([/$])(\S*)$/)
-      const restoreToken = match ? `${match[2]}${match[3]}` : null
-      if (match) {
-        const tokenLen = match[2].length + match[3].length
-        editor
-          .chain()
-          .focus()
-          .deleteRange({ from: $from.pos - tokenLen, to: $from.pos })
-          .run()
-      }
-      closeSlashMenu()
-      const plan = planPromptFill(message.content)
-      if (plan.mode === "form") {
-        promptForm.startForm({
-          title: promptDisplayTitle(message.title),
-          template: plan.template,
-          vars: plan.vars,
-          restoreToken,
-        })
-        return
-      }
-      editorRef.current?.insertTextAtCursor(plan.text)
-      if (plan.mode === "tab") {
-        setPlaceholderNav(true)
-        requestAnimationFrame(() => {
-          const next = editorRef.current?.getEditor()
-          if (next) selectPlaceholderInEditor(next, 1)
-        })
-      } else {
-        setPlaceholderNav(false)
-      }
-      syncComposerEmpty()
-    },
-    [closeSlashMenu, promptForm, syncComposerEmpty]
-  )
-
   const selectionPlainText = useCallback((editor: Editor): string => {
     const { from, to } = editor.state.selection
     if (from >= to) return ""
@@ -1903,7 +1770,7 @@ export function MessageInput({
   const handleExternalMenuKeyDown = useCallback(
     (event: KeyboardEvent): boolean => {
       if (isImeCompositionKey(event)) return false
-      if (slashMenuVisible) {
+      if (!slashMenuVisible) return false
       if (event.key === "Escape") {
         closeSlashMenu()
         return true
@@ -1927,33 +1794,17 @@ export function MessageInput({
         return true
       }
       if (event.key === "Enter" || event.key === "Tab") {
-        const commandCount = filteredSlashCommands.length
-        const skillCount = filteredSlashSkills.length
-        if (slashSelectedIndex < commandCount) {
+        // The merged list is [commands, skills].
+        if (slashSelectedIndex < filteredSlashCommands.length) {
           handleSlashSelect(filteredSlashCommands[slashSelectedIndex])
-        } else if (slashSelectedIndex < commandCount + skillCount) {
-          const skill =
-            filteredSlashSkills[slashSelectedIndex - commandCount]
-          if (skill) handleSkillAutocompleteSelect(skill)
         } else {
-          const prompt =
-            filteredSlashPrompts[
-              slashSelectedIndex - commandCount - skillCount
+          const skill =
+            filteredSlashSkills[
+              slashSelectedIndex - filteredSlashCommands.length
             ]
-          if (prompt) handlePromptSelect(prompt)
+          if (skill) handleSkillAutocompleteSelect(skill)
         }
         return true
-      }
-      return false
-      }
-      if (event.key === "Tab") {
-        const editor = editorRef.current?.getEditor()
-        if (
-          editor &&
-          selectPlaceholderInEditor(editor, event.shiftKey ? -1 : 1)
-        ) {
-          return true
-        }
       }
       return false
     },
@@ -1963,10 +1814,8 @@ export function MessageInput({
       slashSelectedIndex,
       filteredSlashCommands,
       filteredSlashSkills,
-      filteredSlashPrompts,
       handleSlashSelect,
       handleSkillAutocompleteSelect,
-      handlePromptSelect,
       closeSlashMenu,
     ]
   )
@@ -2224,50 +2073,9 @@ export function MessageInput({
                 </button>
               )
             })}
-            {filteredSlashPrompts.length > 0 && (
-              <div
-                data-testid="slash-group-prompts"
-                className="px-3 pt-1.5 pb-0.5 text-[11px] font-medium tracking-wide text-muted-foreground"
-              >
-                {t("slashGroupPrompts")}
-              </div>
-            )}
-            {filteredSlashPrompts.map((message, i) => {
-              const absoluteIndex =
-                filteredSlashCommands.length + filteredSlashSkills.length + i
-              const slug = promptSlug(message.title)
-              const label = promptDisplayTitle(message.title)
-              return (
-                <button
-                  key={`prompt-${message.id}`}
-                  type="button"
-                  data-slash-row=""
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
-                    absoluteIndex === slashSelectedIndex
-                      ? "bg-accent text-accent-foreground"
-                      : "hover:bg-muted"
-                  )}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    handlePromptSelect(message)
-                  }}
-                >
-                  {slug ? (
-                    <span className="shrink-0 font-mono text-primary">
-                      /{slug}
-                    </span>
-                  ) : null}
-                  <span className="truncate text-xs text-muted-foreground">
-                    {label || t("quickMessageUntitled")}
-                  </span>
-                </button>
-              )
-            })}
           </div>
         </div>
       )}
-      {promptForm.dialog}
       {/* Attached, this group clips the composer and the folder/branch row
           below it into one rounded box (`overflow-hidden rounded-xl`); the
           drag-active ring rides the wrapper so it isn't clipped. Standalone it
@@ -2367,9 +2175,7 @@ export function MessageInput({
                 onPlainPaste={handlePlainPasteShortcut}
                 submitShortcut={shortcuts.send_message}
                 newlineShortcut={shortcuts.newline_in_message}
-                isExternalMenuOpen={
-                  slashMenuVisible || promptForm.formOpen || placeholderNav
-                }
+                isExternalMenuOpen={slashMenuVisible}
                 onExternalMenuKeyDown={handleExternalMenuKeyDown}
                 onHistoryKeyDown={handleHistoryKeyDown}
                 // `grow`, not `flex-1`: a content flex basis, so the editable

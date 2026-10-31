@@ -19,7 +19,6 @@ import { WelcomeHero } from "@/components/chat/welcome-hero"
 import type { ComposerInjectContent } from "@/components/chat/message-input"
 import { ConversationShell } from "@/components/chat/conversation-shell"
 import type { ConversationFolderPickerOverride } from "@/components/chat/conversation-context-bar"
-import type { ComposerInjectContent } from "@/components/chat/message-input"
 import { MessageListView } from "@/components/message/message-list-view"
 import {
   getCachedSelectors,
@@ -1187,9 +1186,6 @@ export function CanvasConversationSurface({
       ? null
       : (s.conversations.find((c) => c.id === dbConversationId) ?? null)
   )
-  const [composerInject, setComposerInject] =
-    useState<ComposerInjectContent | null>(null)
-
   const [themeSeatRecipe, setThemeSeatRecipe] = useState<RecipeId>("code")
   const tThemeSeat = useTranslations("ThemeSeat")
 
@@ -1249,18 +1245,15 @@ export function CanvasConversationSurface({
           selectedModeId={selectedModeId}
           onModeChange={handleModeChange}
           onConfigOptionChange={handleSetConfigOption}
-          agentType={agentType}
-          availableCommands={connectionCommands ?? []}
-          promptSuggestion={connIsForOtherAgent ? null : conn.promptSuggestion}
-          draftStorageKey={`canvas-draft:${contextKey}`}
-          injectContent={composerHandBacks[0] ?? null}
-          onInjectConsumed={handleComposerHandBackConsumed}
           agentType={selectedAgent}
           availableCommands={connectionCommands ?? []}
+          promptSuggestion={connIsForOtherAgent ? null : conn.promptSuggestion}
           draftStorageKey={surfaceComposerDraftStorageKey({
             conversationId: dbConversationId,
             contextKey,
           })}
+          injectContent={composerHandBacks[0] ?? null}
+          onInjectConsumed={handleComposerHandBackConsumed}
           getSentHistory={getSentHistory}
           // The card's own connection key doubles as its composer scope: the
           // context-usage ring and connection dot in the picker row read it as
@@ -1268,8 +1261,6 @@ export function CanvasConversationSurface({
           attachmentTabId={contextKey}
           folderPickerOverride={folderPickerOverride}
           isActive={composerActive ?? isActive}
-          injectContent={composerInject}
-          onInjectConsumed={() => setComposerInject(null)}
         >
           {showAgentTypePicker && showWelcome && onAgentTypeChange ? (
             <div
@@ -1280,7 +1271,7 @@ export function CanvasConversationSurface({
                 <WelcomeHero />
                 {themeSeatRecipe === "code" ? (
                 <QuickActions
-                  onSelect={(payload) => setComposerInject(payload)}
+                  onSelect={(payload) => setComposerHandBacks((pending) => [...pending, payload])}
                   agentType={selectedAgent}
                 />
                 ) : null}

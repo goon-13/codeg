@@ -5,8 +5,9 @@ import type { DashboardBlock } from "./dashboard-model"
 function flattenParts(parts: AdaptedContentPart[]): AdaptedContentPart[] {
   const out: AdaptedContentPart[] = []
   for (const part of parts) {
-    if (part.type === "tool-group") {
-      out.push(...part.items)
+    const grouped = part as AdaptedContentPart & { items?: AdaptedContentPart[] }
+    if (grouped.type === ("tool-group" as AdaptedContentPart["type"]) && grouped.items) {
+      out.push(...grouped.items)
       continue
     }
     out.push(part)

@@ -1,4 +1,29 @@
-import { classifyToolKind } from "@/lib/adapters/tool-kind-classifier"
+type ToolKind =
+  | "search"
+  | "command"
+  | "read"
+  | "memory"
+  | "edit"
+  | "fetch"
+  | "think"
+  | "todo"
+  | "task"
+  | "other"
+
+function classifyToolKind(name: string): ToolKind {
+  const n = name.toLowerCase()
+  if (n.includes("search") || n.includes("grep") || n.includes("glob")) return "search"
+  if (n.includes("bash") || n.includes("shell") || n.includes("command")) return "command"
+  if (n.includes("read") || n.includes("view")) return "read"
+  if (n.includes("memory")) return "memory"
+  if (n.includes("edit") || n.includes("write") || n.includes("apply")) return "edit"
+  if (n.includes("fetch") || n.includes("web") || n.includes("http")) return "fetch"
+  if (n.includes("think")) return "think"
+  if (n.includes("todo")) return "todo"
+  if (n.includes("task") || n.includes("agent")) return "task"
+  return "other"
+}
+
 import { normalizeToolName } from "@/lib/tool-call-normalization"
 import { resolveContextWindowPercent } from "@/lib/context-window"
 
